@@ -23,7 +23,10 @@ Si algo de este archivo choca con los planes, avisá antes de elegir.
   validación de citas) las escribe la persona; vos guiás y revisás.
 
 ## Restricciones
-- **Costo cero**: solo software libre o planes gratuitos. VPS Contabo sin GPU + dominio en Cloudflare.
+- **Costo cero — PROHIBIDO usar herramientas, servicios o nubes que generen gastos.** Solo software libre
+  o planes gratuitos (repo público en GitHub: Actions, GHCR y Dependabot gratis). Ya pagos: VPS Contabo
+  sin GPU y dominio en Cloudflare. Antes de sumar cualquier servicio externo, confirmar que es gratuito
+  y avisar sus límites; si hay duda, preguntar en vez de usarlo.
 - **IA 100 % local con Ollama**: ninguna API comercial (OpenAI, Anthropic, etc.), ni en código ni en tests.
 - Nada se instala antes de su etapa (columna "Etapa" del stack en la Parte 1, §3).
 
@@ -97,7 +100,7 @@ Ojo con los nombres repetidos:
 - Conventional Commits: `feat(documents): add upload endpoint`, `fix(auth): ...`, `test(...)`, `docs(...)`, `chore(...)`.
 - Un commit por paso chico.
 - Tags al cerrar cada fase: `v0.1.0` (A), `v0.2.0` (B), `v0.3.0` (C), `v1.0.0` (D).
-- No commitear ni pushear sin que se pida.
+- Durante una etapa se commitea y pushea a `development`. **Nunca** commitear ni pushear directo a `main`.
 
 ## Flujo de cada etapa
 1. Trabajar en `development` (actualizada con `main`).
@@ -107,6 +110,19 @@ Ojo con los nombres repetidos:
 4. Al cerrar: actualizar README, escribir la ADR si hubo decisión (`docs/decisions/NNNN-titulo.md`,
    desde `0000-plantilla.md`), marcar la etapa como terminada en su archivo y en la sección siguiente.
 5. PR `development` → `main`.
+
+## Continuidad entre sesiones
+Cada sesión de Claude Code arranca sin memoria de la anterior: el contexto vive en este repo.
+- **Al empezar**: leer este archivo, el `docs/etapas/etapa-NN.md` de la etapa actual (sobre todo
+  "Resultado" y "Notas" de la anterior) y `git log --oneline -15`.
+- **Al terminar** (o al cortar a mitad de etapa): actualizar la sección "Etapa actual" de acá abajo
+  y, en el archivo de la etapa, tildar tareas y dejar una sección "Resultado / Pendientes" con lo que
+  falta y las decisiones tomadas. Commitear y pushear a `development`.
+
+## Entorno local
+- uv en `~/.local/bin` (instala Python 3.12 por su cuenta). Node 24 disponible; pnpm todavía no instalado.
+- `podman compose` usa el socket de Podman del usuario (`systemctl --user enable --now podman.socket`).
+- `.env` en la raíz (permisos 600, ignorado por git) con contraseñas aleatorias para dev.
 
 ## Etapa actual
 - **Etapa 0** (en curso): falta lo del VPS y la prueba de humo de Ollama. Ver `docs/etapas/etapa-00.md`.
