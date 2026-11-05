@@ -1,0 +1,43 @@
+# --- Secretos ---
+.env
+.env.*
+!.env.example
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# --- Node / Next.js ---
+node_modules/
+.next/
+out/
+.pnpm-store/
+*.tsbuildinfo
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Datos locales (nunca al repo) ---
+/data/
+*.dump
+*.sql.gz
+
+# --- Editores y sistema operativo ---
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
