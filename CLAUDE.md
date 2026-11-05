@@ -109,5 +109,7 @@ Ojo con los nombres repetidos:
 5. PR `development` → `main`.
 
 ## Etapa actual
-**Etapa 0 — Preparación y prueba de humo del VPS** (en curso). Ver `docs/etapas/etapa-00.md`.
+- **Etapa 0** (en curso): falta lo del VPS y la prueba de humo de Ollama. Ver `docs/etapas/etapa-00.md`.
+- **Etapa 1** (en revisión): backend listo en `development`; falta proteger `main` y el PR. Ver `docs/etapas/etapa-01.md`.
+- Próxima: **Etapa 2** — autenticación, organizaciones y multi-tenancy.
 Regla general: la etapa actual es la de **número más bajo** que no está marcada como terminada en `docs/etapas/`.
