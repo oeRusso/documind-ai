@@ -5,18 +5,13 @@ from uuid import UUID
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.database.tenant import SqlTenantContext
 from app.modules.audit.application.record_audit_event import (
     RecordAuditEvent,
     RecordAuditEventCommand,
 )
 from app.modules.audit.domain.entities import AuditAction
 from app.modules.audit.infrastructure.sql_repository import SqlAuditLogRepository
-from app.modules.organizations.application.create_organization import (
-    CreateOrganization,
-    CreateOrganizationCommand,
-)
-from app.modules.organizations.infrastructure.sql_repository import SqlOrganizationRepository
+from tests.integration.factories import create_organization, create_user
 
 
 async def test_event_without_organization_can_be_written(app_session: AsyncSession) -> None:
@@ -29,10 +24,7 @@ async def test_event_without_organization_can_be_written(app_session: AsyncSessi
 
 
 async def test_event_of_the_active_organization_is_readable(app_session: AsyncSession) -> None:
-    tenant = SqlTenantContext(app_session)
-    organization = await CreateOrganization(SqlOrganizationRepository(app_session), tenant).execute(
-        CreateOrganizationCommand(name="Acme", slug="acme")
-    )
+    organization = await create_organization(app_session, await create_user(app_session))
 
     event = await RecordAuditEvent(SqlAuditLogRepository(app_session)).execute(
         RecordAuditEventCommand(
