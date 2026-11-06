@@ -1,0 +1,117 @@
+"""In-memory fakes of the ports, for unit tests of use cases (no database, no Argon2).
+
+They satisfy the Protocols in each module's `domain` without inheriting from them.
+"""
+
+from uuid import UUID
+
+from app.modules.audit.domain.entities import AuditEvent
+from app.modules.auth.domain.refresh_tokens import RefreshToken
+from app.modules.organizations.domain.entities import Organization
+from app.modules.organizations.domain.errors import OrganizationSlugTakenError
+from app.modules.organizations.domain.membership import Membership
+from app.modules.users.domain.entities import User
+from app.modules.users.domain.errors import EmailAlreadyRegisteredError
+
+
+class FakeTenantContext:
+    def __init__(self) -> None:
+        self.user_id: UUID | None = None
+        self.organization_id: UUID | None = None
+
+    async def set_user(self, user_id: UUID) -> None:
+        self.user_id = user_id
+
+    async def set_organization(self, organization_id: UUID) -> None:
+        self.organization_id = organization_id
+
+
+class InMemoryOrganizationRepository:
+    def __init__(self, tenant: FakeTenantContext) -> None:
+        self.items: dict[UUID, Organization] = {}
+        self.tenant = tenant
+
+    async def add(self, organization: Organization) -> None:
+        # Mimics the database: UNIQUE slug, and RLS only accepts rows of the active organization.
+        if any(org.slug == organization.slug for org in self.items.values()):
+            raise OrganizationSlugTakenError()
+        assert self.tenant.organization_id == organization.id, "tenant context not set"
+        self.items[organization.id] = organization
+
+    async def get_by_id(self, organization_id: UUID) -> Organization | None:
+        return self.items.get(organization_id)
+
+
+class InMemoryMembershipRepository:
+    def __init__(self, tenant: FakeTenantContext) -> None:
+        self.items: list[Membership] = []
+        self.tenant = tenant
+
+    async def add(self, membership: Membership) -> None:
+        assert self.tenant.organization_id == membership.organization_id, "tenant not set"
+        self.items.append(membership)
+
+    async def get_by_user(self, organization_id: UUID, user_id: UUID) -> Membership | None:
+        return next(
+            (
+                m
+                for m in self.items
+                if m.organization_id == organization_id and m.user_id == user_id
+            ),
+            None,
+        )
+
+    async def list_by_user(self, user_id: UUID) -> list[Membership]:
+        return [m for m in self.items if m.user_id == user_id]
+
+
+class InMemoryUserRepository:
+    def __init__(self) -> None:
+        self.items: dict[UUID, User] = {}
+
+    async def add(self, user: User) -> None:
+        if any(u.email == user.email for u in self.items.values()):
+            raise EmailAlreadyRegisteredError()
+        self.items[user.id] = user
+
+    async def get_by_id(self, user_id: UUID) -> User | None:
+        return self.items.get(user_id)
+
+    async def get_by_email(self, email: str) -> User | None:
+        return next((u for u in self.items.values() if u.email == email), None)
+
+
+class FakePasswordHasher:
+    """Instant and transparent. Counts calls so tests can check timing equalization."""
+
+    def __init__(self) -> None:
+        self.hash_calls = 0
+        self.verify_calls = 0
+
+    async def hash(self, password: str) -> str:
+        self.hash_calls += 1
+        return f"fake-hash:{password}"
+
+    async def verify(self, password_hash: str, password: str) -> bool:
+        self.verify_calls += 1
+        return password_hash == f"fake-hash:{password}"
+
+
+class InMemoryAuditLogRepository:
+    def __init__(self) -> None:
+        self.events: list[AuditEvent] = []
+
+    async def add(self, event: AuditEvent) -> None:
+        self.events.append(event)
+
+    @property
+    def actions(self) -> list[str]:
+        return [str(event.action) for event in self.events]
+
+
+class InMemoryRefreshTokenRepository:
+    def __init__(self) -> None:
+        self.items: dict[UUID, RefreshToken] = {}
+
+    async def add(self, token: RefreshToken) -> None:
+        self.items[token.id] = token

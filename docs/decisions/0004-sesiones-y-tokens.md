@@ -54,6 +54,11 @@ Opción 1.
 - Si dos pestañas refrescan a la vez con el mismo token, una puede parecer un reuso y cerrar la sesión.
   Lo atenúan el `FOR UPDATE` y que el frontend comparta un solo refresh en curso por pestaña. Si molesta en
   la práctica, se puede sumar un margen de gracia de pocos segundos.
+- Algunos errores tienen que guardar lo que se escribió antes de fallar: el evento de "login fallido" y
+  la revocación de una familia por reuso. Esos errores tienen `keep_changes = True` y `get_session` hace
+  commit antes de responder con el error; el resto de los errores deshace la transacción.
+- Si el email no existe, el login igual verifica un hash Argon2 señuelo: tarda lo mismo que con una
+  cuenta real y responde el mismo mensaje, así no se puede averiguar qué emails están registrados.
 - Un access token robado sirve hasta 15 minutos. Revocar al instante requeriría una lista de tokens
   revocados, que no se justifica todavía.
 - Cambiar `JWT_SECRET` invalida todos los access tokens (no los refresh tokens, que no dependen de él).

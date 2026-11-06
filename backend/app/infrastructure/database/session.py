@@ -10,6 +10,8 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from app.shared.errors import DomainError
+
 
 def create_engine(url: str) -> AsyncEngine:
     # Creating the engine does not connect yet: connections are opened lazily from the pool.
@@ -25,8 +27,17 @@ async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
 
     Register it with `Depends(get_session, scope="function")` so the commit happens
     *before* the response is sent (otherwise a failed commit would follow a 2xx).
-    Stage 2 adds `SET LOCAL app.current_org` here, inside the same transaction.
+    Errors with `keep_changes = True` commit before the error response (see DomainError).
+    The tenant context (RLS) is set later in the same transaction (app/shared/tenancy.py).
     """
     session_factory: async_sessionmaker[AsyncSession] = request.app.state.session_factory
-    async with session_factory() as session, session.begin():
-        yield session
+    async with session_factory() as session:
+        try:
+            yield session
+        except DomainError as exc:
+            if exc.keep_changes:
+                await session.commit()
+            raise
+        else:
+            await session.commit()
+        # Any other exception: leaving `async with` closes the session and rolls back.

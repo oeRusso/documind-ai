@@ -4,12 +4,18 @@ They are plain Python (no HTTP, no FastAPI): `domain` and `application` raise th
 `app/core/exceptions.py` translates them to HTTP responses with the uniform error format.
 """
 
+from typing import ClassVar
+
 
 class DomainError(Exception):
     """Base class. Subclasses override `code` and `message` (UI text, in Spanish)."""
 
     code: str = "domain_error"
     message: str = "La operación no es válida"
+    # Normally an error rolls the request's transaction back. A few security errors set this
+    # to True: what was written before raising (an audit event, a revoked session) is
+    # committed anyway, and then the error response is sent. See get_session.
+    keep_changes: ClassVar[bool] = False
 
     def __init__(self, message: str | None = None) -> None:
         if message is not None:

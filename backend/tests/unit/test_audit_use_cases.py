@@ -5,19 +5,12 @@ from app.modules.audit.application.record_audit_event import (
     RecordAuditEvent,
     RecordAuditEventCommand,
 )
-from app.modules.audit.domain.entities import AuditAction, AuditEvent
+from app.modules.audit.domain.entities import AuditAction
+from tests.fakes import InMemoryAuditLogRepository
 
 NOW = datetime(2026, 11, 6, 12, 0, tzinfo=UTC)
 EVENT_ID = UUID("0192f1c4-0000-7000-8000-0000000000a1")
 USER_ID = UUID("0192f1c4-0000-7000-8000-0000000000b1")
-
-
-class InMemoryAuditLogRepository:
-    def __init__(self) -> None:
-        self.events: list[AuditEvent] = []
-
-    async def add(self, event: AuditEvent) -> None:
-        self.events.append(event)
 
 
 async def test_record_audit_event_stores_it() -> None:

@@ -11,69 +11,19 @@ from app.modules.organizations.application.create_organization import (
     CreateOrganizationCommand,
 )
 from app.modules.organizations.application.get_organization import GetOrganization
-from app.modules.organizations.domain.entities import Organization
 from app.modules.organizations.domain.errors import (
     OrganizationNotFoundError,
     OrganizationSlugTakenError,
 )
-from app.modules.organizations.domain.membership import Membership
 from app.modules.organizations.domain.roles import Role
+from tests.fakes import (
+    FakeTenantContext,
+    InMemoryMembershipRepository,
+    InMemoryOrganizationRepository,
+)
 
 NOW = datetime(2026, 11, 5, 12, 0, tzinfo=UTC)
 OWNER_ID = UUID("0192f1c4-0000-7000-8000-0000000000d1")
-
-
-class FakeTenantContext:
-    def __init__(self) -> None:
-        self.user_id: UUID | None = None
-        self.organization_id: UUID | None = None
-
-    async def set_user(self, user_id: UUID) -> None:
-        self.user_id = user_id
-
-    async def set_organization(self, organization_id: UUID) -> None:
-        self.organization_id = organization_id
-
-
-class InMemoryOrganizationRepository:
-    """Satisfies the OrganizationRepository Protocol without inheriting from it."""
-
-    def __init__(self, tenant: FakeTenantContext) -> None:
-        self.items: dict[UUID, Organization] = {}
-        self.tenant = tenant
-
-    async def add(self, organization: Organization) -> None:
-        # Mimics the database: UNIQUE slug, and RLS only accepts rows of the active organization.
-        if any(org.slug == organization.slug for org in self.items.values()):
-            raise OrganizationSlugTakenError()
-        assert self.tenant.organization_id == organization.id, "tenant context not set"
-        self.items[organization.id] = organization
-
-    async def get_by_id(self, organization_id: UUID) -> Organization | None:
-        return self.items.get(organization_id)
-
-
-class InMemoryMembershipRepository:
-    def __init__(self, tenant: FakeTenantContext) -> None:
-        self.items: list[Membership] = []
-        self.tenant = tenant
-
-    async def add(self, membership: Membership) -> None:
-        assert self.tenant.organization_id == membership.organization_id, "tenant not set"
-        self.items.append(membership)
-
-    async def get_by_user(self, organization_id: UUID, user_id: UUID) -> Membership | None:
-        return next(
-            (
-                m
-                for m in self.items
-                if m.organization_id == organization_id and m.user_id == user_id
-            ),
-            None,
-        )
-
-    async def list_by_user(self, user_id: UUID) -> list[Membership]:
-        return [m for m in self.items if m.user_id == user_id]
 
 
 class Setup:
