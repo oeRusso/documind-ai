@@ -71,7 +71,7 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 - [x] 3. Migración 0002: tablas de identidad (sin RLS) y modelos.
 - [x] 4. RLS I: contexto por transacción + políticas de `organizations` y `memberships`; limpieza de tests con `migrator`.
 - [x] 5. RLS II: `invitations` y `audit_logs` (solo inserción). *(Hecho junto con el 4: migración 0003.)*
-- [ ] 6. Módulo `audit`: `RecordAuditEvent`.
+- [x] 6. Módulo `audit`: `RecordAuditEvent`.
 - [ ] 7. Módulo `users`: entidad, política de contraseña, Argon2id, repositorio.
 - [ ] 8. Tokens: JWT de acceso (PyJWT) y refresh token opaco con hash.
 - [ ] 9. Roles y matriz de permisos; repositorio de memberships.

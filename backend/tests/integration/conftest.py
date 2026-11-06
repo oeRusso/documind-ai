@@ -4,7 +4,7 @@ import httpx
 import pytest
 from fastapi import FastAPI
 from sqlalchemy import NullPool, text
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from app.core.config import Settings
 from app.infrastructure.database.models import Base
@@ -60,3 +60,21 @@ async def client(db_app: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
     transport = httpx.ASGITransport(app=db_app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as http_client:
         yield http_client
+
+
+@pytest.fixture
+async def app_session(db_settings: Settings) -> AsyncIterator[AsyncSession]:
+    """A session with the API's `app` role, inside a transaction that is rolled back at the end.
+
+    Use it to test SQL repositories exactly as the API runs them (RLS included).
+    """
+    engine = create_async_engine(str(db_settings.database_url), poolclass=NullPool)
+    async with engine.connect() as connection:
+        transaction = await connection.begin()
+        session = AsyncSession(bind=connection, expire_on_commit=False)
+        try:
+            yield session
+        finally:
+            await session.close()
+            await transaction.rollback()
+    await engine.dispose()
