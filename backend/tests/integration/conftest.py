@@ -76,5 +76,7 @@ async def app_session(db_settings: Settings) -> AsyncIterator[AsyncSession]:
             yield session
         finally:
             await session.close()
-            await transaction.rollback()
+            # A database error inside the test may have rolled it back already.
+            if transaction.is_active:
+                await transaction.rollback()
     await engine.dispose()
