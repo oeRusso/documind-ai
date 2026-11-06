@@ -66,6 +66,10 @@ usuarios a través de las membresías de la organización activa.
 
 - Una consulta que olvida el `WHERE organization_id` devuelve solo filas de la organización activa
   (lo prueba `tests/security/`).
+- **Qué protege y qué no.** RLS frena consultas que olvidan el filtro: confía en `app.current_org`.
+  Fijar esa variable es trabajo de `CurrentMemberDep`, que antes verifica la membresía (capa 1).
+  Si esa verificación se rompiera, RLS no lo notaría. Por eso las dos capas tienen tests propios:
+  `test_tenant_isolation.py` cubre las dos, y se comprobó que sus tests de fuga fallan con RLS apagado.
 - Sin contexto fijado, las tablas con RLS devuelven 0 filas: un error de programación falla "cerrado".
 - `FORCE` también afecta a `migrator` (dueño de las tablas): una migración que transforme datos vería 0 filas.
   Para eso hay que fijar el contexto o usar el superusuario. `TRUNCATE` no está sujeto a RLS, y por eso

@@ -11,16 +11,16 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 
 ## Tareas
 
-- [ ] Tablas `users`, `memberships`, `refresh_tokens`, `invitations` y `audit_logs` (`organizations` ya existe desde la etapa 1).
+- [x] Tablas `users`, `memberships`, `refresh_tokens`, `invitations` y `audit_logs` (`organizations` ya existe desde la etapa 1).
 - [ ] Roles owner, admin, member y viewer, verificados en cada caso de uso.
-- [ ] Contraseñas con Argon2id (argon2-cffi).
-- [ ] Access token JWT de 15 minutos; refresh token rotativo, revocable y guardado en cookie HttpOnly, Secure, SameSite=Lax. Reusar un refresh token ya rotado invalida toda la familia.
-- [ ] Protección CSRF en los endpoints que usan cookies.
-- [ ] Dependencia de FastAPI que resuelve el usuario y su membresía, y entrega el `organization_id` a cada caso de uso. Los repositorios lo exigen como parámetro obligatorio.
-- [ ] Row Level Security en PostgreSQL: la app fija `app.current_org` por transacción (`SET LOCAL`) y usa un rol de base de datos que no puede saltarse RLS.
+- [x] Contraseñas con Argon2id (argon2-cffi).
+- [x] Access token JWT de 15 minutos; refresh token rotativo, revocable y guardado en cookie HttpOnly, Secure, SameSite=Lax. Reusar un refresh token ya rotado invalida toda la familia.
+- [x] Protección CSRF en los endpoints que usan cookies.
+- [x] Dependencia de FastAPI que resuelve el usuario y su membresía, y entrega el `organization_id` a cada caso de uso. Los repositorios lo exigen como parámetro obligatorio.
+- [x] Row Level Security en PostgreSQL: la app fija `app.current_org` por transacción (`SET LOCAL`) y usa un rol de base de datos que no puede saltarse RLS.
 - [ ] Invitaciones por link.
 - [ ] Rate limit en login y registro; campo trampa (honeypot) en el registro. *(Sin Turnstile: ADR 0005.)*
-- [ ] `audit_logs` con las acciones de seguridad (solo inserción).
+- [x] `audit_logs` con las acciones de seguridad (solo inserción).
 - [ ] Mailpit en `compose.yaml` para ver los emails de desarrollo (invitaciones).
 - [ ] Frontend mínimo en Next.js: registro, login, selector de organización y gestión de miembros, con un cliente TypeScript generado desde el OpenAPI y TanStack Query.
 
@@ -34,8 +34,8 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 
 ## Criterios de terminado
 
-- [ ] Un test demuestra que un usuario de la organización A no lee datos de B, incluso con el filtro del backend deshabilitado (lo frena RLS).
-- [ ] Reusar un refresh token ya rotado invalida la sesión.
+- [x] Un test demuestra que un usuario de la organización A no lee datos de B, incluso con el filtro del backend deshabilitado (lo frena RLS). *(`tests/security/test_tenant_isolation.py`)*
+- [x] Reusar un refresh token ya rotado invalida la sesión. *(`tests/integration/test_auth_api.py::test_reusing_a_rotated_refresh_token_ends_the_session`)*
 - [ ] Un viewer recibe 403 al intentar acciones de admin.
 
 ## Notas
@@ -81,7 +81,7 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 - [x] 13. Router de auth II: refresh y logout con cookie y CSRF.
 - [x] 14. Dependencia `CurrentMember` y endpoints de `organizations` rehechos.
   (Los endpoints sin autenticación de la etapa 1 se quitaron en el paso 4: con RLS no pueden funcionar.)
-- [ ] 15. Test de aislamiento con el filtro del backend deshabilitado.
+- [x] 15. Test de aislamiento con el filtro del backend deshabilitado.
 - [ ] 16. Miembros: listar, cambiar rol, quitar.
 - [ ] 17. Invitaciones: crear, listar, revocar.
 - [ ] 18. Aceptar invitación.
@@ -110,7 +110,17 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
   `# pragma: allowlist secret`, si no detect-secrets frena el commit.
 - Sin Turnstile (ADR 0005): campo trampa en el registro (paso 21).
 
-**Pendiente:** pasos 12 a 27 (HTTP, miembros, invitaciones, Mailpit, rate limit, campo trampa, frontend, cierre).
+**2026-11-06: pasos 12 a 15.** API HTTP de auth y organizaciones.
+
+- Endpoints: `POST /auth/register|login|refresh|logout`, `GET /auth/me`, `GET|POST /organizations`,
+  `GET /organizations/{id}`. Dependencias compartidas en `app/core/dependencies.py`
+  (`SessionDep`, `SettingsDep`, `ClientIpDep`); `CurrentUserDep` y `CurrentMemberDep` en
+  `app/modules/auth/presentation/dependencies.py`.
+- Los tests HTTP usan `base_url="https://test"` (cookies `Secure`) y `tests/integration/api_helpers.py`.
+- Criterios 1 y 2 cumplidos. El test de aislamiento se verificó a la inversa: con RLS apagado, falla.
+
+**Pendiente:** pasos 16 a 27 (miembros, invitaciones, Mailpit, rate limit, campo trampa, frontend, cierre).
+Criterio 3 (viewer → 403) llega con el paso 16.
 
 ## Referencias
 
