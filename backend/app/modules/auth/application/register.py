@@ -60,20 +60,17 @@ class Register:
                 name=command.organization_name,
                 slug=command.organization_slug,
                 owner_id=user.id,
+                ip=command.ip,
             )
         )
-        for action, target in (
-            (AuditAction.USER_REGISTERED, f"user:{user.id}"),
-            (AuditAction.ORGANIZATION_CREATED, f"organization:{organization.id}"),
-        ):
-            await self._audit.execute(
-                RecordAuditEventCommand(
-                    action=action,
-                    organization_id=organization.id,
-                    user_id=user.id,
-                    target=target,
-                    ip=command.ip,
-                )
+        await self._audit.execute(
+            RecordAuditEventCommand(
+                action=AuditAction.USER_REGISTERED,
+                organization_id=organization.id,
+                user_id=user.id,
+                target=f"user:{user.id}",
+                ip=command.ip,
             )
+        )
         session = await self._issue_session.start(user.id)
         return RegisterResult(user=user, organization=organization, session=session)

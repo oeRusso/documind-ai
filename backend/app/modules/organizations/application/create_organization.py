@@ -5,6 +5,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
+from app.modules.audit.application.record_audit_event import (
+    RecordAuditEvent,
+    RecordAuditEventCommand,
+)
+from app.modules.audit.domain.entities import AuditAction
 from app.modules.organizations.domain.entities import Organization
 from app.modules.organizations.domain.membership import Membership
 from app.modules.organizations.domain.repository import (
@@ -21,6 +26,7 @@ class CreateOrganizationCommand:
     name: str
     slug: str
     owner_id: UUID
+    ip: str | None = None
 
 
 class CreateOrganization:
@@ -29,6 +35,7 @@ class CreateOrganization:
         organizations: OrganizationRepository,
         memberships: MembershipRepository,
         tenant: TenantContext,
+        record_audit_event: RecordAuditEvent,
         *,
         id_factory: Callable[[], UUID] = new_id,
         clock: Callable[[], datetime] = utc_now,
@@ -36,6 +43,7 @@ class CreateOrganization:
         self._organizations = organizations
         self._memberships = memberships
         self._tenant = tenant
+        self._audit = record_audit_event
         self._id_factory = id_factory
         self._clock = clock
 
@@ -57,6 +65,15 @@ class CreateOrganization:
                 user_id=command.owner_id,
                 role=Role.OWNER,
                 now=now,
+            )
+        )
+        await self._audit.execute(
+            RecordAuditEventCommand(
+                action=AuditAction.ORGANIZATION_CREATED,
+                organization_id=organization.id,
+                user_id=command.owner_id,
+                target=f"organization:{organization.id}",
+                ip=command.ip,
             )
         )
         return organization

@@ -79,7 +79,7 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 - [x] 11. `RefreshSession` (rotación y detección de reuso) y `Logout`.
 - [x] 12. Router de auth I: register, login, me; errores 401 y 403.
 - [x] 13. Router de auth II: refresh y logout con cookie y CSRF.
-- [ ] 14. Dependencia `CurrentMember` y endpoints de `organizations` rehechos.
+- [x] 14. Dependencia `CurrentMember` y endpoints de `organizations` rehechos.
   (Los endpoints sin autenticación de la etapa 1 se quitaron en el paso 4: con RLS no pueden funcionar.)
 - [ ] 15. Test de aislamiento con el filtro del backend deshabilitado.
 - [ ] 16. Miembros: listar, cambiar rol, quitar.

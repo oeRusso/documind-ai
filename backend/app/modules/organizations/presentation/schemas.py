@@ -3,7 +3,10 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
+
+from app.modules.organizations.application.get_organization import OrganizationWithRole
+from app.modules.organizations.domain.roles import Role
 
 
 class OrganizationCreate(BaseModel):
@@ -12,10 +15,21 @@ class OrganizationCreate(BaseModel):
 
 
 class OrganizationRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
     id: UUID
     name: str
     slug: str
     created_at: datetime
     updated_at: datetime
+    role: Role = Field(description="Tu rol en esta organización")
+
+    @classmethod
+    def build(cls, item: OrganizationWithRole) -> "OrganizationRead":
+        org = item.organization
+        return cls(
+            id=org.id,
+            name=org.name,
+            slug=org.slug,
+            created_at=org.created_at,
+            updated_at=org.updated_at,
+            role=item.role,
+        )

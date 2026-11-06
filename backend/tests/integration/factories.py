@@ -5,6 +5,8 @@ from datetime import UTC, datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.database.tenant import SqlTenantContext
+from app.modules.audit.application.record_audit_event import RecordAuditEvent
+from app.modules.audit.infrastructure.sql_repository import SqlAuditLogRepository
 from app.modules.organizations.application.create_organization import (
     CreateOrganization,
     CreateOrganizationCommand,
@@ -35,4 +37,5 @@ async def create_organization(
         SqlOrganizationRepository(session),
         SqlMembershipRepository(session),
         SqlTenantContext(session),
+        RecordAuditEvent(SqlAuditLogRepository(session)),
     ).execute(CreateOrganizationCommand(name=slug.title(), slug=slug, owner_id=owner.id))

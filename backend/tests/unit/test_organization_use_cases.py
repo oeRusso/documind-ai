@@ -6,11 +6,15 @@ from uuid import UUID
 
 import pytest
 
+from app.modules.audit.application.record_audit_event import RecordAuditEvent
 from app.modules.organizations.application.create_organization import (
     CreateOrganization,
     CreateOrganizationCommand,
 )
-from app.modules.organizations.application.get_organization import GetOrganization
+from app.modules.organizations.application.get_organization import (
+    GetOrganization,
+    ListMyOrganizations,
+)
 from app.modules.organizations.domain.errors import (
     OrganizationNotFoundError,
     OrganizationSlugTakenError,
@@ -18,6 +22,7 @@ from app.modules.organizations.domain.errors import (
 from app.modules.organizations.domain.roles import Role
 from tests.fakes import (
     FakeTenantContext,
+    InMemoryAuditLogRepository,
     InMemoryMembershipRepository,
     InMemoryOrganizationRepository,
 )
@@ -31,11 +36,13 @@ class Setup:
         self.tenant = FakeTenantContext()
         self.organizations = InMemoryOrganizationRepository(self.tenant)
         self.memberships = InMemoryMembershipRepository(self.tenant)
+        self.audit = InMemoryAuditLogRepository()
         ids = count(1)
         self.create = CreateOrganization(
             self.organizations,
             self.memberships,
             self.tenant,
+            RecordAuditEvent(self.audit),
             id_factory=lambda: UUID(int=next(ids)),
             clock=lambda: NOW,
         )
@@ -81,7 +88,10 @@ async def test_create_organization_rejects_duplicate_slug(setup: Setup) -> None:
 async def test_create_organization_uses_uuid_v7_by_default() -> None:
     tenant = FakeTenantContext()
     use_case = CreateOrganization(
-        InMemoryOrganizationRepository(tenant), InMemoryMembershipRepository(tenant), tenant
+        InMemoryOrganizationRepository(tenant),
+        InMemoryMembershipRepository(tenant),
+        tenant,
+        RecordAuditEvent(InMemoryAuditLogRepository()),
     )
 
     organization = await use_case.execute(command())
@@ -89,12 +99,46 @@ async def test_create_organization_uses_uuid_v7_by_default() -> None:
     assert organization.id.version == 7
 
 
-async def test_get_organization_returns_it(setup: Setup) -> None:
+async def test_creation_is_audited(setup: Setup) -> None:
+    organization = await setup.create.execute(command())
+
+    [event] = setup.audit.events
+    assert event.action == "organization.created"
+    assert event.organization_id == organization.id
+    assert event.user_id == OWNER_ID
+
+
+async def test_member_gets_the_organization_with_their_role(setup: Setup) -> None:
     created = await setup.create.execute(command())
 
-    assert await GetOrganization(setup.organizations).execute(created.id) == created
+    found = await GetOrganization(setup.organizations, setup.memberships).execute(
+        created.id, OWNER_ID
+    )
+
+    assert found.organization == created
+    assert found.role is Role.OWNER
 
 
-async def test_get_organization_raises_when_missing(setup: Setup) -> None:
+async def test_non_member_gets_404_even_if_the_organization_exists(setup: Setup) -> None:
+    created = await setup.create.execute(command())
+
     with pytest.raises(OrganizationNotFoundError):
-        await GetOrganization(setup.organizations).execute(UUID(int=99))
+        await GetOrganization(setup.organizations, setup.memberships).execute(
+            created.id, UUID(int=999)
+        )
+
+
+async def test_list_my_organizations(setup: Setup) -> None:
+    first = await setup.create.execute(command(slug="first"))
+    second = await setup.create.execute(command(slug="second"))
+
+    mine = await ListMyOrganizations(setup.organizations, setup.memberships).execute(OWNER_ID)
+
+    assert [(item.organization.id, item.role) for item in mine] == [
+        (first.id, Role.OWNER),
+        (second.id, Role.OWNER),
+    ]
+    assert (
+        await ListMyOrganizations(setup.organizations, setup.memberships).execute(UUID(int=999))
+        == []
+    )

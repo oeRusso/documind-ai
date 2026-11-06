@@ -43,7 +43,7 @@ def wire(session: AsyncSession) -> tuple[Register, Login]:
     register = Register(
         CreateUser(users, hasher),
         CreateOrganization(
-            SqlOrganizationRepository(session), SqlMembershipRepository(session), tenant
+            SqlOrganizationRepository(session), SqlMembershipRepository(session), tenant, audit
         ),
         issue,
         audit,

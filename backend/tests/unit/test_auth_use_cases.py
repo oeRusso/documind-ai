@@ -51,7 +51,7 @@ class World:
         self.register = Register(
             CreateUser(self.users, self.hasher, clock=lambda: NOW),
             CreateOrganization(
-                self.organizations, self.memberships, self.tenant, clock=lambda: NOW
+                self.organizations, self.memberships, self.tenant, record, clock=lambda: NOW
             ),
             issue,
             record,
@@ -99,7 +99,7 @@ async def test_register_stores_only_the_hash_of_the_refresh_token(world: World) 
 async def test_register_is_audited_inside_the_new_organization(world: World) -> None:
     result = await world.register.execute(register_command())
 
-    assert world.audit.actions == ["user.registered", "organization.created"]
+    assert world.audit.actions == ["organization.created", "user.registered"]
     assert {e.organization_id for e in world.audit.events} == {result.organization.id}
     assert {e.ip for e in world.audit.events} == {"203.0.113.7"}
 

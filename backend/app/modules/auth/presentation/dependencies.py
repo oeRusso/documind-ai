@@ -70,7 +70,10 @@ def provide_register(session: SessionDep, settings: SettingsDep) -> Register:
     return Register(
         CreateUser(SqlUserRepository(session), Argon2PasswordHasher()),
         CreateOrganization(
-            SqlOrganizationRepository(session), SqlMembershipRepository(session), tenant
+            SqlOrganizationRepository(session),
+            SqlMembershipRepository(session),
+            tenant,
+            _audit(session),
         ),
         _issue_session(session, settings),
         _audit(session),
