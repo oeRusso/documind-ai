@@ -3,9 +3,11 @@ from collections.abc import AsyncIterator, Iterator
 import httpx
 import pytest
 from fastapi import FastAPI
-from sqlalchemy import text
+from sqlalchemy import NullPool, text
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.core.config import Settings
+from app.infrastructure.database.models import Base
 from app.main import create_app
 from tests.conftest import TEST_JWT_SECRET
 from tests.db import app_test_url, ensure_database_available, migrator_test_url, reset_schema
@@ -32,13 +34,25 @@ def db_settings(migrated_database: None) -> Settings:
     )
 
 
+async def truncate_all_tables() -> None:
+    """Empty every table between tests.
+
+    Runs as `migrator` with TRUNCATE on purpose: with Row Level Security, a DELETE as `app`
+    without tenant context would match no rows and silently leave data behind.
+    """
+    engine = create_async_engine(migrator_test_url(), poolclass=NullPool)
+    tables = ", ".join(table.name for table in Base.metadata.sorted_tables)
+    async with engine.begin() as connection:
+        await connection.execute(text(f"TRUNCATE {tables} CASCADE"))
+    await engine.dispose()
+
+
 @pytest.fixture
 async def db_app(db_settings: Settings) -> AsyncIterator[FastAPI]:
     app = create_app(db_settings)
     yield app
-    async with app.state.engine.begin() as connection:
-        await connection.execute(text("DELETE FROM organizations"))
     await app.state.engine.dispose()
+    await truncate_all_tables()
 
 
 @pytest.fixture

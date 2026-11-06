@@ -32,7 +32,7 @@ async def connection(migrated_database: None) -> AsyncIterator[asyncpg.Connectio
 
 
 async def set_context(connection: asyncpg.Connection, org_id: UUID, user_id: UUID) -> None:
-    # Harmless before RLS exists; required once tables use FORCE ROW LEVEL SECURITY (ADR 0003).
+    # Tables use FORCE ROW LEVEL SECURITY (ADR 0003): even migrator needs the context.
     await connection.execute(
         "SELECT set_config('app.current_org', $1, true), set_config('app.current_user', $2, true)",
         str(org_id),
@@ -42,6 +42,8 @@ async def set_context(connection: asyncpg.Connection, org_id: UUID, user_id: UUI
 
 async def add_organization(connection: asyncpg.Connection, slug: str = "acme") -> UUID:
     org_id = new_id()
+    # RLS (migration 0003) only accepts rows of the active organization, even for migrator.
+    await connection.execute("SELECT set_config('app.current_org', $1, true)", str(org_id))
     await connection.execute(
         "INSERT INTO organizations (id, name, slug) VALUES ($1, $2, $3)", org_id, slug, slug
     )

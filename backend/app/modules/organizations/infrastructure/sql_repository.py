@@ -2,7 +2,6 @@
 
 from uuid import UUID
 
-from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -44,11 +43,4 @@ class SqlOrganizationRepository:
 
     async def get_by_id(self, organization_id: UUID) -> Organization | None:
         model = await self._session.get(OrganizationModel, organization_id)
-        return _to_entity(model) if model else None
-
-    async def get_by_slug(self, slug: str) -> Organization | None:
-        result = await self._session.execute(
-            select(OrganizationModel).where(OrganizationModel.slug == slug)
-        )
-        model = result.scalar_one_or_none()
         return _to_entity(model) if model else None

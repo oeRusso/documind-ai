@@ -2,6 +2,7 @@
 
 import httpx
 from fastapi import FastAPI
+from pydantic import BaseModel, Field
 
 from app.core.request_context import REQUEST_ID_HEADER
 
@@ -47,8 +48,18 @@ async def test_unknown_route_uses_error_format(offline_client: httpx.AsyncClient
     }
 
 
-async def test_validation_error_uses_error_format(offline_client: httpx.AsyncClient) -> None:
-    response = await offline_client.post("/api/v1/organizations", json={"name": ""})
+class _Payload(BaseModel):
+    name: str = Field(min_length=1)
+    slug: str
+
+
+async def test_validation_error_uses_error_format(
+    offline_app: FastAPI, offline_client: httpx.AsyncClient
+) -> None:
+    @offline_app.post("/_test/validation")
+    async def _endpoint(body: _Payload) -> None: ...
+
+    response = await offline_client.post("/_test/validation", json={"name": ""})
 
     assert response.status_code == 422
     error = response.json()["error"]

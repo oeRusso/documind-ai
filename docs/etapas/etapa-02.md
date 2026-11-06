@@ -69,8 +69,8 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 - [x] 2. Configuración nueva (`JWT_SECRET`, `ACCESS_TOKEN_MINUTES`, `REFRESH_TOKEN_DAYS`, `APP_ORIGIN`).
   `SMTP_*`/`MAIL_FROM` entran en el paso 19 y `TURNSTILE_*` en el 21, junto con el código que las usa.
 - [x] 3. Migración 0002: tablas de identidad (sin RLS) y modelos.
-- [ ] 4. RLS I: contexto por transacción + políticas de `organizations` y `memberships`; limpieza de tests con `migrator`.
-- [ ] 5. RLS II: `invitations` y `audit_logs` (solo inserción).
+- [x] 4. RLS I: contexto por transacción + políticas de `organizations` y `memberships`; limpieza de tests con `migrator`.
+- [x] 5. RLS II: `invitations` y `audit_logs` (solo inserción). *(Hecho junto con el 4: migración 0003.)*
 - [ ] 6. Módulo `audit`: `RecordAuditEvent`.
 - [ ] 7. Módulo `users`: entidad, política de contraseña, Argon2id, repositorio.
 - [ ] 8. Tokens: JWT de acceso (PyJWT) y refresh token opaco con hash.
@@ -80,6 +80,7 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 - [ ] 12. Router de auth I: register, login, me; errores 401 y 403.
 - [ ] 13. Router de auth II: refresh y logout con cookie y CSRF.
 - [ ] 14. Dependencia `CurrentMember` y endpoints de `organizations` rehechos.
+  (Los endpoints sin autenticación de la etapa 1 se quitaron en el paso 4: con RLS no pueden funcionar.)
 - [ ] 15. Test de aislamiento con el filtro del backend deshabilitado.
 - [ ] 16. Miembros: listar, cambiar rol, quitar.
 - [ ] 17. Invitaciones: crear, listar, revocar.
