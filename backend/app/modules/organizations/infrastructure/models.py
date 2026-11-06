@@ -1,11 +1,20 @@
-"""SQLAlchemy model. Only maps columns: no business logic here."""
+"""SQLAlchemy models. Only map columns: no business logic here."""
 
+from collections.abc import Iterable
+from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import String, Uuid
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.infrastructure.database.base import Base, TimestampMixin
+from app.modules.organizations.domain.roles import INVITABLE_ROLES, Role
+
+
+def _in_list(column: str, values: Iterable[str]) -> str:
+    """SQL for a CHECK constraint: `role IN ('admin', 'member', ...)`."""
+    quoted = ", ".join(f"'{value}'" for value in sorted(values))
+    return f"{column} IN ({quoted})"
 
 
 class OrganizationModel(TimestampMixin, Base):
@@ -15,3 +24,50 @@ class OrganizationModel(TimestampMixin, Base):
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True)
     name: Mapped[str] = mapped_column(String(200))
     slug: Mapped[str] = mapped_column(String(63), unique=True)
+
+
+class MembershipModel(TimestampMixin, Base):
+    __tablename__ = "memberships"
+    __table_args__ = (
+        UniqueConstraint(
+            "organization_id", "user_id", name="uq_memberships_organization_id_user_id"
+        ),
+        CheckConstraint(_in_list("role", Role), name="role_valid"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True)
+    organization_id: Mapped[UUID] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE")
+    )
+    # Indexed: "which organizations am I in?" is asked on every login (organization selector).
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    role: Mapped[str] = mapped_column(String(16))
+
+
+class InvitationModel(TimestampMixin, Base):
+    __tablename__ = "invitations"
+    __table_args__ = (
+        CheckConstraint(_in_list("role", INVITABLE_ROLES), name="role_valid"),
+        CheckConstraint("email = lower(email)", name="email_lowercase"),
+        # At most one open invitation per email and organization.
+        Index(
+            "uq_invitations_organization_id_email_open",
+            "organization_id",
+            "email",
+            unique=True,
+            postgresql_where="accepted_at IS NULL AND revoked_at IS NULL",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True)
+    organization_id: Mapped[UUID] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True
+    )
+    email: Mapped[str] = mapped_column(String(254))
+    role: Mapped[str] = mapped_column(String(16))
+    # SHA-256 of the token in the link, in hex. The token itself is never stored.
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    invited_by_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

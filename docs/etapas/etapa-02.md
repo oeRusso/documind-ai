@@ -68,7 +68,7 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 - [x] 1. ADR 0003 (multi-tenancy y RLS) y 0004 (sesiones y tokens).
 - [x] 2. Configuración nueva (`JWT_SECRET`, `ACCESS_TOKEN_MINUTES`, `REFRESH_TOKEN_DAYS`, `APP_ORIGIN`).
   `SMTP_*`/`MAIL_FROM` entran en el paso 19 y `TURNSTILE_*` en el 21, junto con el código que las usa.
-- [ ] 3. Migración 0002: tablas de identidad (sin RLS) y modelos.
+- [x] 3. Migración 0002: tablas de identidad (sin RLS) y modelos.
 - [ ] 4. RLS I: contexto por transacción + políticas de `organizations` y `memberships`; limpieza de tests con `migrator`.
 - [ ] 5. RLS II: `invitations` y `audit_logs` (solo inserción).
 - [ ] 6. Módulo `audit`: `RecordAuditEvent`.
