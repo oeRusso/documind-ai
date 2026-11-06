@@ -3,7 +3,7 @@
 - **Fase:** A — Fundamentos
 - **Duración estimada:** 1 semana
 - **Rama:** `development` (PR a `main` al cerrar la etapa)
-- **Estado:** en revisión (falta proteger `main` y el PR `development` → `main`)
+- **Estado:** terminada (2026-11-06)
 
 ## Objetivo
 
@@ -35,7 +35,7 @@ Una API FastAPI profesional, sin lógica de negocio todavía, que sirva de molde
 ## Criterios de terminado
 
 - [x] `podman compose up` levanta API y base de datos, y `/ready` devuelve 200.
-- [ ] El CI está en verde y bloquea merges si falla. *(En verde: sí. Bloqueo: falta activar la protección de la rama `main` en GitHub, con el check "lint, types and tests" como obligatorio.)*
+- [x] El CI está en verde y bloquea merges si falla. *(`main` protegida: solo por PR, check "lint, types and tests" obligatorio, también para admins, sin force push ni borrado.)*
 - [x] Existe un módulo de ejemplo con las cuatro capas (domain, application, infrastructure, presentation) que sirve de plantilla.
 
 ## Notas
@@ -51,6 +51,8 @@ Una API FastAPI profesional, sin lógica de negocio todavía, que sirva de molde
 - La sesión de base se abre por request con `Depends(get_session, scope="function")`: el commit ocurre **antes** de enviar la respuesta.
 - UUID v7 con `uuid-utils`: ver ADR 0002.
 - 32 tests (unitarios, integración y seguridad de roles); CI en GitHub Actions en verde.
+- El workflow corre en todos los PR (sin filtro de rutas): como el check es obligatorio en `main`,
+  un PR solo de documentación quedaría esperándolo para siempre.
 
 ## Referencias
 

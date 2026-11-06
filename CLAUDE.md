@@ -129,6 +129,6 @@ Cada sesión de Claude Code arranca sin memoria de la anterior: el contexto vive
 
 ## Etapa actual
 - **Etapa 0** (en curso): falta lo del VPS y la prueba de humo de Ollama. Ver `docs/etapas/etapa-00.md`.
-- **Etapa 1** (en revisión): backend listo en `development`; falta proteger `main` y el PR. Ver `docs/etapas/etapa-01.md`.
-- Próxima: **Etapa 2** — autenticación, organizaciones y multi-tenancy.
+- **Etapa 1**: terminada (mergeada a `main`, que quedó protegida).
+- **Etapa 2** (en curso): pasos 1 y 2 de 27 hechos (ADRs 0003/0004, configuración). Sigue el paso 3. Ver `docs/etapas/etapa-02.md`.
 Regla general: la etapa actual es la de **número más bajo** que no está marcada como terminada en `docs/etapas/`.
