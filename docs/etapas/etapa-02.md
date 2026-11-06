@@ -19,7 +19,7 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 - [ ] Dependencia de FastAPI que resuelve el usuario y su membresía, y entrega el `organization_id` a cada caso de uso. Los repositorios lo exigen como parámetro obligatorio.
 - [ ] Row Level Security en PostgreSQL: la app fija `app.current_org` por transacción (`SET LOCAL`) y usa un rol de base de datos que no puede saltarse RLS.
 - [ ] Invitaciones por link.
-- [ ] Rate limit en login y registro; Cloudflare Turnstile en el registro. *(Turnstile pendiente de decisión: regla de servicios externos en `CLAUDE.md`.)*
+- [ ] Rate limit en login y registro; campo trampa (honeypot) en el registro. *(Sin Turnstile: ADR 0005.)*
 - [ ] `audit_logs` con las acciones de seguridad (solo inserción).
 - [ ] Mailpit en `compose.yaml` para ver los emails de desarrollo (invitaciones).
 - [ ] Frontend mínimo en Next.js: registro, login, selector de organización y gestión de miembros, con un cliente TypeScript generado desde el OpenAPI y TanStack Query.
@@ -60,14 +60,14 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 - Emails de invitación con `BackgroundTasks` hasta la etapa 5 (Celery); el link también se devuelve al admin,
   así que si el email falla no se pierde nada.
 - Rate limit en memoria detrás de una interfaz `RateLimiter` (se pasa a Valkey en la etapa 5).
-- Turnstile solo con las claves de prueba de Cloudflare en esta etapa.
+- Sin Turnstile (decisión de Esteban, ADR 0005): campo trampa en el registro + rate limit.
 - Las piezas críticas (RLS, rotación de tokens, permisos) las escribe Claude y la persona las revisa.
 
 ### Pasos
 
 - [x] 1. ADR 0003 (multi-tenancy y RLS) y 0004 (sesiones y tokens).
 - [x] 2. Configuración nueva (`JWT_SECRET`, `ACCESS_TOKEN_MINUTES`, `REFRESH_TOKEN_DAYS`, `APP_ORIGIN`).
-  `SMTP_*`/`MAIL_FROM` entran en el paso 19 y `TURNSTILE_*` en el 21, junto con el código que las usa.
+  `SMTP_*`/`MAIL_FROM` entran en el paso 19, junto con el código que las usa. `TURNSTILE_*` no entra (ADR 0005).
 - [x] 3. Migración 0002: tablas de identidad (sin RLS) y modelos.
 - [x] 4. RLS I: contexto por transacción + políticas de `organizations` y `memberships`; limpieza de tests con `migrator`.
 - [x] 5. RLS II: `invitations` y `audit_logs` (solo inserción). *(Hecho junto con el 4: migración 0003.)*
@@ -87,7 +87,7 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 - [ ] 18. Aceptar invitación.
 - [ ] 19. Mailpit y `Mailer`.
 - [ ] 20. Rate limit.
-- [ ] 21. Turnstile en el registro. *(Pendiente: es un servicio externo de Cloudflare; preguntar antes.)*
+- [ ] 21. Campo trampa (honeypot) en el registro (en lugar de Turnstile, ADR 0005).
 - [ ] 22. Frontend: Next.js, Vitest, rewrites y CI.
 - [ ] 23. Frontend: cliente generado del OpenAPI con refresh compartido.
 - [ ] 24. Frontend: shadcn/ui, sesión, login y registro.

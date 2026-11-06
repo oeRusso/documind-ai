@@ -30,7 +30,7 @@ Que un reclutador entienda el proyecto en 2 minutos y un entrevistador técnico 
 ## Notas
 
 - Los diagramas de los planes se perdieron en la exportación (`[embedded content: …]`): rehacerlos en Mermaid para el README si no se hizo antes.
-- **Regla de servicios externos** (`CLAUDE.md`): Turnstile en la demo requiere permiso de Esteban.
+- **Sin Turnstile** (ADR 0005): la demo usa límites de uso más estrictos y el campo trampa del registro.
 
 ## Referencias
 
