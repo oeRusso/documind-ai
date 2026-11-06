@@ -1,0 +1,67 @@
+# Local development stack.  Usage:  podman compose up -d --build
+# Reads passwords from the repo's .env (copy .env.example first).
+# Ports are bound to 127.0.0.1 only: nothing is exposed to the network.
+
+name: documind
+
+x-backend: &backend
+  build:
+    context: ./backend
+    dockerfile: ../infrastructure/containers/backend.Containerfile
+  image: localhost/documind-backend:dev
+  environment:
+    APP_ENV: development
+    LOG_FORMAT: ${LOG_FORMAT:-json}
+    DATABASE_URL: postgresql+asyncpg://app:${APP_DB_PASSWORD:?set it in .env}@db:5432/documind
+    DATABASE_MIGRATION_URL: postgresql+asyncpg://migrator:${MIGRATOR_DB_PASSWORD:?set it in .env}@db:5432/documind
+    JWT_SECRET: ${JWT_SECRET:?set it in .env}
+    ACCESS_TOKEN_MINUTES: ${ACCESS_TOKEN_MINUTES:-15}
+    REFRESH_TOKEN_DAYS: ${REFRESH_TOKEN_DAYS:-14}
+    APP_ORIGIN: ${APP_ORIGIN:-http://localhost:3000}
+  read_only: true
+  tmpfs:
+    - /tmp
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  db:
+    image: docker.io/pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set it in .env}
+      POSTGRES_DB: documind
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?set it in .env}
+      MIGRATOR_DB_PASSWORD: ${MIGRATOR_DB_PASSWORD:?set it in .env}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infrastructure/scripts/db-init:/docker-entrypoint-initdb.d:ro,Z
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d documind"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  # One-shot job: applies pending migrations and exits.
+  migrate:
+    <<: *backend
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    <<: *backend
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  pgdata:

@@ -9,7 +9,7 @@ software libre y planes gratuitos.
 
 ## Estado actual
 
-**Etapa 0 en curso**: preparación del VPS y del repositorio. Todavía no hay código de la aplicación.
+**Etapa 1 en revisión**: el esqueleto del backend (FastAPI + PostgreSQL) ya corre en local; ver [backend/README.md](backend/README.md). La etapa 0 sigue abierta por las tareas del VPS.
 
 ## Stack previsto
 

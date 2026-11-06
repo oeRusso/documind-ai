@@ -1,0 +1,78 @@
+name: backend
+
+on:
+  push:
+    branches: [main, development]
+    paths: ["backend/**", "infrastructure/scripts/db-init/**", ".github/workflows/backend.yml"]
+  # No path filter on PRs: "lint, types and tests" is a required check on main, and a
+  # filtered-out workflow would leave a docs-only PR waiting for it forever.
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: lint, types and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres  # pragma: allowlist secret
+          POSTGRES_DB: documind
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d documind"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+
+    env:
+      # Throwaway CI-only credentials for the service container above.
+      DATABASE_URL: postgresql+asyncpg://app:app@localhost:5432/documind  # pragma: allowlist secret
+      DATABASE_MIGRATION_URL: postgresql+asyncpg://migrator:migrator@localhost:5432/documind  # pragma: allowlist secret
+      JWT_SECRET: ci-only-jwt-secret-not-used-anywhere-else-0123456789  # pragma: allowlist secret
+      REQUIRE_DB: "1"
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.7"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Ruff (lint)
+        run: uv run ruff check --output-format=github .
+
+      - name: Ruff (format)
+        run: uv run ruff format --check .
+
+      - name: Mypy (strict)
+        run: uv run mypy
+
+      - name: Create database roles
+        working-directory: .
+        env:
+          PGHOST: localhost
+          PGPASSWORD: postgres  # pragma: allowlist secret
+          POSTGRES_USER: postgres
+          POSTGRES_DB: documind
+          APP_DB_PASSWORD: app  # pragma: allowlist secret
+          MIGRATOR_DB_PASSWORD: migrator  # pragma: allowlist secret
+        run: bash infrastructure/scripts/db-init/10-roles.sh
+
+      - name: Pytest
+        run: uv run pytest -q
