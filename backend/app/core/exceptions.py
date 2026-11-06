@@ -13,7 +13,14 @@ from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.request_context import REQUEST_ID_HEADER, current_request_id
-from app.shared.errors import ConflictError, DomainError, NotFoundError, ValidationError
+from app.shared.errors import (
+    ConflictError,
+    DomainError,
+    ForbiddenError,
+    NotFoundError,
+    UnauthorizedError,
+    ValidationError,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -31,6 +38,8 @@ class ErrorResponse(BaseModel):
 
 # Most specific class first: the first isinstance() match wins.
 _DOMAIN_STATUS: list[tuple[type[DomainError], int]] = [
+    (UnauthorizedError, status.HTTP_401_UNAUTHORIZED),
+    (ForbiddenError, status.HTTP_403_FORBIDDEN),
     (NotFoundError, status.HTTP_404_NOT_FOUND),
     (ConflictError, status.HTTP_409_CONFLICT),
     (ValidationError, status.HTTP_422_UNPROCESSABLE_CONTENT),

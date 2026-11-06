@@ -73,7 +73,7 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 - [x] 5. RLS II: `invitations` y `audit_logs` (solo inserción). *(Hecho junto con el 4: migración 0003.)*
 - [x] 6. Módulo `audit`: `RecordAuditEvent`.
 - [x] 7. Módulo `users`: entidad, política de contraseña, Argon2id, repositorio.
-- [ ] 8. Tokens: JWT de acceso (PyJWT) y refresh token opaco con hash.
+- [x] 8. Tokens: JWT de acceso (PyJWT) y refresh token opaco con hash.
 - [ ] 9. Roles y matriz de permisos; repositorio de memberships.
 - [ ] 10. Casos de uso `Register` y `Login`.
 - [ ] 11. `RefreshSession` (rotación y detección de reuso) y `Logout`.
