@@ -7,6 +7,7 @@ from sqlalchemy import text
 
 from app.core.config import Settings
 from app.main import create_app
+from tests.conftest import TEST_JWT_SECRET
 from tests.db import app_test_url, ensure_database_available, migrator_test_url, reset_schema
 
 pytestmark = pytest.mark.integration
@@ -27,6 +28,7 @@ def db_settings(migrated_database: None) -> Settings:
         log_format="console",
         database_url=app_test_url(),
         database_migration_url=migrator_test_url(),
+        jwt_secret=TEST_JWT_SECRET,
     )
 
 

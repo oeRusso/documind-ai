@@ -38,6 +38,7 @@ jobs:
       # Throwaway CI-only credentials for the service container above.
       DATABASE_URL: postgresql+asyncpg://app:app@localhost:5432/documind  # pragma: allowlist secret
       DATABASE_MIGRATION_URL: postgresql+asyncpg://migrator:migrator@localhost:5432/documind  # pragma: allowlist secret
+      JWT_SECRET: ci-only-jwt-secret-not-used-anywhere-else-0123456789  # pragma: allowlist secret
       REQUIRE_DB: "1"
 
     steps:

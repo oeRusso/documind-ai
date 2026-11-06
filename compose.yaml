@@ -14,6 +14,10 @@ x-backend: &backend
     LOG_FORMAT: ${LOG_FORMAT:-json}
     DATABASE_URL: postgresql+asyncpg://app:${APP_DB_PASSWORD:?set it in .env}@db:5432/documind
     DATABASE_MIGRATION_URL: postgresql+asyncpg://migrator:${MIGRATOR_DB_PASSWORD:?set it in .env}@db:5432/documind
+    JWT_SECRET: ${JWT_SECRET:?set it in .env}
+    ACCESS_TOKEN_MINUTES: ${ACCESS_TOKEN_MINUTES:-15}
+    REFRESH_TOKEN_DAYS: ${REFRESH_TOKEN_DAYS:-14}
+    APP_ORIGIN: ${APP_ORIGIN:-http://localhost:3000}
   read_only: true
   tmpfs:
     - /tmp
