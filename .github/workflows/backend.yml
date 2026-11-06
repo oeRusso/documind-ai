@@ -4,8 +4,9 @@ on:
   push:
     branches: [main, development]
     paths: ["backend/**", "infrastructure/scripts/db-init/**", ".github/workflows/backend.yml"]
+  # No path filter on PRs: "lint, types and tests" is a required check on main, and a
+  # filtered-out workflow would leave a docs-only PR waiting for it forever.
   pull_request:
-    paths: ["backend/**", "infrastructure/scripts/db-init/**", ".github/workflows/backend.yml"]
 
 permissions:
   contents: read
