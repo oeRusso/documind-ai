@@ -38,6 +38,11 @@ Que cada merge a `main` llegue solo a producción, desde ahora y para siempre.
 ## Notas
 
 - Al cerrar esta etapa termina la Fase A: tag `v0.1.0`.
+- **VPS compartido** (la guía del VPS compartido (ver "Despliegue" en `CLAUDE.md`)). Cambios respecto de las tareas de arriba:
+  - Dirección `https://documind.esteban-russo.com`; túnel `documind` con ruta a `http://caddy:80`. El túnel lo crea Esteban.
+  - Docker + Compose v2 en el VPS (sin `:Z` en volúmenes); ningún puerto publicado; `mem_limit` en los servicios.
+  - **A decidir con Esteban (regla de servicios externos):** Cloudflare Access, UptimeRobot y el deploy desde
+    GitHub Actions + GHCR. La guía propone construir en el VPS (`git pull --ff-only && docker compose up -d --build`).
 
 ## Referencias
 

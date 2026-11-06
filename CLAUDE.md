@@ -32,12 +32,17 @@ Si algo de este archivo choca con los planes, avisá antes de elegir.
   y avisar sus límites; si hay duda, preguntar en vez de usarlo.
 - **IA 100 % local con Ollama**: ninguna API comercial (OpenAI, Anthropic, etc.), ni en código ni en tests.
 - Nada se instala antes de su etapa (columna "Etapa" del stack en la Parte 1, §3).
+- **No usar servicios de terceros, SaaS ni APIs externas sin preguntar antes.** Todo corre en el VPS.
+  **No crear recursos en Cloudflare más allá de DNS** (el túnel lo crea Esteban, ver "Despliegue").
+  Ya aprobados: GitHub (repo, Actions, GHCR, Dependabot). Si un plan pide otro servicio externo
+  (Turnstile, Access, UptimeRobot, R2, reglas de Cloudflare...), frenar y preguntar.
 
 ## Stack
 Backend: Python 3.12 + uv, FastAPI, Pydantic v2 + pydantic-settings, SQLAlchemy 2 async (asyncpg),
 Alembic, Celery + Valkey, PostgreSQL 16 + pgvector, structlog, Ollama.
 Frontend: Next.js (App Router) + TypeScript + Tailwind + shadcn/ui + TanStack Query, cliente generado del OpenAPI. pnpm.
-Infra: Podman + podman-compose, Caddy (interno), Cloudflare Tunnel + Access, GitHub Actions + GHCR.
+Infra: Podman + podman-compose en la PC, Docker + Compose v2 en el VPS, Caddy (interno), Cloudflare Tunnel,
+GitHub Actions. (Cloudflare Access y GHCR quedan sujetos a la regla de servicios externos.)
 
 ## Comandos
 Existen a partir de la etapa 1 (backend) y la etapa 2 (frontend).
@@ -121,6 +126,22 @@ Cada sesión de Claude Code arranca sin memoria de la anterior: el contexto vive
 - **Al terminar** (o al cortar a mitad de etapa): actualizar la sección "Etapa actual" de acá abajo
   y, en el archivo de la etapa, tildar tareas y dejar una sección "Resultado / Pendientes" con lo que
   falta y las decisiones tomadas. Commitear y pushear a `development`.
+
+## Despliegue (VPS compartido)
+Guía obligatoria, fuera del repo: `/run/media/estebanrusso/3ADAD252DAD20A51/PROYECTOS-PERSONALES/PORTAFOLIO2.0/docs/VPS-COMPARTIDO.md`.
+Leerla antes de cualquier tarea de deploy (etapas 0, 3 y 11). Resumen:
+- El VPS es compartido con otros proyectos (portfolio en producción). Se usa Docker + Compose v2, no Podman:
+  quitar los `:Z` de los volúmenes en el compose de producción.
+- Dirección: `https://documind.esteban-russo.com`. Túnel `documind`, ruta a `http://caddy:80`.
+  Los planes dicen `app.tudominio`: la dirección real es esa.
+- Ningún puerto publicado a internet; solo `127.0.0.1:<puerto>` si hace falta, sin chocar con los usados
+  (el `3306` es del portfolio). El tráfico entra por un contenedor `cloudflared` del propio compose.
+- HTTPS lo termina Cloudflare: confiar en `X-Forwarded-Proto` del proxy; la IP real viene en `CF-Connecting-IP`.
+- Secretos: los carga Esteban en el `.env` del VPS (600). El agente genera contraseñas aleatorias allá sin mostrarlas.
+- `sudo` lo corre Esteban: pasarle el comando exacto. Se despliega `main`; el agente no mergea.
+- RAM compartida (8 GB): `mem_limit` en base, workers y Ollama; LLM de 1–3B cuantizado y embeddings livianos.
+  Mirar `free -h` y `docker stats --no-stream` antes de levantar algo pesado.
+- No poner la IP del VPS en el repo (es público y el túnel la oculta).
 
 ## Entorno local
 - uv en `~/.local/bin` (instala Python 3.12 por su cuenta). Node 24 disponible; pnpm todavía no instalado.

@@ -30,6 +30,8 @@ Que el sistema sobreviva a un error tuyo, a un disco lleno o a la pérdida del V
 ## Notas
 
 - Revisar los límites del plan gratuito de R2 al activarlo (los planes gratis cambian).
+- **Regla de servicios externos** (`CLAUDE.md`): R2 y las reglas de rate limiting de Cloudflare requieren permiso
+  de Esteban. Hay que definir otro destino de backups fuera del VPS o pedir autorización.
 
 ## Referencias
 

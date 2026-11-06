@@ -19,7 +19,7 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 - [ ] Dependencia de FastAPI que resuelve el usuario y su membresía, y entrega el `organization_id` a cada caso de uso. Los repositorios lo exigen como parámetro obligatorio.
 - [ ] Row Level Security en PostgreSQL: la app fija `app.current_org` por transacción (`SET LOCAL`) y usa un rol de base de datos que no puede saltarse RLS.
 - [ ] Invitaciones por link.
-- [ ] Rate limit en login y registro; Cloudflare Turnstile en el registro.
+- [ ] Rate limit en login y registro; Cloudflare Turnstile en el registro. *(Turnstile pendiente de decisión: regla de servicios externos en `CLAUDE.md`.)*
 - [ ] `audit_logs` con las acciones de seguridad (solo inserción).
 - [ ] Mailpit en `compose.yaml` para ver los emails de desarrollo (invitaciones).
 - [ ] Frontend mínimo en Next.js: registro, login, selector de organización y gestión de miembros, con un cliente TypeScript generado desde el OpenAPI y TanStack Query.
@@ -86,7 +86,7 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 - [ ] 18. Aceptar invitación.
 - [ ] 19. Mailpit y `Mailer`.
 - [ ] 20. Rate limit.
-- [ ] 21. Turnstile en el registro.
+- [ ] 21. Turnstile en el registro. *(Pendiente: es un servicio externo de Cloudflare; preguntar antes.)*
 - [ ] 22. Frontend: Next.js, Vitest, rewrites y CI.
 - [ ] 23. Frontend: cliente generado del OpenAPI con refresh compartido.
 - [ ] 24. Frontend: shadcn/ui, sesión, login y registro.

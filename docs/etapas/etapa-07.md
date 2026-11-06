@@ -40,6 +40,8 @@ Respuestas fundamentadas, con citas verificables, que digan "no lo sé" cuando c
 - **Decisión sobre `citations`** (tomada en la etapa 0): la Parte 1 ubica la tabla `citations` en la etapa 7, pero depende de `messages`, que entra en la 8. En esta etapa, "cada cita guarda documento, página y fragmento" se cumple con el evento SSE `citations` (`document_id`, `document_title`, `page_start`, `page_end`, `excerpt`) y su registro en los logs. Las tablas se crean en la etapa 8.
 - **Validación de citas**: pieza clave para escribir vos. Tests primero.
 - Variables de entorno que entran: `LLM_MODEL`, `RAG_MIN_SCORE`, `LLM_MAX_CONCURRENCY`.
+- **RAM del VPS compartido** (la guía del VPS compartido (ver "Despliegue" en `CLAUDE.md`)): el LLM tiene que ser de 1–3B cuantizado, con `mem_limit`.
+  Un modelo de 7B no entra junto a los otros proyectos.
 
 ## Referencias
 

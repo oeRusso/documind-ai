@@ -40,6 +40,10 @@ Eliminar el mayor riesgo del proyecto (que el VPS no aguante un LLM) antes de es
 - **RX 6600 en local**: la RX 6600 (gfx1032) no está en la lista oficial de ROCm. Con la imagen `ollama/ollama:rocm` suele hacer falta `HSA_OVERRIDE_GFX_VERSION=10.3.0` y pasar `/dev/kfd` y `/dev/dri` al contenedor de Podman. La otra opción es el backend Vulkan de Ollama. No bloquea la etapa: el VPS es lo que importa.
 - La tabla de seguridad de la Parte 1 (§7) ubica detect-secrets en la etapa 0, pero la Parte 2 pone pre-commit en la etapa 1. Se resuelve en la etapa 1.
 - Los diagramas de los planes no se exportaron (quedaron como `[embedded content: …]`). Conviene rehacerlos en Mermaid; a más tardar en la etapa 12.
+- **VPS compartido** (la guía del VPS compartido (ver "Despliegue" en `CLAUDE.md`)): el servidor ya está endurecido para el portfolio (SSH con llave, `ufw` solo SSH)
+  y usa **Docker + Compose v2**, no Podman. Instalar Podman o `cloudflared` en el host ya no aplica: `cloudflared`
+  corre como contenedor del compose. `sudo` lo corre Esteban. La prueba de Ollama tiene que dejar ~1 GB libre
+  y convivir con los otros proyectos: probar modelos de 1–3B.
 
 ## Referencias
 
