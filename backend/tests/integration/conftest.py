@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from app.core.config import Settings
 from app.infrastructure.database.models import Base
 from app.main import create_app
-from tests.conftest import TEST_JWT_SECRET
+from tests.conftest import APP_ORIGIN, TEST_JWT_SECRET
 from tests.db import app_test_url, ensure_database_available, migrator_test_url, reset_schema
 
 pytestmark = pytest.mark.integration
@@ -31,6 +31,7 @@ def db_settings(migrated_database: None) -> Settings:
         database_url=app_test_url(),
         database_migration_url=migrator_test_url(),
         jwt_secret=TEST_JWT_SECRET,
+        app_origin=APP_ORIGIN,
     )
 
 
@@ -58,7 +59,8 @@ async def db_app(db_settings: Settings) -> AsyncIterator[FastAPI]:
 @pytest.fixture
 async def client(db_app: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
     transport = httpx.ASGITransport(app=db_app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as http_client:
+    # https: the session cookies are Secure, and httpx only sends them back over https.
+    async with httpx.AsyncClient(transport=transport, base_url="https://test") as http_client:
         yield http_client
 
 

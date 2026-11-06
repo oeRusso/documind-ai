@@ -56,12 +56,15 @@ def error_response(
     code: str,
     message: str,
     details: list[dict[str, Any]] | None = None,
+    headers: dict[str, str] | None = None,
 ) -> JSONResponse:
     request_id = current_request_id()
     body = ErrorResponse(
         error=ErrorBody(code=code, message=message, request_id=request_id, details=details)
     )
-    headers = {REQUEST_ID_HEADER: request_id} if request_id else None
+    headers = dict(headers or {})
+    if request_id:
+        headers[REQUEST_ID_HEADER] = request_id
     return JSONResponse(
         status_code=status_code,
         content=body.model_dump(exclude_none=True),
@@ -76,7 +79,9 @@ def register_exception_handlers(app: FastAPI) -> None:
             (code for cls, code in _DOMAIN_STATUS if isinstance(exc, cls)),
             status.HTTP_400_BAD_REQUEST,
         )
-        return error_response(status_code, exc.code, exc.message)
+        # RFC 9110: a 401 says how to authenticate.
+        headers = {"WWW-Authenticate": "Bearer"} if status_code == 401 else None
+        return error_response(status_code, exc.code, exc.message, headers=headers)
 
     @app.exception_handler(StarletteHTTPException)
     async def handle_http_error(_: Request, exc: StarletteHTTPException) -> JSONResponse:
