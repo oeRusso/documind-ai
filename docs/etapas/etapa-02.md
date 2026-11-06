@@ -3,7 +3,7 @@
 - **Fase:** A — Fundamentos
 - **Duración estimada:** 1,5 semanas
 - **Rama:** `development` (PR a `main` al cerrar la etapa)
-- **Estado:** pendiente
+- **Estado:** en curso
 
 ## Objetivo
 
@@ -45,6 +45,53 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 - **`.gitkeep` en `frontend/`**: `create-next-app` falla si ya existe `frontend/src/`. Borrar los `.gitkeep` de `frontend/` (o generar en una carpeta temporal y mover) antes de correrlo, con la opción `--src-dir`.
 - **Dónde vive el access token** en el frontend (memoria, cookie) no está definido en los planes: decidirlo en el plan de la etapa y, si conviene, en una ADR.
 - Variables de entorno que entran: `JWT_SECRET`, `ACCESS_TOKEN_MINUTES`, `REFRESH_TOKEN_DAYS`, `TURNSTILE_SECRET`. Probablemente también `SMTP_*` (Mailpit), `TURNSTILE_SITE_KEY` y `NEXT_PUBLIC_API_URL`.
+
+## Plan de implementación (aprobado el 2026-11-06)
+
+### Decisiones
+
+- La organización activa viaja en el header `X-Organization-Id`; la membresía y el rol se leen de la base en cada request (ADR 0003).
+- RLS con dos variables por transacción (`app.current_user`, `app.current_org`), fijadas con `set_config(..., true)`.
+  `users` y `refresh_tokens` son tablas de identidad: sin `organization_id` ni RLS (ADR 0003).
+- Access token en memoria del navegador; refresh token rotativo en cookie `HttpOnly; Secure; SameSite=Lax; Path=/api/v1/auth`;
+  CSRF con chequeo de `Origin` + doble envío (`csrf_token` / `X-CSRF-Token`) (ADR 0004).
+- En desarrollo, Next.js reenvía `/api/*` al backend (rewrites): mismo origen, sin CORS.
+- El registro crea usuario + organización + membresía owner en una sola transacción.
+- Emails de invitación con `BackgroundTasks` hasta la etapa 5 (Celery); el link también se devuelve al admin,
+  así que si el email falla no se pierde nada.
+- Rate limit en memoria detrás de una interfaz `RateLimiter` (se pasa a Valkey en la etapa 5).
+- Turnstile solo con las claves de prueba de Cloudflare en esta etapa.
+- Las piezas críticas (RLS, rotación de tokens, permisos) las escribe Claude y la persona las revisa.
+
+### Pasos
+
+- [x] 1. ADR 0003 (multi-tenancy y RLS) y 0004 (sesiones y tokens).
+- [ ] 2. Configuración nueva (`JWT_SECRET`, `ACCESS_TOKEN_MINUTES`, `REFRESH_TOKEN_DAYS`, `APP_ORIGIN`, `TURNSTILE_SECRET`, `SMTP_*`, `MAIL_FROM`).
+- [ ] 3. Migración 0002: tablas de identidad (sin RLS) y modelos.
+- [ ] 4. RLS I: contexto por transacción + políticas de `organizations` y `memberships`; limpieza de tests con `migrator`.
+- [ ] 5. RLS II: `invitations` y `audit_logs` (solo inserción).
+- [ ] 6. Módulo `audit`: `RecordAuditEvent`.
+- [ ] 7. Módulo `users`: entidad, política de contraseña, Argon2id, repositorio.
+- [ ] 8. Tokens: JWT de acceso (PyJWT) y refresh token opaco con hash.
+- [ ] 9. Roles y matriz de permisos; repositorio de memberships.
+- [ ] 10. Casos de uso `Register` y `Login`.
+- [ ] 11. `RefreshSession` (rotación y detección de reuso) y `Logout`.
+- [ ] 12. Router de auth I: register, login, me; errores 401 y 403.
+- [ ] 13. Router de auth II: refresh y logout con cookie y CSRF.
+- [ ] 14. Dependencia `CurrentMember` y endpoints de `organizations` rehechos.
+- [ ] 15. Test de aislamiento con el filtro del backend deshabilitado.
+- [ ] 16. Miembros: listar, cambiar rol, quitar.
+- [ ] 17. Invitaciones: crear, listar, revocar.
+- [ ] 18. Aceptar invitación.
+- [ ] 19. Mailpit y `Mailer`.
+- [ ] 20. Rate limit.
+- [ ] 21. Turnstile en el registro.
+- [ ] 22. Frontend: Next.js, Vitest, rewrites y CI.
+- [ ] 23. Frontend: cliente generado del OpenAPI con refresh compartido.
+- [ ] 24. Frontend: shadcn/ui, sesión, login y registro.
+- [ ] 25. Frontend: selector de organización.
+- [ ] 26. Frontend: miembros, invitaciones y aceptar invitación.
+- [ ] 27. Cierre: README, ADRs aceptadas, Resultado, PR.
 
 ## Referencias
 

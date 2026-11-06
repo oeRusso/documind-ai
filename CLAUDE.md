@@ -19,8 +19,11 @@ Si algo de este archivo choca con los planes, avisá antes de elegir.
   context managers, generadores, `Protocol`, `async with`, dataclasses, etc.),
   explicalo en **dos líneas comparándolo con PHP**.
 - Es un proyecto para aprender: pasos chicos, diffs legibles, y frenar a explicar
-  cuando algo no sea obvio. Las piezas clave (chunking, fusión de rankings,
-  validación de citas) las escribe la persona; vos guiás y revisás.
+  cuando algo no sea obvio. Las piezas clave (RLS, tokens, chunking, fusión de rankings,
+  validación de citas) las escribe Claude y la persona las revisa: explicarlas en
+  palabras simples al entregarlas.
+- En decisiones técnicas que la persona no conoce, elegir la opción recomendada o la
+  menos riesgosa, decirlo en una línea y seguir, sin frenar a preguntar.
 
 ## Restricciones
 - **Costo cero — PROHIBIDO usar herramientas, servicios o nubes que generen gastos.** Solo software libre
