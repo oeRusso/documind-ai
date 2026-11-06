@@ -151,5 +151,6 @@ Leerla antes de cualquier tarea de deploy (etapas 0, 3 y 11). Resumen:
 ## Etapa actual
 - **Etapa 0** (en curso): falta lo del VPS y la prueba de humo de Ollama. Ver `docs/etapas/etapa-00.md`.
 - **Etapa 1**: terminada (mergeada a `main`, que quedó protegida).
-- **Etapa 2** (en curso): pasos 1 y 2 de 27 hechos (ADRs 0003/0004, configuración). Sigue el paso 3. Ver `docs/etapas/etapa-02.md`.
+- **Etapa 2** (en curso): pasos 1 a 11 de 27 hechos (base, RLS, usuarios, tokens, permisos, casos de uso de auth).
+  Sigue el paso 12 (routers HTTP de auth). Ver "Avance" en `docs/etapas/etapa-02.md`.
 Regla general: la etapa actual es la de **número más bajo** que no está marcada como terminada en `docs/etapas/`.

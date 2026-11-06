@@ -95,6 +95,23 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 - [ ] 26. Frontend: miembros, invitaciones y aceptar invitación.
 - [ ] 27. Cierre: README, ADRs aceptadas, Resultado, PR.
 
+## Avance
+
+**2026-11-06: pasos 1 a 11.** Backend sin HTTP todavía: todo probado con tests unitarios y de integración.
+
+- Migraciones: `0002` (tablas de identidad) y `0003` (RLS). Funciones SQL `current_org_id()` y `current_user_id()`.
+- Puerto `TenantContext` (`app/shared/tenancy.py`) con implementación `SqlTenantContext`.
+  Crear una organización fija su contexto y crea la membresía owner.
+- Los endpoints sin login de la etapa 1 se quitaron (vuelven en el paso 14).
+- `DomainError.keep_changes`: los errores de seguridad que deben dejar rastro (login fallido, reuso de
+  refresh token) hacen commit antes de responder. Lo aplica `get_session`.
+- Tests: `tests/fakes.py` (fakes compartidos), `tests/integration/factories.py`, fixture `app_session`
+  (rol `app`, rollback al final). Las contraseñas falsas de los tests van en constantes con
+  `# pragma: allowlist secret`, si no detect-secrets frena el commit.
+- Sin Turnstile (ADR 0005): campo trampa en el registro (paso 21).
+
+**Pendiente:** pasos 12 a 27 (HTTP, miembros, invitaciones, Mailpit, rate limit, campo trampa, frontend, cierre).
+
 ## Referencias
 
 - Parte 1: §5 (entidades de la etapa 2, aislamiento en dos capas), §7 (contraseñas, cookies, autorización, abuso).
