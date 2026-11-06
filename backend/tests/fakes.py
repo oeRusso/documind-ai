@@ -3,6 +3,7 @@
 They satisfy the Protocols in each module's `domain` without inheriting from them.
 """
 
+from datetime import datetime
 from uuid import UUID
 
 from app.modules.audit.domain.entities import AuditEvent
@@ -115,3 +116,20 @@ class InMemoryRefreshTokenRepository:
 
     async def add(self, token: RefreshToken) -> None:
         self.items[token.id] = token
+
+    async def get_by_hash_for_update(self, token_hash: str) -> RefreshToken | None:
+        return next((t for t in self.items.values() if t.token_hash == token_hash), None)
+
+    async def mark_replaced(self, token_id: UUID, replaced_by_id: UUID, now: datetime) -> None:
+        self.items[token_id].replaced_by_id = replaced_by_id
+
+    async def revoke_family(self, family_id: UUID, now: datetime) -> int:
+        tokens = [
+            t for t in self.items.values() if t.family_id == family_id and t.revoked_at is None
+        ]
+        for token in tokens:
+            token.revoked_at = now
+        return len(tokens)
+
+    def family(self, family_id: UUID) -> list[RefreshToken]:
+        return [t for t in self.items.values() if t.family_id == family_id]

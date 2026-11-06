@@ -1,5 +1,9 @@
 """RefreshTokenRepository implemented with SQLAlchemy. Identity table: no RLS (ADR 0003)."""
 
+from datetime import datetime
+from uuid import UUID
+
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.auth.domain.refresh_tokens import RefreshToken
@@ -40,3 +44,30 @@ class SqlRefreshTokenRepository:
             )
         )
         await self._session.flush()
+
+    async def get_by_hash_for_update(self, token_hash: str) -> RefreshToken | None:
+        result = await self._session.execute(
+            select(RefreshTokenModel)
+            .where(RefreshTokenModel.token_hash == token_hash)
+            .with_for_update()
+        )
+        model = result.scalar_one_or_none()
+        return _to_entity(model) if model else None
+
+    async def mark_replaced(self, token_id: UUID, replaced_by_id: UUID, now: datetime) -> None:
+        await self._session.execute(
+            update(RefreshTokenModel)
+            .where(RefreshTokenModel.id == token_id)
+            .values(replaced_by_id=replaced_by_id, updated_at=now)
+        )
+
+    async def revoke_family(self, family_id: UUID, now: datetime) -> int:
+        result = await self._session.execute(
+            update(RefreshTokenModel)
+            .where(
+                RefreshTokenModel.family_id == family_id,
+                RefreshTokenModel.revoked_at.is_(None),
+            )
+            .values(revoked_at=now, updated_at=now)
+        )
+        return int(result.rowcount)  # type: ignore[attr-defined]

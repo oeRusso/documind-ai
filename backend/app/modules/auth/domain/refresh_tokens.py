@@ -25,3 +25,17 @@ class RefreshToken:
 
 class RefreshTokenRepository(Protocol):
     async def add(self, token: RefreshToken) -> None: ...
+
+    async def get_by_hash_for_update(self, token_hash: str) -> RefreshToken | None:
+        """Read and lock the row until the transaction ends (SELECT ... FOR UPDATE).
+
+        Two simultaneous refreshes with the same token are handled one after the other,
+        so the token can never be exchanged twice.
+        """
+        ...
+
+    async def mark_replaced(self, token_id: UUID, replaced_by_id: UUID, now: datetime) -> None: ...
+
+    async def revoke_family(self, family_id: UUID, now: datetime) -> int:
+        """Revoke every still-valid token of the family. Returns how many were revoked."""
+        ...

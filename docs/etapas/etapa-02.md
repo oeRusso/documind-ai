@@ -76,7 +76,7 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 - [x] 8. Tokens: JWT de acceso (PyJWT) y refresh token opaco con hash.
 - [x] 9. Roles y matriz de permisos; repositorio de memberships.
 - [x] 10. Casos de uso `Register` y `Login`.
-- [ ] 11. `RefreshSession` (rotación y detección de reuso) y `Logout`.
+- [x] 11. `RefreshSession` (rotación y detección de reuso) y `Logout`.
 - [ ] 12. Router de auth I: register, login, me; errores 401 y 403.
 - [ ] 13. Router de auth II: refresh y logout con cookie y CSRF.
 - [ ] 14. Dependencia `CurrentMember` y endpoints de `organizations` rehechos.
