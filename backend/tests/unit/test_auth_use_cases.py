@@ -11,6 +11,7 @@ from app.modules.auth.application.register import Register, RegisterCommand
 from app.modules.auth.domain.errors import InvalidCredentialsError
 from app.modules.auth.infrastructure.jwt_codec import JwtAccessTokenCodec
 from app.modules.organizations.application.create_organization import CreateOrganization
+from app.modules.organizations.application.invitations import AcceptInvitation
 from app.modules.organizations.domain.errors import OrganizationSlugTakenError
 from app.modules.organizations.domain.roles import Role
 from app.modules.users.application.create_user import CreateUser
@@ -21,6 +22,7 @@ from tests.fakes import (
     FakePasswordHasher,
     FakeTenantContext,
     InMemoryAuditLogRepository,
+    InMemoryInvitationRepository,
     InMemoryMembershipRepository,
     InMemoryOrganizationRepository,
     InMemoryRefreshTokenRepository,
@@ -56,6 +58,13 @@ class World:
             issue,
             record,
             self.tenant,
+            AcceptInvitation(
+                InMemoryInvitationRepository(self.tenant),
+                self.memberships,
+                self.organizations,
+                self.tenant,
+                record,
+            ),
         )
         self.login = Login(VerifyCredentials(self.users, self.hasher), issue, record)
 

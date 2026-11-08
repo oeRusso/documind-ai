@@ -70,6 +70,10 @@ usuarios a través de las membresías de la organización activa.
   Fijar esa variable es trabajo de `CurrentMemberDep`, que antes verifica la membresía (capa 1).
   Si esa verificación se rompiera, RLS no lo notaría. Por eso las dos capas tienen tests propios:
   `test_tenant_isolation.py` cubre las dos, y se comprobó que sus tests de fuga fallan con RLS apagado.
+- **Única excepción a "membresía antes del contexto": aceptar una invitación** (`AcceptInvitation`).
+  Quien acepta todavía no es miembro, así que el caso de uso fija `app.current_org` con la organización
+  del link y busca el hash del token *dentro* de ella. Lo que autoriza es el token (256 bits): con
+  organización o token equivocados no encuentra nada, responde 404 y la transacción se deshace.
 - Sin contexto fijado, las tablas con RLS devuelven 0 filas: un error de programación falla "cerrado".
 - `FORCE` también afecta a `migrator` (dueño de las tablas): una migración que transforme datos vería 0 filas.
   Para eso hay que fijar el contexto o usar el superusuario. `TRUNCATE` no está sujeto a RLS, y por eso

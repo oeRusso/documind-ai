@@ -10,7 +10,7 @@ from app.modules.auth.application.issue_session import IssuedSession
 from app.modules.auth.application.login import Login, LoginCommand
 from app.modules.auth.application.logout import Logout, LogoutCommand
 from app.modules.auth.application.refresh_session import RefreshSession, RefreshSessionCommand
-from app.modules.auth.application.register import Register, RegisterCommand
+from app.modules.auth.application.register import InvitationToken, Register, RegisterCommand
 from app.modules.auth.domain.errors import InvalidTokenError
 from app.modules.auth.presentation.cookies import (
     REFRESH_COOKIE,
@@ -62,13 +62,22 @@ async def register(
     ip: ClientIpDep,
     use_case: Annotated[Register, Depends(provide_register)],
 ) -> TokenResponse:
-    """Crea la cuenta, su primera organización (como owner) e inicia sesión."""
+    """Crea la cuenta e inicia sesión.
+
+    Con `organization_name` y `organization_slug` crea su primera organización (como owner).
+    Con `invitation` entra a la organización que lo invitó, con el rol de la invitación.
+    """
     result = await use_case.execute(
         RegisterCommand(
             email=body.email,
             password=body.password,
             organization_name=body.organization_name,
             organization_slug=body.organization_slug,
+            invitation=(
+                InvitationToken(body.invitation.organization_id, body.invitation.token)
+                if body.invitation
+                else None
+            ),
             ip=ip,
         )
     )

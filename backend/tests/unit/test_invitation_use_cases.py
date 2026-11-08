@@ -8,6 +8,8 @@ import pytest
 
 from app.modules.audit.application.record_audit_event import RecordAuditEvent
 from app.modules.organizations.application.invitations import (
+    AcceptInvitation,
+    AcceptInvitationCommand,
     CreatedInvitation,
     CreateInvitation,
     CreateInvitationCommand,
@@ -15,9 +17,12 @@ from app.modules.organizations.application.invitations import (
     RevokeInvitation,
     RevokeInvitationCommand,
 )
+from app.modules.organizations.domain.entities import Organization
 from app.modules.organizations.domain.errors import (
     AlreadyMemberError,
     InvitationAlreadyPendingError,
+    InvitationEmailMismatchError,
+    InvitationExpiredError,
     InvitationNotFoundError,
     PermissionDeniedError,
 )
@@ -34,6 +39,7 @@ from tests.fakes import (
     InMemoryAuditLogRepository,
     InMemoryInvitationRepository,
     InMemoryMembershipRepository,
+    InMemoryOrganizationRepository,
     InMemoryUserRepository,
 )
 
@@ -66,6 +72,18 @@ class World:
             FindUserByEmail(self.users),
             record,
             app_origin=ORIGIN,
+            clock=self.clock,
+        )
+        self.organizations = InMemoryOrganizationRepository(self.tenant)
+        self.organizations.items[self.organization_id] = Organization.create(
+            id=self.organization_id, name="Acme", slug="acme", now=START
+        )
+        self.accept = AcceptInvitation(
+            self.invitations,
+            self.memberships,
+            self.organizations,
+            self.tenant,
+            record,
             clock=self.clock,
         )
         self.list = ListInvitations(self.invitations)
@@ -233,3 +251,92 @@ async def test_revoking_twice_or_an_unknown_id_is_not_found(world: World) -> Non
     with pytest.raises(InvitationNotFoundError):
         await world.revoke.execute(RevokeInvitationCommand(world.owner, UUID(int=1)))
     assert world.audit.actions == ["invitation.created", "invitation.revoked"]
+
+
+# --- Step 18: accepting ---------------------------------------------------------------------
+
+
+async def accept_as(
+    world: World,
+    created: CreatedInvitation,
+    email: str = "nueva@example.com",
+    user_id: UUID | None = None,
+    organization_id: UUID | None = None,
+) -> Organization:
+    world.tenant.organization_id = None  # a new request: the caller is not a member yet
+    joined = await world.accept.execute(
+        AcceptInvitationCommand(
+            user_id=user_id or UUID(int=42),
+            user_email=email,
+            organization_id=organization_id or world.organization_id,
+            token=token_in(created.link),
+        )
+    )
+    assert joined.role is created.invitation.role
+    return joined.organization
+
+
+async def test_accepting_joins_with_the_invited_role(world: World) -> None:
+    created = await world.invite(role=Role.VIEWER)
+
+    organization = await accept_as(world, created, "NUEVA@example.com")
+
+    assert organization.id == world.organization_id
+    assert world.tenant.organization_id == world.organization_id  # entered from the link
+    joined = await world.memberships.get_by_user(world.organization_id, UUID(int=42))
+    assert joined is not None
+    assert joined.role is Role.VIEWER
+    assert created.invitation.status(world.clock.now) is InvitationStatus.ACCEPTED
+    assert world.audit.actions[-1] == "invitation.accepted"
+
+
+async def test_a_link_works_only_once(world: World) -> None:
+    created = await world.invite()
+    await accept_as(world, created)
+
+    with pytest.raises(InvitationNotFoundError):
+        await accept_as(world, created)
+
+
+async def test_another_email_cannot_use_the_link(world: World) -> None:
+    created = await world.invite()
+
+    with pytest.raises(InvitationEmailMismatchError):
+        await accept_as(world, created, "otra@example.com")
+    assert created.invitation.status(world.clock.now) is InvitationStatus.PENDING
+
+
+async def test_expired_and_revoked_links_do_not_work(world: World) -> None:
+    expired = await world.invite("a@example.com")
+    revoked = await world.invite("b@example.com")
+    await world.revoke.execute(RevokeInvitationCommand(world.owner, revoked.invitation.id))
+    world.clock.now = START + timedelta(days=7)
+
+    with pytest.raises(InvitationExpiredError):
+        await accept_as(world, expired, "a@example.com")
+    with pytest.raises(InvitationNotFoundError):
+        await accept_as(world, revoked, "b@example.com")
+
+
+async def test_a_token_with_another_organization_finds_nothing(world: World) -> None:
+    created = await world.invite()
+
+    with pytest.raises(InvitationNotFoundError):
+        await accept_as(world, created, organization_id=UUID(int=7))
+
+
+async def test_a_wrong_token_finds_nothing(world: World) -> None:
+    await world.invite()
+    world.tenant.organization_id = None
+
+    with pytest.raises(InvitationNotFoundError):
+        await world.accept.execute(
+            AcceptInvitationCommand(UUID(int=42), "nueva@example.com", world.organization_id, "x")
+        )
+
+
+async def test_an_existing_member_cannot_accept_again(world: World) -> None:
+    created = await world.invite("otro@example.com")
+
+    with pytest.raises(AlreadyMemberError):
+        await accept_as(world, created, "otro@example.com", user_id=world.member.user_id)

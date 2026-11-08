@@ -18,10 +18,14 @@ from app.modules.audit.application.record_audit_event import (
     RecordAuditEventCommand,
 )
 from app.modules.audit.domain.entities import AuditAction
+from app.modules.organizations.application.get_organization import OrganizationWithRole
 from app.modules.organizations.domain.errors import (
     AlreadyMemberError,
     InvitationAlreadyPendingError,
+    InvitationEmailMismatchError,
+    InvitationExpiredError,
     InvitationNotFoundError,
+    OrganizationNotFoundError,
     PermissionDeniedError,
 )
 from app.modules.organizations.domain.invitation import Invitation, InvitationStatus
@@ -34,12 +38,14 @@ from app.modules.organizations.domain.permissions import (
 from app.modules.organizations.domain.repository import (
     InvitationRepository,
     MembershipRepository,
+    OrganizationRepository,
 )
 from app.modules.organizations.domain.roles import Role
 from app.modules.users.application.find_user_by_email import FindUserByEmail
 from app.modules.users.domain.entities import normalize_email
 from app.shared.ids import new_id, utc_now
 from app.shared.secure_tokens import generate_token, hash_token
+from app.shared.tenancy import TenantContext
 
 ACCEPT_PATH = "/invitations/accept"
 
@@ -181,3 +187,85 @@ class RevokeInvitation:
                 details={"email": invitation.email},
             )
         )
+
+
+@dataclass(frozen=True, slots=True)
+class AcceptInvitationCommand:
+    user_id: UUID
+    user_email: str
+    organization_id: UUID  # from the link
+    token: str  # from the link
+    ip: str | None = None
+
+
+class AcceptInvitation:
+    """Join an organization with the role of the invitation.
+
+    The caller is not a member yet, so CurrentMemberDep cannot set the tenant context. This use
+    case enters the organization of the link, and the token is what authorizes it: with a wrong
+    organization or token nothing is found (404) and the transaction is rolled back.
+    """
+
+    def __init__(
+        self,
+        invitations: InvitationRepository,
+        memberships: MembershipRepository,
+        organizations: OrganizationRepository,
+        tenant: TenantContext,
+        record_audit_event: RecordAuditEvent,
+        *,
+        id_factory: Callable[[], UUID] = new_id,
+        clock: Callable[[], datetime] = utc_now,
+    ) -> None:
+        self._invitations = invitations
+        self._memberships = memberships
+        self._organizations = organizations
+        self._tenant = tenant
+        self._audit = record_audit_event
+        self._id_factory = id_factory
+        self._clock = clock
+
+    async def execute(self, command: AcceptInvitationCommand) -> OrganizationWithRole:
+        now = self._clock()
+        await self._tenant.set_organization(command.organization_id)
+        invitation = await self._invitations.get_by_token_hash_for_update(
+            command.organization_id, hash_token(command.token)
+        )
+        if invitation is None:
+            raise InvitationNotFoundError()
+        status = invitation.status(now)
+        if status is InvitationStatus.EXPIRED:
+            raise InvitationExpiredError()
+        if status is not InvitationStatus.PENDING:  # already used or revoked
+            raise InvitationNotFoundError()
+        # The link was sent to one inbox: only the account with that email can use it.
+        if normalize_email(command.user_email) != invitation.email:
+            raise InvitationEmailMismatchError()
+        if await self._memberships.get_by_user(command.organization_id, command.user_id):
+            raise AlreadyMemberError()
+
+        await self._memberships.add(
+            Membership.create(
+                id=self._id_factory(),
+                organization_id=command.organization_id,
+                user_id=command.user_id,
+                role=invitation.role,
+                now=now,
+            )
+        )
+        invitation.accept(now)
+        await self._invitations.save_status(invitation)
+        await self._audit.execute(
+            RecordAuditEventCommand(
+                action=AuditAction.INVITATION_ACCEPTED,
+                organization_id=command.organization_id,
+                user_id=command.user_id,
+                target=f"invitation:{invitation.id}",
+                ip=command.ip,
+                details={"role": str(invitation.role)},
+            )
+        )
+        organization = await self._organizations.get_by_id(command.organization_id)
+        if organization is None:  # cannot happen: the invitation belongs to it
+            raise OrganizationNotFoundError()
+        return OrganizationWithRole(organization=organization, role=invitation.role)

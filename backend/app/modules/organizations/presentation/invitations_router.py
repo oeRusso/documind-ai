@@ -8,8 +8,15 @@ from fastapi import APIRouter, Depends, Response, status
 from app.core.dependencies import ClientIpDep
 from app.core.exceptions import ErrorResponse
 from app.core.pagination import Page
-from app.modules.auth.presentation.dependencies import CurrentMemberDep
+from app.modules.auth.presentation.dependencies import (
+    CurrentMemberDep,
+    CurrentUserDep,
+    provide_accept_invitation,
+)
+from app.modules.auth.presentation.schemas import InvitationAccept
 from app.modules.organizations.application.invitations import (
+    AcceptInvitation,
+    AcceptInvitationCommand,
     CreateInvitation,
     CreateInvitationCommand,
     ListInvitations,
@@ -25,6 +32,7 @@ from app.modules.organizations.presentation.schemas import (
     CreatedInvitationRead,
     InvitationCreate,
     InvitationRead,
+    OrganizationRead,
 )
 from app.shared.ids import utc_now
 
@@ -85,3 +93,34 @@ async def revoke_invitation(
         RevokeInvitationCommand(actor=member, invitation_id=invitation_id, ip=ip)
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/accept",
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {"model": ErrorResponse},
+        status.HTTP_403_FORBIDDEN: {"model": ErrorResponse},
+        status.HTTP_404_NOT_FOUND: {"model": ErrorResponse},
+        status.HTTP_409_CONFLICT: {"model": ErrorResponse},
+    },
+)
+async def accept_invitation(
+    body: InvitationAccept,
+    user: CurrentUserDep,
+    ip: ClientIpDep,
+    use_case: Annotated[AcceptInvitation, Depends(provide_accept_invitation)],
+) -> OrganizationRead:
+    """Acepta una invitación con la sesión iniciada. El email de la cuenta debe ser el invitado.
+
+    Sin cuenta todavía: `POST /auth/register` con `invitation` en lugar de la organización.
+    """
+    joined = await use_case.execute(
+        AcceptInvitationCommand(
+            user_id=user.id,
+            user_email=user.email,
+            organization_id=body.organization_id,
+            token=body.token,
+            ip=ip,
+        )
+    )
+    return OrganizationRead.build(joined)

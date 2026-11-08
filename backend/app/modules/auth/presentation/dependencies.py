@@ -26,9 +26,11 @@ from app.modules.auth.domain.errors import InvalidTokenError
 from app.modules.auth.infrastructure.jwt_codec import JwtAccessTokenCodec
 from app.modules.auth.infrastructure.sql_repository import SqlRefreshTokenRepository
 from app.modules.organizations.application.create_organization import CreateOrganization
+from app.modules.organizations.application.invitations import AcceptInvitation
 from app.modules.organizations.application.resolve_membership import ResolveMembership
 from app.modules.organizations.domain.membership import Membership
 from app.modules.organizations.infrastructure.sql_repository import (
+    SqlInvitationRepository,
     SqlMembershipRepository,
     SqlOrganizationRepository,
 )
@@ -65,6 +67,16 @@ def _audit(session: SessionDep) -> RecordAuditEvent:
     return RecordAuditEvent(SqlAuditLogRepository(session))
 
 
+def provide_accept_invitation(session: SessionDep) -> AcceptInvitation:
+    return AcceptInvitation(
+        SqlInvitationRepository(session),
+        SqlMembershipRepository(session),
+        SqlOrganizationRepository(session),
+        SqlTenantContext(session),
+        _audit(session),
+    )
+
+
 def provide_register(session: SessionDep, settings: SettingsDep) -> Register:
     tenant = SqlTenantContext(session)
     return Register(
@@ -78,6 +90,7 @@ def provide_register(session: SessionDep, settings: SettingsDep) -> Register:
         _issue_session(session, settings),
         _audit(session),
         tenant,
+        provide_accept_invitation(session),
     )
 
 

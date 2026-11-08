@@ -15,8 +15,10 @@ from app.modules.auth.domain.errors import InvalidCredentialsError
 from app.modules.auth.infrastructure.jwt_codec import JwtAccessTokenCodec
 from app.modules.auth.infrastructure.sql_repository import SqlRefreshTokenRepository
 from app.modules.organizations.application.create_organization import CreateOrganization
+from app.modules.organizations.application.invitations import AcceptInvitation
 from app.modules.organizations.domain.roles import Role
 from app.modules.organizations.infrastructure.sql_repository import (
+    SqlInvitationRepository,
     SqlMembershipRepository,
     SqlOrganizationRepository,
 )
@@ -48,6 +50,13 @@ def wire(session: AsyncSession) -> tuple[Register, Login]:
         issue,
         audit,
         tenant,
+        AcceptInvitation(
+            SqlInvitationRepository(session),
+            SqlMembershipRepository(session),
+            SqlOrganizationRepository(session),
+            tenant,
+            audit,
+        ),
     )
     return register, Login(VerifyCredentials(users, hasher), issue, audit)
 
