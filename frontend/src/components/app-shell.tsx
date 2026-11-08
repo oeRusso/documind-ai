@@ -1,6 +1,16 @@
 "use client";
 
-import { Building2, FileText, LogOut, Mail, MessageSquare, Plus, Users, type LucideIcon } from "lucide-react";
+import {
+  Building2,
+  FileText,
+  LogOut,
+  Mail,
+  MessageSquare,
+  Plus,
+  Search,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -17,7 +27,7 @@ type NavItem = { href: string; label: string; icon: LucideIcon; show: boolean };
 
 /** What the next stages add, shown greyed out so the menu tells where the product is going. */
 const COMING_SOON = [
-  { label: "Documentos", icon: FileText, stage: "Etapa 4" },
+  { label: "Búsqueda", icon: Search, stage: "Etapa 6" },
   { label: "Chat con citas", icon: MessageSquare, stage: "Etapa 7" },
 ];
 
@@ -51,7 +61,7 @@ function NavLinks({ items, compact = false }: { items: NavItem[]; compact?: bool
   return items
     .filter((item) => item.show)
     .map(({ href, label, icon: Icon }) => {
-      const active = pathname === href;
+      const active = pathname === href || pathname.startsWith(`${href}/`);
       return (
         <Link
           key={href}
@@ -76,6 +86,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { organization } = useActiveOrganization();
 
   const items: NavItem[] = [
+    { href: "/documents", label: "Documentos", icon: FileText, show: true },
     { href: "/members", label: "Miembros", icon: Users, show: true },
     {
       href: "/invitations",
@@ -94,7 +105,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[17rem_minmax(0,1fr)]">
       <aside className="sticky top-0 hidden h-screen flex-col gap-6 border-r bg-sidebar p-4 lg:flex">
-        <Link href="/members" className="px-2 pt-1">
+        <Link href="/documents" className="px-2 pt-1">
           <Logo />
         </Link>
         <OrganizationSwitcher id="organization" />
@@ -132,7 +143,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="min-w-0">
         <header className="sticky top-0 z-10 border-b bg-background/85 backdrop-blur lg:hidden">
           <div className="flex items-center gap-3 px-4 py-3">
-            <Link href="/members">
+            <Link href="/documents">
               <Logo />
             </Link>
             <Button variant="ghost" size="sm" onClick={signOut} className="ml-auto text-muted-foreground">

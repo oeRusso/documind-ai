@@ -157,7 +157,10 @@ Leerla antes de cualquier tarea de deploy (etapas 0, 3 y 11). Resumen:
 ## Etapa actual
 - **Etapa 0** (en curso): falta lo del VPS y la prueba de humo de Ollama. Ver `docs/etapas/etapa-00.md`.
 - **Etapa 1**: terminada (mergeada a `main`, que quedó protegida).
-- **Etapa 2**: terminada (2026-11-08). PR `development` → `main` pendiente de que Esteban lo revise y mergee.
-  Ver "Resultado" en `docs/etapas/etapa-02.md`.
-- **Siguiente: etapa 3** (en cuanto se mergee la 2). Leer antes "Despliegue" acá y las notas de `etapa-03.md`.
-Regla general: la etapa actual es la de **número más bajo** que no está marcada como terminada en `docs/etapas/`.
+- **Etapa 2**: terminada y mergeada a `main` (PR #4).
+- **Etapa 3** (despliegue): **pospuesta al final** por decisión de Esteban (2026-11-08), junto con lo del VPS
+  de la etapa 0. Necesita el túnel, el acceso al VPS y la guía `VPS-COMPARTIDO.md` (disco externo).
+- **Etapa 4**: terminada (2026-11-08) en `development`. Ver "Resultado" en `docs/etapas/etapa-04.md`.
+- **Siguiente: etapa 5** (workers, extracción, OCR y fragmentos).
+Regla general: la etapa actual es la de **número más bajo** que no está marcada como terminada en
+`docs/etapas/`, **salvo las etapas 0 y 3**, que quedan para el final.

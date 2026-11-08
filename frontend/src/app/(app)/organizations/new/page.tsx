@@ -30,7 +30,7 @@ export default function NewOrganizationPage() {
       const organization = unwrap(await api.POST("/api/v1/organizations", { body: { name, slug } }));
       setActiveOrganizationId(organization.id);
       await queryClient.invalidateQueries({ queryKey: ORGANIZATIONS_KEY });
-      router.replace("/members");
+      router.replace("/documents");
     } catch (exception) {
       setError(errorMessage(exception));
     } finally {

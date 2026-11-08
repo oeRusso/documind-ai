@@ -7,6 +7,11 @@ const apiUrl = process.env.API_INTERNAL_URL ?? "http://127.0.0.1:8000";
 const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
+  experimental: {
+    // Next.js forwards at most 10 MB of a request body to the rewrite target and silently cuts
+    // the rest. Uploads are up to 25 MB (MAX_UPLOAD_MB) plus the multipart envelope.
+    proxyClientMaxBodySize: "30mb",
+  },
   async rewrites() {
     return [{ source: "/api/:path*", destination: `${apiUrl}/api/:path*` }];
   },

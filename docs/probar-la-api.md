@@ -75,9 +75,28 @@ Lo más simple es abrirlo en el navegador. Para hacerlo por Swagger, copiá los 
 
 Probá también: usar el mismo link dos veces (404), o registrarte con otro email (403 `invitation_email_mismatch`).
 
+### Documentos (etapa 4)
+
+En la web es lo más cómodo: **Documentos** (es la página de inicio) → arrastrá archivos a la zona punteada.
+
+| Para ver… | Cómo | Resultado esperado |
+|---|---|---|
+| Subir | Un PDF, DOCX, TXT o Markdown | Aparece en la lista como "Pendiente de procesar" (el procesamiento llega en la etapa 5) |
+| **Un `.exe` renombrado a `.pdf`** | Renombrá cualquier programa a `algo.pdf` y subilo | **"Tipo de archivo no permitido"** (415) |
+| PDF con contraseña | Un PDF que pida clave para abrirse | "El archivo está protegido con contraseña" |
+| **Duplicado** | El mismo archivo otra vez (aunque tenga otro nombre) | **"Este archivo ya está cargado en…"** con link al existente (409) |
+| Versión nueva | Entrá al documento → "Subir versión nueva" | Aparece como v2; la v1 se sigue pudiendo descargar |
+| **Otra organización** | Entrá como `eve@globex.test`, o por Swagger `GET /documents/{id}` con el id de un documento de Acme y la organización de Globex | No aparece en la lista; por API, **404** `document_not_found` |
+| Lector | Entrá como `bob@acme.test` | Ve y descarga, pero no tiene zona de subida ni botón Borrar |
+| Borrar | Como `mario` (miembro) intentá borrar un documento de `ana` por Swagger | 403 `cannot_delete_document`; el suyo sí lo puede borrar |
+
+En Swagger, `POST /documents` tiene un botón para elegir el archivo. La descarga (`GET /documents/{id}/download`)
+devuelve el archivo; un borrado lo oculta al instante y el archivo se elimina del disco a los 30 días
+(`podman compose exec api python -m app.jobs.purge_documents`).
+
 ## 6. Empezar de cero
 
 ```bash
-podman compose down -v   # borra también la base de datos
+podman compose down -v   # borra también la base de datos y los archivos subidos
 podman compose up -d --build && podman compose exec api python -m app.dev.seed
 ```

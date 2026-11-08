@@ -9,10 +9,14 @@ software libre y planes gratuitos.
 
 ## Estado actual
 
-**Etapa 2 terminada** (en revisión para pasar a `main`): cuentas, organizaciones, roles e invitaciones,
-con aislamiento entre organizaciones en dos capas (chequeo en el backend + Row Level Security en
-PostgreSQL), sesiones con refresh token rotativo y una interfaz web mínima. La etapa 0 sigue abierta por
-las tareas del VPS.
+**Etapas 1, 2 y 4 terminadas** (todo el trabajo nuevo queda en `development` hasta el despliegue):
+
+- Cuentas, organizaciones, roles e invitaciones, con aislamiento entre organizaciones en dos capas
+  (chequeo en el backend + Row Level Security en PostgreSQL) y sesiones con refresh token rotativo.
+- Documentos: subida de PDF, Word, TXT y Markdown (hasta 25 MB) con validación del tipo real, versiones,
+  detección de duplicados, descarga solo por la API y borrado diferido.
+
+Las etapas 0 y 3 (VPS y despliegue) quedan para el final.
 
 ```bash
 cp .env.example .env                           # completá las contraseñas y JWT_SECRET

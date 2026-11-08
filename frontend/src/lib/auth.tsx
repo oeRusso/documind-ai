@@ -90,7 +90,7 @@ export function useAuth(): AuthContextValue {
 }
 
 /** Only internal paths: "?next=https://evil.example" must not send people away. */
-export function safeNextPath(next: string | null, fallback = "/members"): string {
+export function safeNextPath(next: string | null, fallback = "/documents"): string {
   if (!next || !next.startsWith("/") || next.startsWith("//")) return fallback;
   return next;
 }

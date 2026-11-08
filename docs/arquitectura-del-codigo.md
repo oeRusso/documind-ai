@@ -1,6 +1,6 @@
 # Arquitectura del código
 
-Mapa del código **tal como está hoy** (fin de la etapa 2): qué hace cada carpeta y cada archivo, y cómo
+Mapa del código **tal como está hoy** (fin de la etapa 4): qué hace cada carpeta y cada archivo, y cómo
 se comunican las piezas. El *diseño* completo del producto está en `plan-parte-1-arquitectura.md`;
 este documento describe lo que ya existe. Se actualiza al cerrar cada etapa.
 
@@ -174,7 +174,8 @@ Puntos clave:
 | `database/models.py` | Importa todos los modelos para que Alembic los vea. |
 | `mail/smtp.py` | `SmtpMailer` (manda por SMTP, a Mailpit en desarrollo) y `LoggingMailer` (si no hay SMTP configurado: solo anota destinatario y asunto en el log). |
 | `rate_limit.py` | `InMemoryRateLimiter`: cuenta intentos en una ventana deslizante, en memoria. Alcanza con una sola instancia de la API. |
-| `storage/`, `queue/`, `workers/` | Vacías: archivos (etapa 4), Celery + Valkey (etapa 5). |
+| `storage/filesystem.py` | Archivos subidos en disco (ver el módulo `documents`). |
+| `queue/`, `workers/` | Vacías: Celery + Valkey (etapa 5). |
 
 #### `modules/users/`: cuentas
 
@@ -247,11 +248,36 @@ Puntos clave:
 | `application/record_audit_event.py` | `RecordAuditEvent`: lo llaman los otros módulos para dejar constancia. |
 | `infrastructure/models.py`, `sql_repository.py` | Tabla `audit_logs`. El rol `app` solo puede insertar: ni la API puede borrar o editar el historial. |
 
+#### `modules/documents/`: archivos de cada organización (etapa 4, ADR 0006)
+
+| Archivo | Qué hace |
+|---|---|
+| `domain/entities.py` | `Document` (lo que se ve en la lista: título, estado) y `DocumentVersion` (cada archivo subido: nombre, tipo, tamaño, páginas, SHA-256, clave de almacenamiento). `FileKind` (pdf, docx, txt, md), `StagedUpload` (archivo recibido y todavía no validado), `clean_filename` y `title_from_filename`. |
+| `domain/errors.py` | `DocumentNotFoundError` (404), `UnsupportedFileTypeError` y `FileTypeMismatchError` (415), `FileTooLargeError` (413), `EncryptedFileError`, `CorruptFileError`, `TooManyPagesError` (422), `DuplicateDocumentError` (409, con el id del existente en `details`). |
+| `domain/repository.py` | Interfaces `DocumentRepository`, `PurgeQueue` y `FileInspector`. |
+| `application/upload_document.py` | `UploadDocument` y `UploadDocumentVersion`: permiso → (existe) → tipo real → duplicado → guardar filas → mover el archivo → auditar. |
+| `application/read_documents.py` | `ListDocuments` (paginado por cursor), `GetDocument` (con versiones y quién subió cada una) y `DownloadDocument` (audita cada descarga). |
+| `application/delete_document.py` | `DeleteDocument` (borrado lógico + archivos a la cola de purga) y `PurgeDeletedDocuments` (borra archivos y filas vencidos). |
+| `infrastructure/file_inspector.py` | `LibmagicFileInspector`: decide el tipo por los bytes; PyMuPDF para páginas y contraseña de PDF, `zipfile` para DOCX (y ZIP bombs). |
+| `infrastructure/uploads.py` | `staged_upload`: copia el archivo subido a disco en pedazos, contando bytes (corta al pasar el límite) y calculando el SHA-256; si nadie lo mueve, lo borra al salir. |
+| `infrastructure/models.py` | Tablas `documents`, `document_versions` (índice único parcial de SHA-256 por organización) y `document_purge_queue`. |
+| `infrastructure/sql_repository.py` | Consultas SQL; convierte la violación del índice de SHA-256 en `DuplicateDocumentError`. |
+| `presentation/router.py` | `POST/GET /documents`, `GET /documents/{id}`, `POST /documents/{id}/versions`, `GET /documents/{id}/download`, `DELETE /documents/{id}`. |
+| `presentation/schemas.py`, `dependencies.py` | JSON de entrada y salida; arma los casos de uso (`StorageDep` sale de `app.state.storage`). |
+
+Piezas compartidas que sumó esta etapa:
+
+| Archivo | Qué hace |
+|---|---|
+| `shared/storage.py` | Interfaz `StorageBackend` y las claves `{organization_id}/{uuid}` (validadas: sin *path traversal*). |
+| `infrastructure/storage/filesystem.py` | `FilesystemStorage`: guarda en el volumen `documents`, permisos `0600`, lectura en pedazos. |
+| `core/body_limit.py` | Middleware que rechaza cuerpos más grandes que el máximo (413) antes de leerlos. |
+| `jobs/purge_documents.py` | Comando `python -m app.jobs.purge_documents` para correr una vez por día. |
+
 #### Módulos vacíos (se llenan más adelante)
 
 | Carpeta | Etapa | Para qué |
 |---|---|---|
-| `modules/documents/` | 4 | Subir, listar, descargar y borrar documentos. |
 | `modules/ingestion/`, `modules/extraction/` | 5 | Pipeline: extraer texto (PyMuPDF, OCR) y partir en fragmentos. |
 | `modules/knowledge/` | 6 | Fragmentos con embeddings y búsqueda híbrida. |
 | `modules/conversations/` | 7–8 | Chat con citas e historial. |
@@ -273,6 +299,7 @@ Puntos clave:
 | `migrations/versions/0001_initial_organizations.py` | Tabla `organizations`. |
 | `migrations/versions/0002_identity_tables.py` | `users`, `memberships`, `refresh_tokens`, `audit_logs`, `invitations`. |
 | `migrations/versions/0003_row_level_security.py` | Activa RLS (`ENABLE` + `FORCE`) y crea las políticas y las funciones `current_org_id()` / `current_user_id()`. Da permisos al rol `app`. |
+| `migrations/versions/0004_documents.py` | `documents`, `document_versions` (con RLS) y `document_purge_queue` (sin RLS a propósito, ADR 0006). |
 
 ```mermaid
 erDiagram
@@ -281,6 +308,8 @@ erDiagram
     organizations ||--o{ invitations : emite
     users ||--o{ refresh_tokens : "sesiones de"
     organizations ||--o{ audit_logs : registra
+    organizations ||--o{ documents : guarda
+    documents ||--|{ document_versions : "versiones"
     users ||--o{ audit_logs : "actor de"
 ```
 
@@ -345,6 +374,8 @@ flowchart TB
 | `register/page.tsx` | `/register` | Crea cuenta + empresa. |
 | `invitations/accept/page.tsx` | `/invitations/accept#...` | Lee el token del `#` una sola vez, lo borra de la barra de direcciones y deja aceptar (con cuenta existente o nueva). |
 | `(app)/layout.tsx` | zona privada | Sin sesión → `/login?next=...`. Con sesión → `AppShell`. Los paréntesis agrupan sin agregar nada a la URL. |
+| `(app)/documents/page.tsx` | `/documents` | **Página de inicio**: zona para arrastrar archivos (con barra de progreso) y lista paginada. |
+| `(app)/documents/[id]/page.tsx` | `/documents/<id>` | Detalle: versiones, descargar, subir versión nueva, borrar. |
 | `(app)/members/page.tsx` | `/members` | Lista de miembros, cambio de rol y quitar. |
 | `(app)/invitations/page.tsx` | `/invitations` | Invitar, ver y revocar invitaciones. |
 | `(app)/organizations/new/page.tsx` | `/organizations/new` | Crear otra organización. |
@@ -359,6 +390,7 @@ flowchart TB
 | `app-shell.tsx` | Barra lateral: selector de organización, menú, usuario y "Salir". |
 | `people.tsx` | `Avatar` (iniciales), `RoleBadge` (rol con color) y `PageHeader`. |
 | `members-table.tsx` | Tabla de miembros; muestra controles solo donde la API los permitiría. |
+| `documents.tsx` | `DocumentUploader` (arrastrar, cola de subidas, progreso, link al duplicado), íconos y etiquetas de tipo y estado. |
 | `login-form.tsx` | Formulario de login (se reusa en aceptar invitación). |
 | `honeypot.tsx` | Campo invisible contra bots (ADR 0005). |
 
@@ -374,17 +406,19 @@ flowchart TB
 | `auth.tsx` | `AuthProvider` y `useAuth()`: al abrir la web intenta renovar la sesión con la cookie; `startSession`, `logout`. |
 | `organizations.tsx` | `useOrganizations()` y `useActiveOrganization()` (lee la organización elegida con `useSyncExternalStore`). |
 | `roles.ts` | Qué botones mostrar según el rol. **La regla real la aplica la API** (`permissions.py`). |
+| `documents.ts` | `uploadDocument` (XMLHttpRequest para tener progreso, renueva la sesión ante un 401), `downloadDocument` (pide el archivo con la sesión y se lo da al navegador), formatos y permisos de documentos. |
 | `slug.ts`, `invitation-link.ts` | Generar el slug desde el nombre; leer el `#organization=..&token=..` del link. |
 
 #### `src/features/`
 
-Vacía: `documents/` (etapa 4), `chat/` (etapa 7), `analytics/` (etapa 10).
+Vacía: `chat/` (etapa 7), `analytics/` (etapa 10). Los documentos viven en `app/(app)/documents/`,
+`components/documents.tsx` y `lib/documents.ts`.
 
 #### Configuración
 
 | Archivo | Qué hace |
 |---|---|
-| `next.config.ts` | Salida `standalone` (imagen chica), **reenvío de `/api/*` a la API**, cabeceras de seguridad. |
+| `next.config.ts` | Salida `standalone` (imagen chica), **reenvío de `/api/*` a la API** (hasta 30 MB por pedido: Next.js corta en 10 MB si no se configura), cabeceras de seguridad. |
 | `package.json`, `pnpm-lock.yaml`, `.npmrc` | Dependencias con versión exacta. |
 | `tsconfig.json`, `eslint.config.mjs` | TypeScript estricto y lint. |
 | `vitest.config.ts`, `vitest.setup.ts` | Tests del frontend (`*.test.ts(x)` junto a cada archivo). |

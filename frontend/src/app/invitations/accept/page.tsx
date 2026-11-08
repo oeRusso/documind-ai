@@ -49,7 +49,7 @@ function Accept({ link }: { link: InvitationLink }) {
   async function enter(organizationId: string) {
     setActiveOrganizationId(organizationId);
     await queryClient.invalidateQueries({ queryKey: ORGANIZATIONS_KEY });
-    router.replace("/members");
+    router.replace("/documents");
   }
 
   async function run(action: () => Promise<void>) {
