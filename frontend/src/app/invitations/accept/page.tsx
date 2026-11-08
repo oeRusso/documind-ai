@@ -8,7 +8,6 @@ import { ErrorMessage, Field, PublicPage } from "@/components/form";
 import { Honeypot } from "@/components/honeypot";
 import { LoginForm } from "@/components/login-form";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { api, errorMessage, unwrap } from "@/lib/api/client";
 import { setActiveOrganizationId } from "@/lib/api/organization-store";
 import { useAuth } from "@/lib/auth";
@@ -29,20 +28,12 @@ const noSubscription = () => () => {};
 export default function AcceptInvitationPage() {
   const link = useSyncExternalStore(noSubscription, captureLink, () => undefined);
   return (
-    <PublicPage>
-      <Card>
-        <CardHeader>
-          <CardTitle>Invitación</CardTitle>
-          <CardDescription>Te invitaron a una organización en DocuMind AI.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {link === undefined ? null : link === null ? (
-            <ErrorMessage message="El link de invitación está incompleto. Pedí que te lo vuelvan a mandar." />
-          ) : (
-            <Accept link={link} />
-          )}
-        </CardContent>
-      </Card>
+    <PublicPage title="Te invitaron a DocuMind AI" description="Unite a la organización que te invitó.">
+      {link === undefined ? null : link === null ? (
+        <ErrorMessage message="El link de invitación está incompleto. Pedí que te lo vuelvan a mandar." />
+      ) : (
+        <Accept link={link} />
+      )}
     </PublicPage>
   );
 }
@@ -88,11 +79,11 @@ function Accept({ link }: { link: InvitationLink }) {
   if (status === "authenticated" && user) {
     return (
       <div className="grid gap-4">
-        <p className="text-sm">
+        <p className="rounded-xl border bg-card p-4 text-sm">
           Vas a aceptar la invitación como <strong>{user.email}</strong>.
         </p>
         <ErrorMessage message={error} />
-        <Button onClick={accept} disabled={pending}>
+        <Button size="lg" onClick={accept} disabled={pending}>
           {pending ? "Aceptando…" : "Aceptar invitación"}
         </Button>
         <Button variant="ghost" onClick={() => void logout()}>
@@ -134,12 +125,13 @@ function Accept({ link }: { link: InvitationLink }) {
   }
 
   return (
-    <form onSubmit={register} className="relative grid gap-4">
+    <form onSubmit={register} className="relative grid gap-5">
       <p className="text-sm text-muted-foreground">Creá tu cuenta con el email que recibió la invitación.</p>
       <Field id="email" label="Email" type="email" autoComplete="email" required />
       <Field
         id="password"
-        label="Contraseña (10 caracteres o más)"
+        label="Contraseña"
+        hint="10 caracteres o más."
         type="password"
         autoComplete="new-password"
         minLength={10}
@@ -147,7 +139,7 @@ function Accept({ link }: { link: InvitationLink }) {
       />
       <Honeypot />
       <ErrorMessage message={error} />
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" size="lg" disabled={pending}>
         {pending ? "Creando…" : "Crear cuenta y unirme"}
       </Button>
       <Button type="button" variant="link" onClick={() => setMode("login")}>

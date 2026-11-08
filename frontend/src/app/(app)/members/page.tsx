@@ -4,7 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { ErrorMessage } from "@/components/form";
 import { MembersTable } from "@/components/members-table";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/people";
+import { Card } from "@/components/ui/card";
 import { api, errorMessage, inOrganization, unwrap, type MemberRead, type Role } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth";
 import { ORGANIZATIONS_KEY, useActiveOrganization } from "@/lib/organizations";
@@ -55,13 +56,28 @@ export default function MembersPage() {
   const error = members.error ?? changeRole.error ?? remove.error;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Miembros de {organization.name}</CardTitle>
-        <CardDescription>Quién tiene acceso a esta organización y con qué rol.</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4">
+    <>
+      <PageHeader
+        title="Miembros"
+        description={
+          <>
+            Quién tiene acceso a <strong className="font-medium text-foreground">{organization.name}</strong> y con
+            qué rol.
+          </>
+        }
+        actions={
+          members.data && (
+            <span className="rounded-full border bg-card px-3 py-1 text-sm text-muted-foreground">
+              {members.data.length} {members.data.length === 1 ? "persona" : "personas"}
+            </span>
+          )
+        }
+      />
+      <div className="mb-4">
         <ErrorMessage message={error ? errorMessage(error) : null} />
+      </div>
+      <Card className="overflow-hidden py-0">
+        {members.isPending && <p className="p-6 text-sm text-muted-foreground">Cargando…</p>}
         {members.data && (
           <MembersTable
             members={members.data}
@@ -76,7 +92,7 @@ export default function MembersPage() {
             }}
           />
         )}
-      </CardContent>
-    </Card>
+      </Card>
+    </>
   );
 }

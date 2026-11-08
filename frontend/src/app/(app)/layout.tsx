@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 import { AppShell } from "@/components/app-shell";
+import { LogoMark } from "@/components/brand";
 import { useAuth } from "@/lib/auth";
 
 /** Private area: without a session, go to /login and come back afterwards. */
@@ -17,7 +18,12 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
   }, [status, router, pathname]);
 
   if (status !== "authenticated") {
-    return <p className="p-8 text-sm text-muted-foreground">Cargando…</p>;
+    return (
+      <div className="grid min-h-screen place-items-center">
+        <LogoMark className="size-10 animate-pulse" />
+        <span className="sr-only">Cargando…</span>
+      </div>
+    );
   }
   return <AppShell>{children}</AppShell>;
 }

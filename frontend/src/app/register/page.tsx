@@ -7,7 +7,6 @@ import { useState } from "react";
 import { ErrorMessage, Field, PublicPage } from "@/components/form";
 import { Honeypot } from "@/components/honeypot";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { api, errorMessage, unwrap } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth";
 import { slugify } from "@/lib/slug";
@@ -48,59 +47,61 @@ export default function RegisterPage() {
   }
 
   return (
-    <PublicPage>
-      <Card>
-        <CardHeader>
-          <CardTitle>Crear cuenta</CardTitle>
-          <CardDescription>Creás tu cuenta y la de tu empresa. Vas a ser su owner.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={submit} className="relative grid gap-4">
-            <Field id="email" label="Email" type="email" autoComplete="email" required />
-            <Field
-              id="password"
-              label="Contraseña (10 caracteres o más)"
-              type="password"
-              autoComplete="new-password"
-              minLength={10}
-              required
-            />
-            <Field
-              id="organization_name"
-              label="Nombre de la empresa"
-              value={name}
-              onChange={(event) => {
-                setName(event.target.value);
-                if (!slugEdited) setSlug(slugify(event.target.value));
-              }}
-              required
-            />
-            <Field
-              id="organization_slug"
-              label="Identificador (slug)"
-              value={slug}
-              onChange={(event) => {
-                setSlugEdited(true);
-                setSlug(event.target.value);
-              }}
-              pattern="[a-z0-9-]{2,63}"
-              title="Minúsculas, números y guiones"
-              required
-            />
-            <Honeypot />
-            <ErrorMessage message={error} />
-            <Button type="submit" disabled={pending}>
-              {pending ? "Creando…" : "Crear cuenta"}
-            </Button>
-          </form>
-        </CardContent>
-        <CardFooter className="text-sm text-muted-foreground">
-          ¿Ya tenés cuenta?&nbsp;
-          <Link href="/login" className="underline">
+    <PublicPage
+      title="Creá tu cuenta"
+      description="Creás tu usuario y el espacio de tu empresa. Vas a ser su owner."
+      footer={
+        <>
+          ¿Ya tenés cuenta?{" "}
+          <Link href="/login" className="font-medium text-primary hover:underline">
             Iniciá sesión
           </Link>
-        </CardFooter>
-      </Card>
+        </>
+      }
+    >
+      <form onSubmit={submit} className="relative grid gap-5">
+        <Field id="email" label="Email" type="email" autoComplete="email" placeholder="vos@empresa.com" required />
+        <Field
+          id="password"
+          label="Contraseña"
+          hint="10 caracteres o más."
+          type="password"
+          autoComplete="new-password"
+          minLength={10}
+          required
+        />
+        <div className="grid gap-5 rounded-xl border bg-card p-4">
+          <Field
+            id="organization_name"
+            label="Nombre de la empresa"
+            placeholder="Acme S.A."
+            value={name}
+            onChange={(event) => {
+              setName(event.target.value);
+              if (!slugEdited) setSlug(slugify(event.target.value));
+            }}
+            required
+          />
+          <Field
+            id="organization_slug"
+            label="Identificador"
+            hint="Minúsculas, números y guiones. Se completa solo."
+            value={slug}
+            onChange={(event) => {
+              setSlugEdited(true);
+              setSlug(event.target.value);
+            }}
+            pattern="[a-z0-9-]{2,63}"
+            title="Minúsculas, números y guiones"
+            required
+          />
+        </div>
+        <Honeypot />
+        <ErrorMessage message={error} />
+        <Button type="submit" size="lg" disabled={pending}>
+          {pending ? "Creando…" : "Crear cuenta"}
+        </Button>
+      </form>
     </PublicPage>
   );
 }

@@ -1,5 +1,8 @@
 "use client";
 
+import { UserMinus } from "lucide-react";
+
+import { Avatar, RoleBadge } from "@/components/people";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -22,10 +25,12 @@ export function MembersTable({ members, actorRole, actorUserId, busy, onChangeRo
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Email</TableHead>
+          <TableHead>Persona</TableHead>
           <TableHead>Rol</TableHead>
-          <TableHead>Desde</TableHead>
-          <TableHead className="text-right">Acciones</TableHead>
+          <TableHead>Miembro desde</TableHead>
+          <TableHead className="text-right">
+            <span className="sr-only">Acciones</span>
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -35,8 +40,13 @@ export function MembersTable({ members, actorRole, actorUserId, busy, onChangeRo
           return (
             <TableRow key={member.id}>
               <TableCell>
-                {member.email}
-                {isMe && <span className="ml-2 text-xs text-muted-foreground">(vos)</span>}
+                <div className="flex items-center gap-3">
+                  <Avatar email={member.email} />
+                  <span className="font-medium">{member.email}</span>
+                  {isMe && (
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">vos</span>
+                  )}
+                </div>
               </TableCell>
               <TableCell>
                 {manageable ? (
@@ -53,13 +63,22 @@ export function MembersTable({ members, actorRole, actorUserId, busy, onChangeRo
                     ))}
                   </NativeSelect>
                 ) : (
-                  ROLE_LABELS[member.role]
+                  <RoleBadge role={member.role} />
                 )}
               </TableCell>
-              <TableCell>{new Date(member.created_at).toLocaleDateString("es-AR")}</TableCell>
+              <TableCell className="text-muted-foreground">
+                {new Date(member.created_at).toLocaleDateString("es-AR", { dateStyle: "medium" })}
+              </TableCell>
               <TableCell className="text-right">
                 {manageable && (
-                  <Button variant="outline" size="sm" disabled={busy} onClick={() => onRemove(member)}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => onRemove(member)}
+                    className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <UserMinus />
                     {isMe ? "Salir de la organización" : "Quitar"}
                   </Button>
                 )}

@@ -6,7 +6,8 @@ import { useState } from "react";
 
 import { ErrorMessage, Field } from "@/components/form";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/people";
+import { Card, CardContent } from "@/components/ui/card";
 import { api, errorMessage, unwrap } from "@/lib/api/client";
 import { setActiveOrganizationId } from "@/lib/api/organization-store";
 import { ORGANIZATIONS_KEY } from "@/lib/organizations";
@@ -38,41 +39,44 @@ export default function NewOrganizationPage() {
   }
 
   return (
-    <Card className="max-w-lg">
-      <CardHeader>
-        <CardTitle>Nueva organización</CardTitle>
-        <CardDescription>Vas a ser su owner. Sus datos quedan separados de las demás.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={submit} className="grid gap-4">
-          <Field
-            id="name"
-            label="Nombre"
-            value={name}
-            onChange={(event) => {
-              setName(event.target.value);
-              if (!slugEdited) setSlug(slugify(event.target.value));
-            }}
-            required
-          />
-          <Field
-            id="slug"
-            label="Identificador (slug)"
-            value={slug}
-            onChange={(event) => {
-              setSlugEdited(true);
-              setSlug(event.target.value);
-            }}
-            pattern="[a-z0-9-]{2,63}"
-            title="Minúsculas, números y guiones"
-            required
-          />
-          <ErrorMessage message={error} />
-          <Button type="submit" disabled={pending} className="w-fit">
-            {pending ? "Creando…" : "Crear organización"}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+    <>
+      <PageHeader
+        title="Nueva organización"
+        description="Vas a ser su owner. Sus datos quedan separados de los de tus otras organizaciones."
+      />
+      <Card className="max-w-lg">
+        <CardContent>
+          <form onSubmit={submit} className="grid gap-5">
+            <Field
+              id="name"
+              label="Nombre"
+              value={name}
+              onChange={(event) => {
+                setName(event.target.value);
+                if (!slugEdited) setSlug(slugify(event.target.value));
+              }}
+              required
+            />
+            <Field
+              id="slug"
+              label="Identificador"
+              hint="Minúsculas, números y guiones. Se completa solo."
+              value={slug}
+              onChange={(event) => {
+                setSlugEdited(true);
+                setSlug(event.target.value);
+              }}
+              pattern="[a-z0-9-]{2,63}"
+              title="Minúsculas, números y guiones"
+              required
+            />
+            <ErrorMessage message={error} />
+            <Button type="submit" disabled={pending} className="w-fit">
+              {pending ? "Creando…" : "Crear organización"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </>
   );
 }
