@@ -5,9 +5,10 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Response, status
 
-from app.core.dependencies import ClientIpDep
+from app.core.dependencies import ClientIpDep, SettingsDep
 from app.core.exceptions import ErrorResponse
 from app.core.pagination import Page
+from app.core.rate_limits import RateLimiterDep, accept_invitation_per_user
 from app.modules.auth.presentation.dependencies import (
     CurrentMemberDep,
     CurrentUserDep,
@@ -95,9 +96,17 @@ async def revoke_invitation(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+async def limit_accept_by_user(
+    user: CurrentUserDep, limiter: RateLimiterDep, settings: SettingsDep
+) -> None:
+    await limiter.hit(f"accept_invitation:user:{user.id}", accept_invitation_per_user(settings))
+
+
 @router.post(
     "/accept",
+    dependencies=[Depends(limit_accept_by_user)],
     responses={
+        status.HTTP_429_TOO_MANY_REQUESTS: {"model": ErrorResponse},
         status.HTTP_401_UNAUTHORIZED: {"model": ErrorResponse},
         status.HTTP_403_FORBIDDEN: {"model": ErrorResponse},
         status.HTTP_404_NOT_FOUND: {"model": ErrorResponse},

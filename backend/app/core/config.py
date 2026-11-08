@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     # Origin of the web app (scheme://host[:port]). Cookie endpoints reject any other Origin (CSRF).
     app_origin: str = "http://localhost:3000"
 
+    # --- Attempt limits (stage 2, ADR 0005). Per IP until stage 3 trusts CF-Connecting-IP. ---
+    login_limit_per_ip_per_minute: int = Field(default=20, ge=1)
+    login_limit_per_email_per_15_minutes: int = Field(default=10, ge=1)
+    register_limit_per_ip_per_hour: int = Field(default=10, ge=1)
+    accept_invitation_limit_per_user_per_minute: int = Field(default=10, ge=1)
+
     # --- Email (stage 2: invitations) ---
     # Without SMTP_HOST nothing is sent (only logged): the invitation link is still shown to
     # whoever invites. In development SMTP_HOST=mailpit (see compose.yaml).

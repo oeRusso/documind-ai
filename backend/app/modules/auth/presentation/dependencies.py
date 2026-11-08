@@ -14,6 +14,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.config import Settings
 from app.core.dependencies import SessionDep, SettingsDep
+from app.core.rate_limits import RateLimiterDep, login_per_email
 from app.infrastructure.database.tenant import SqlTenantContext
 from app.modules.audit.application.record_audit_event import RecordAuditEvent
 from app.modules.audit.infrastructure.sql_repository import SqlAuditLogRepository
@@ -94,11 +95,13 @@ def provide_register(session: SessionDep, settings: SettingsDep) -> Register:
     )
 
 
-def provide_login(session: SessionDep, settings: SettingsDep) -> Login:
+def provide_login(session: SessionDep, settings: SettingsDep, limiter: RateLimiterDep) -> Login:
     return Login(
         VerifyCredentials(SqlUserRepository(session), Argon2PasswordHasher()),
         _issue_session(session, settings),
         _audit(session),
+        limiter,
+        login_per_email(settings),
     )
 
 

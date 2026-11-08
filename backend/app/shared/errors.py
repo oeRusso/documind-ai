@@ -53,3 +53,14 @@ class ForbiddenError(DomainError):
 class ValidationError(DomainError):
     code = "invalid_data"
     message = "Datos inválidos"
+
+
+class TooManyRequestsError(DomainError):
+    """Too many attempts in a short time. HTTP 429 with a Retry-After header."""
+
+    code = "rate_limited"
+    message = "Demasiados intentos. Esperá un momento y probá de nuevo"
+
+    def __init__(self, retry_after_seconds: int) -> None:
+        super().__init__()
+        self.retry_after_seconds = retry_after_seconds

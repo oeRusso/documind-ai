@@ -18,6 +18,7 @@ from app.shared.errors import (
     DomainError,
     ForbiddenError,
     NotFoundError,
+    TooManyRequestsError,
     UnauthorizedError,
     ValidationError,
 )
@@ -43,6 +44,7 @@ _DOMAIN_STATUS: list[tuple[type[DomainError], int]] = [
     (NotFoundError, status.HTTP_404_NOT_FOUND),
     (ConflictError, status.HTTP_409_CONFLICT),
     (ValidationError, status.HTTP_422_UNPROCESSABLE_CONTENT),
+    (TooManyRequestsError, status.HTTP_429_TOO_MANY_REQUESTS),
 ]
 
 _HTTP_CODES: dict[int, tuple[str, str]] = {
@@ -81,6 +83,8 @@ def register_exception_handlers(app: FastAPI) -> None:
         )
         # RFC 9110: a 401 says how to authenticate.
         headers = {"WWW-Authenticate": "Bearer"} if status_code == 401 else None
+        if isinstance(exc, TooManyRequestsError):
+            headers = {"Retry-After": str(exc.retry_after_seconds)}
         return error_response(status_code, exc.code, exc.message, headers=headers)
 
     @app.exception_handler(StarletteHTTPException)

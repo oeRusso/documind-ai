@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from app.infrastructure.rate_limit import InMemoryRateLimiter
 from app.modules.audit.application.record_audit_event import RecordAuditEvent
 from app.modules.auth.application.issue_session import IssueSession
 from app.modules.auth.application.login import Login, LoginCommand
@@ -17,6 +18,8 @@ from app.modules.organizations.domain.roles import Role
 from app.modules.users.application.create_user import CreateUser
 from app.modules.users.application.verify_credentials import VerifyCredentials
 from app.modules.users.domain.errors import EmailAlreadyRegisteredError, WeakPasswordError
+from app.shared.errors import TooManyRequestsError
+from app.shared.rate_limit import RateLimit
 from app.shared.secure_tokens import hash_token
 from tests.fakes import (
     FakePasswordHasher,
@@ -66,7 +69,14 @@ class World:
                 record,
             ),
         )
-        self.login = Login(VerifyCredentials(self.users, self.hasher), issue, record)
+        self.limiter = InMemoryRateLimiter(clock=lambda: 0.0)
+        self.login = Login(
+            VerifyCredentials(self.users, self.hasher),
+            issue,
+            record,
+            self.limiter,
+            RateLimit(3, timedelta(minutes=15)),
+        )
 
 
 @pytest.fixture
@@ -190,3 +200,18 @@ async def test_disabled_user_cannot_log_in(world: World) -> None:
 def test_failed_login_keeps_its_audit_event() -> None:
     # Tells get_session to commit the audit event even though the request fails.
     assert InvalidCredentialsError.keep_changes is True
+
+
+async def test_too_many_logins_for_one_email_are_refused_without_checking_the_password(
+    world: World,
+) -> None:
+    await world.register.execute(register_command())
+    for _ in range(3):  # the World allows 3 per 15 minutes
+        with pytest.raises(InvalidCredentialsError):
+            await world.login.execute(LoginCommand("ana@example.com", WRONG_PASSWORD))
+    verifications = world.hasher.verify_calls
+
+    with pytest.raises(TooManyRequestsError):
+        await world.login.execute(LoginCommand(" ANA@example.com", PASSWORD))  # even the right one
+
+    assert world.hasher.verify_calls == verifications  # no Argon2 work for blocked attempts

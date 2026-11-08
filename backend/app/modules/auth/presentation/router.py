@@ -6,6 +6,7 @@ from fastapi import APIRouter, Cookie, Depends, Response, status
 
 from app.core.dependencies import ClientIpDep
 from app.core.exceptions import ErrorResponse
+from app.core.rate_limits import limit_login_by_ip, limit_register_by_ip
 from app.modules.auth.application.issue_session import IssuedSession
 from app.modules.auth.application.login import Login, LoginCommand
 from app.modules.auth.application.logout import Logout, LogoutCommand
@@ -53,8 +54,12 @@ def _session_response(response: Response, session: IssuedSession) -> TokenRespon
 @router.post(
     "/register",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(reject_foreign_origin)],
-    responses={**_ERRORS, status.HTTP_409_CONFLICT: {"model": ErrorResponse}},
+    dependencies=[Depends(reject_foreign_origin), Depends(limit_register_by_ip)],
+    responses={
+        **_ERRORS,
+        status.HTTP_409_CONFLICT: {"model": ErrorResponse},
+        status.HTTP_429_TOO_MANY_REQUESTS: {"model": ErrorResponse},
+    },
 )
 async def register(
     body: RegisterRequest,
@@ -84,7 +89,11 @@ async def register(
     return _session_response(response, result.session)
 
 
-@router.post("/login", dependencies=[Depends(reject_foreign_origin)], responses=_ERRORS)
+@router.post(
+    "/login",
+    dependencies=[Depends(reject_foreign_origin), Depends(limit_login_by_ip)],
+    responses={**_ERRORS, status.HTTP_429_TOO_MANY_REQUESTS: {"model": ErrorResponse}},
+)
 async def login(
     body: LoginRequest,
     response: Response,

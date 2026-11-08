@@ -6,6 +6,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.database.tenant import SqlTenantContext
+from app.infrastructure.rate_limit import InMemoryRateLimiter
 from app.modules.audit.application.record_audit_event import RecordAuditEvent
 from app.modules.audit.infrastructure.sql_repository import SqlAuditLogRepository
 from app.modules.auth.application.issue_session import IssueSession
@@ -26,6 +27,7 @@ from app.modules.users.application.create_user import CreateUser
 from app.modules.users.application.verify_credentials import VerifyCredentials
 from app.modules.users.infrastructure.argon2_hasher import Argon2PasswordHasher
 from app.modules.users.infrastructure.sql_repository import SqlUserRepository
+from app.shared.rate_limit import RateLimit
 from tests.conftest import TEST_JWT_SECRET
 
 PASSWORD = "una clave bien larga"  # pragma: allowlist secret
@@ -58,7 +60,14 @@ def wire(session: AsyncSession) -> tuple[Register, Login]:
             audit,
         ),
     )
-    return register, Login(VerifyCredentials(users, hasher), issue, audit)
+    login = Login(
+        VerifyCredentials(users, hasher),
+        issue,
+        audit,
+        InMemoryRateLimiter(),
+        RateLimit(10, timedelta(minutes=15)),
+    )
+    return register, login
 
 
 async def test_register_then_login(app_session: AsyncSession) -> None:
