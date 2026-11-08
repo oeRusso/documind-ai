@@ -11,6 +11,7 @@ El segundo comando crea usuarios de prueba. Si ya estaban cargados, no hace nada
 
 | Servicio | Dirección |
 |---|---|
+| **Web** (usá `localhost`, no `127.0.0.1`) | http://localhost:3000 |
 | API con Swagger (para probar endpoints) | http://127.0.0.1:8000/docs |
 | Mailpit (emails de desarrollo) | http://127.0.0.1:8025 |
 
@@ -26,7 +27,16 @@ Contraseña de todos: **`documind-demo-2026`** (es pública: solo sirve en tu PC
 | `bob@acme.test` | Acme S.A. | viewer | Ver miembros |
 | `eve@globex.test` | Globex | owner | Todo, pero en Globex: Acme no existe para ella |
 
-## 3. Cómo usar Swagger
+## 3. Desde la web
+
+1. Entrá a http://localhost:3000 con `ana@acme.test`: ves los 4 miembros de Acme y podés cambiar roles.
+2. **Invitaciones** → invitá a `dana@acme.test` como Lector. Aparece el link y el email llega a Mailpit.
+3. **Salir**, abrí el link (desde Mailpit o copiado) y creá la cuenta de dana: entra a Acme como Lector.
+4. Entrá como `bob@acme.test` (viewer): ve los miembros, pero sin controles ni menú de invitaciones.
+5. Entrá como `eve@globex.test`: solo ve Globex. Acme no existe para ella.
+6. Recargá la página: la sesión sigue (se renueva sola con la cookie).
+
+## 4. Cómo usar Swagger
 
 1. **Entrar:** `POST /api/v1/auth/login` → "Try it out" → `{"email": "ana@acme.test", "password": "documind-demo-2026"}`. <!-- pragma: allowlist secret -->
    Copiá el `access_token` de la respuesta.
@@ -37,7 +47,7 @@ Contraseña de todos: **`documind-demo-2026`** (es pública: solo sirve en tu PC
 
 Para cambiar de usuario: Authorize → Logout → login con otro email → Authorize con el nuevo token.
 
-## 4. Qué probar
+## 5. Qué probar en Swagger
 
 | Para ver… | Usuario | Endpoint | Resultado esperado |
 |---|---|---|---|
@@ -55,7 +65,7 @@ Para cambiar de usuario: Authorize → Logout → login con otro email → Autho
 ### Aceptar una invitación
 
 El link tiene esta forma: `http://localhost:3000/invitations/accept#organization=<id>&token=<token>`.
-Esa página es del frontend, que todavía no existe. Por ahora, copiá los dos valores que están después del `#`:
+Lo más simple es abrirlo en el navegador. Para hacerlo por Swagger, copiá los dos valores que están después del `#`:
 
 - **Si la persona no tiene cuenta:** `POST /auth/register` (sin token) con
   `{"email": "dana@acme.test", "password": "una clave de 10 o más", "invitation": {"organization_id": "<id>", "token": "<token>"}}`. <!-- pragma: allowlist secret -->
@@ -65,7 +75,7 @@ Esa página es del frontend, que todavía no existe. Por ahora, copiá los dos v
 
 Probá también: usar el mismo link dos veces (404), o registrarte con otro email (403 `invitation_email_mismatch`).
 
-## 5. Empezar de cero
+## 6. Empezar de cero
 
 ```bash
 podman compose down -v   # borra también la base de datos

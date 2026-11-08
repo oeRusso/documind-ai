@@ -1,6 +1,6 @@
 # 0003 — Organización activa por header y RLS con contexto por transacción
 
-- **Estado:** propuesta
+- **Estado:** aceptada
 - **Fecha:** 2026-11-06
 - **Etapa:** 02
 

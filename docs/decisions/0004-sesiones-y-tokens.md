@@ -1,6 +1,6 @@
 # 0004 — Sesiones: access token en memoria y refresh token rotativo en cookie
 
-- **Estado:** propuesta
+- **Estado:** aceptada
 - **Fecha:** 2026-11-06
 - **Etapa:** 02
 
@@ -67,3 +67,5 @@ Opción 1.
 
 Tests de la etapa 2: rotación y reuso (paso 11), cookies y CSRF (paso 13). El criterio de terminado
 "reusar un refresh token ya rotado invalida la sesión" se cubre en `tests/integration/test_auth_api.py`.
+Del lado del navegador, el refresh compartido y el reintento tras un 401 se prueban en
+`frontend/src/lib/api/session.test.ts` y `auth-fetch.test.ts`.

@@ -3,7 +3,7 @@
 - **Fase:** A — Fundamentos
 - **Duración estimada:** 1,5 semanas
 - **Rama:** `development` (PR a `main` al cerrar la etapa)
-- **Estado:** en curso
+- **Estado:** terminada (2026-11-08). PR `development` → `main` pendiente de revisión.
 
 ## Objetivo
 
@@ -19,10 +19,10 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 - [x] Dependencia de FastAPI que resuelve el usuario y su membresía, y entrega el `organization_id` a cada caso de uso. Los repositorios lo exigen como parámetro obligatorio.
 - [x] Row Level Security en PostgreSQL: la app fija `app.current_org` por transacción (`SET LOCAL`) y usa un rol de base de datos que no puede saltarse RLS.
 - [x] Invitaciones por link.
-- [ ] Rate limit en login y registro; campo trampa (honeypot) en el registro. *(Sin Turnstile: ADR 0005.)*
+- [x] Rate limit en login y registro; campo trampa (honeypot) en el registro. *(Sin Turnstile: ADR 0005.)*
 - [x] `audit_logs` con las acciones de seguridad (solo inserción).
 - [x] Mailpit en `compose.yaml` para ver los emails de desarrollo (invitaciones).
-- [ ] Frontend mínimo en Next.js: registro, login, selector de organización y gestión de miembros, con un cliente TypeScript generado desde el OpenAPI y TanStack Query.
+- [x] Frontend mínimo en Next.js: registro, login, selector de organización y gestión de miembros, con un cliente TypeScript generado desde el OpenAPI y TanStack Query.
 
 ## Fuera de alcance
 
@@ -86,14 +86,14 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 - [x] 17. Invitaciones: crear, listar, revocar.
 - [x] 18. Aceptar invitación.
 - [x] 19. Mailpit y `Mailer`.
-- [ ] 20. Rate limit.
-- [ ] 21. Campo trampa (honeypot) en el registro (en lugar de Turnstile, ADR 0005).
-- [ ] 22. Frontend: Next.js, Vitest, rewrites y CI.
-- [ ] 23. Frontend: cliente generado del OpenAPI con refresh compartido.
-- [ ] 24. Frontend: shadcn/ui, sesión, login y registro.
-- [ ] 25. Frontend: selector de organización.
-- [ ] 26. Frontend: miembros, invitaciones y aceptar invitación.
-- [ ] 27. Cierre: README, ADRs aceptadas, Resultado, PR.
+- [x] 20. Rate limit.
+- [x] 21. Campo trampa (honeypot) en el registro (en lugar de Turnstile, ADR 0005).
+- [x] 22. Frontend: Next.js, Vitest, rewrites y CI.
+- [x] 23. Frontend: cliente generado del OpenAPI con refresh compartido.
+- [x] 24. Frontend: shadcn/ui, sesión, login y registro.
+- [x] 25. Frontend: selector de organización.
+- [x] 26. Frontend: miembros, invitaciones y aceptar invitación.
+- [x] 27. Cierre: README, ADRs aceptadas, Resultado, PR.
 
 ## Avance
 
@@ -147,7 +147,45 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
   antes. Mientras tanto, quien invita copia el link desde la respuesta o la UI.
 - Datos de prueba: `podman compose exec api python -m app.dev.seed`. Guía: `docs/probar-la-api.md`.
 
-**Pendiente:** pasos 20 a 27 (rate limit, campo trampa, frontend, cierre).
+**2026-11-08: pasos 20 a 27.** Abuso, frontend y cierre.
+
+- Límite de intentos (`RateLimiter` en memoria, ventana deslizante): login por IP y por email (antes de
+  correr Argon2), registro por IP, aceptar invitación por usuario. Pasado el límite: 429 `rate_limited`
+  con `Retry-After`. Configurable por variables de entorno.
+- Campo trampa `website` en el registro (ADR 0005).
+- Frontend en `frontend/`: Next.js 16, TypeScript, Tailwind, componentes de shadcn/ui, TanStack Query,
+  Vitest. Cliente tipado generado del OpenAPI (`backend/app/dev/openapi.py` → `frontend/openapi.json` →
+  `pnpm gen:api`); el CI falla si alguna de las dos copias quedó vieja.
+- Sesión en el navegador: access token solo en memoria; un único refresh compartido por pestaña
+  (`SessionStore`) y reintento del pedido tras un 401 (`createAuthFetch`).
+- Contenedor `web` en `compose.yaml` (http://localhost:3000), workflow `frontend.yml`, Dependabot para npm.
+
+## Resultado
+
+**Criterios de terminado: los tres cumplidos.**
+
+1. A no ve datos de B aunque el backend olvide filtrar: `backend/tests/security/test_tenant_isolation.py`
+   (verificado a la inversa: con RLS apagado, falla).
+2. Reusar un refresh token rotado invalida la sesión: `backend/tests/integration/test_auth_api.py`.
+3. Un viewer recibe 403 en acciones de admin: `test_member_use_cases.py`, `test_members_api.py` e
+   `test_invitations_api.py`; en la UI ni siquiera se le ofrecen.
+
+**Números:** 306 tests de backend (unitarios, integración contra PostgreSQL con RLS y seguridad) y 21 de
+frontend. Recorrido completo probado en Chrome headless (login, recarga con renovación de sesión,
+invitación, registro desde el link, viewer sin controles de admin).
+
+**Decisiones:** ADR 0003 (RLS en dos capas), 0004 (sesiones y tokens) y 0005 (sin Turnstile), aceptadas.
+
+**Pendientes para etapas siguientes:**
+
+- **Etapa 3:** confiar en `CF-Connecting-IP` detrás del proxy (si no, el rate limit es global y el audit
+  log guarda la IP del proxy). Anotado en `etapa-03.md`.
+- **Email en producción:** no hay SMTP; sumarlo es un servicio externo y hay que preguntar. Mientras
+  tanto, quien invita copia el link.
+- El rate limit vive en memoria del proceso: si la API corre con varios procesos, pasarlo a Valkey.
+- `/members` e `/invitations` no paginan todavía (`next_cursor` siempre `null`).
+- Las sesiones de alguien quitado de una organización siguen vivas (pierde el acceso a esa organización
+  en el siguiente pedido, por el chequeo de membresía).
 
 ## Referencias
 

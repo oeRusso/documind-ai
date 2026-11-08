@@ -48,7 +48,9 @@ GitHub Actions. (Cloudflare Access y GHCR quedan sujetos a la regla de servicios
 Existen a partir de la etapa 1 (backend) y la etapa 2 (frontend).
 - Backend (en `backend/`): `uv run pytest`, `uv run ruff check --fix`, `uv run ruff format`, `uv run mypy app`
 - Frontend (en `frontend/`): `pnpm lint`, `pnpm typecheck`, `pnpm test`
-- Entorno: `podman compose up -d`
+- Entorno: `podman compose up -d --build` (db, API, web en http://localhost:3000, Mailpit) y
+  `podman compose exec api python -m app.dev.seed` (usuarios de prueba, ver `docs/probar-la-api.md`).
+- Contrato API → frontend: `uv run python -m app.dev.openapi ../frontend/openapi.json` y `pnpm gen:api`.
 
 ## Reglas que nunca se rompen
 - Toda tabla de negocio tiene `organization_id` (también las hijas) y toda consulta filtra por él.
@@ -146,13 +148,14 @@ Leerla antes de cualquier tarea de deploy (etapas 0, 3 y 11). Resumen:
 - No poner la IP del VPS en el repo (es público y el túnel la oculta).
 
 ## Entorno local
-- uv en `~/.local/bin` (instala Python 3.12 por su cuenta). Node 24 disponible; pnpm todavía no instalado.
+- uv y pnpm 10 en `~/.local/bin` (pnpm instalado con `npm install -g --prefix ~/.local`; no hay corepack). Node 24.
 - `podman compose` usa el socket de Podman del usuario (`systemctl --user enable --now podman.socket`).
 - `.env` en la raíz (permisos 600, ignorado por git) con contraseñas aleatorias para dev.
 
 ## Etapa actual
 - **Etapa 0** (en curso): falta lo del VPS y la prueba de humo de Ollama. Ver `docs/etapas/etapa-00.md`.
 - **Etapa 1**: terminada (mergeada a `main`, que quedó protegida).
-- **Etapa 2** (en curso): pasos 1 a 19 de 27 hechos (base, RLS, auth, organizaciones, miembros, invitaciones
-  y Mailpit; criterios 1, 2 y 3). Sigue el paso 20 (rate limit). Ver "Avance" en `docs/etapas/etapa-02.md`.
+- **Etapa 2**: terminada (2026-11-08). PR `development` → `main` pendiente de que Esteban lo revise y mergee.
+  Ver "Resultado" en `docs/etapas/etapa-02.md`.
+- **Siguiente: etapa 3** (en cuanto se mergee la 2). Leer antes "Despliegue" acá y las notas de `etapa-03.md`.
 Regla general: la etapa actual es la de **número más bajo** que no está marcada como terminada en `docs/etapas/`.

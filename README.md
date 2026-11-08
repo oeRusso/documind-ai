@@ -9,14 +9,28 @@ software libre y planes gratuitos.
 
 ## Estado actual
 
-**Etapa 1 en revisión**: el esqueleto del backend (FastAPI + PostgreSQL) ya corre en local; ver [backend/README.md](backend/README.md). La etapa 0 sigue abierta por las tareas del VPS.
+**Etapa 2 terminada** (en revisión para pasar a `main`): cuentas, organizaciones, roles e invitaciones,
+con aislamiento entre organizaciones en dos capas (chequeo en el backend + Row Level Security en
+PostgreSQL), sesiones con refresh token rotativo y una interfaz web mínima. La etapa 0 sigue abierta por
+las tareas del VPS.
+
+```bash
+cp .env.example .env                           # completá las contraseñas y JWT_SECRET
+podman compose up -d --build                   # base de datos, API, web y Mailpit
+podman compose exec api python -m app.dev.seed # usuarios de prueba
+```
+
+- Web: http://localhost:3000 (usá `localhost`, no `127.0.0.1`)
+- API (Swagger): http://127.0.0.1:8000/docs · Emails de desarrollo: http://127.0.0.1:8025
+- Guía con usuarios de prueba: [docs/probar-la-api.md](docs/probar-la-api.md)
+- Detalles: [backend/README.md](backend/README.md) y [frontend/README.md](frontend/README.md)
 
 ## Stack previsto
 
 - **Backend:** Python 3.12, FastAPI, SQLAlchemy 2 async, Alembic, Celery + Valkey, PostgreSQL 16 + pgvector.
 - **IA:** Ollama (embeddings y LLM locales), búsqueda híbrida (semántica + texto completo).
 - **Frontend:** Next.js (App Router), TypeScript, Tailwind CSS, shadcn/ui.
-- **Infraestructura:** Podman, Caddy, Cloudflare Tunnel, GitHub Actions.
+- **Infraestructura:** Podman (local), Docker en el VPS, Caddy, Cloudflare Tunnel, GitHub Actions.
 
 ## Documentación
 

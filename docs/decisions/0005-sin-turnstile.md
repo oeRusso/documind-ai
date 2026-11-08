@@ -40,3 +40,5 @@ Opción 2:
 ## Evidencia
 
 Decisión de Esteban del 2026-11-06. No hay métricas: no hubo tráfico real todavía.
+Implementación y tests: `backend/tests/integration/test_rate_limits_api.py` (límites) y
+`test_auth_api.py` (campo trampa).
