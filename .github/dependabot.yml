@@ -9,6 +9,15 @@ updates:
       backend-minor-and-patch:
         update-types: [minor, patch]
 
+  - package-ecosystem: npm
+    directory: /frontend
+    target-branch: development
+    schedule:
+      interval: weekly
+    groups:
+      frontend-minor-and-patch:
+        update-types: [minor, patch]
+
   - package-ecosystem: github-actions
     directory: /
     target-branch: development

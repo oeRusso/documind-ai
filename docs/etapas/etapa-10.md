@@ -32,6 +32,8 @@ Ver qué pasa dentro del sistema y mostrarlo en un dashboard.
 ## Notas
 
 - Con 8 GB de RAM, vigilar el consumo de Prometheus y Grafana: si hace falta, apagar Grafana fuera de las demos (riesgo "el VPS no alcanza para el LLM").
+- **Regla de servicios externos** (`CLAUDE.md`): Grafana detrás de Cloudflare Access requiere permiso de Esteban.
+  Alternativa sin Cloudflare: Grafana solo en `127.0.0.1` y acceso por túnel SSH.
 
 ## Referencias
 

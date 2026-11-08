@@ -11,7 +11,8 @@ API FastAPI (y, desde la etapa 5, workers Celery). Convenciones y reglas: ver `C
 
 ```bash
 cp .env.example .env              # en la raíz del repo; cambiá las contraseñas
-podman compose up -d --build      # PostgreSQL + migraciones + API
+podman compose up -d --build      # PostgreSQL + migraciones + API (+ web y Mailpit)
+podman compose exec api python -m app.dev.seed   # usuarios de prueba (solo en desarrollo)
 ```
 
 - API: http://localhost:8000
@@ -37,6 +38,15 @@ uv run pytest            # los tests de integración necesitan `podman compose u
 ```
 
 Hooks de git (una sola vez, desde la raíz): `backend/.venv/bin/pre-commit install`.
+
+## Contrato con el frontend
+
+Si cambia algún endpoint o schema, regenerá el OpenAPI y el cliente del frontend (el CI lo exige):
+
+```bash
+uv run python -m app.dev.openapi ../frontend/openapi.json
+cd ../frontend && pnpm gen:api
+```
 
 ## Migraciones
 

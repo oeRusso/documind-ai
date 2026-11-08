@@ -18,7 +18,7 @@ repos:
     hooks:
       - id: detect-secrets
         args: [--baseline, .secrets.baseline]
-        exclude: (^|/)uv\.lock$
+        exclude: (^|/)(uv\.lock|pnpm-lock\.yaml)$
 
   # Local hooks reuse the exact versions locked in backend/uv.lock.
   - repo: local

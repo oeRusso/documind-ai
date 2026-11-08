@@ -4,12 +4,18 @@ They are plain Python (no HTTP, no FastAPI): `domain` and `application` raise th
 `app/core/exceptions.py` translates them to HTTP responses with the uniform error format.
 """
 
+from typing import ClassVar
+
 
 class DomainError(Exception):
     """Base class. Subclasses override `code` and `message` (UI text, in Spanish)."""
 
     code: str = "domain_error"
     message: str = "La operación no es válida"
+    # Normally an error rolls the request's transaction back. A few security errors set this
+    # to True: what was written before raising (an audit event, a revoked session) is
+    # committed anyway, and then the error response is sent. See get_session.
+    keep_changes: ClassVar[bool] = False
 
     def __init__(self, message: str | None = None) -> None:
         if message is not None:
@@ -27,6 +33,34 @@ class ConflictError(DomainError):
     message = "El recurso ya existe"
 
 
+class UnauthorizedError(DomainError):
+    """Not authenticated (no session, or an invalid or expired one). HTTP 401."""
+
+    code = "unauthorized"
+    message = "Tenés que iniciar sesión"
+
+
+class ForbiddenError(DomainError):
+    """Authenticated, but the role inside *this* organization does not allow it. HTTP 403.
+
+    Resources of another organization are NOT this: they are NotFoundError (404).
+    """
+
+    code = "forbidden"
+    message = "No tenés permiso para hacer esto"
+
+
 class ValidationError(DomainError):
     code = "invalid_data"
     message = "Datos inválidos"
+
+
+class TooManyRequestsError(DomainError):
+    """Too many attempts in a short time. HTTP 429 with a Retry-After header."""
+
+    code = "rate_limited"
+    message = "Demasiados intentos. Esperá un momento y probá de nuevo"
+
+    def __init__(self, retry_after_seconds: int) -> None:
+        super().__init__()
+        self.retry_after_seconds = retry_after_seconds

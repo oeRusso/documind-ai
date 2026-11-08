@@ -40,6 +40,28 @@ class Settings(BaseSettings):
     # Origin of the web app (scheme://host[:port]). Cookie endpoints reject any other Origin (CSRF).
     app_origin: str = "http://localhost:3000"
 
+    # --- Attempt limits (stage 2, ADR 0005). Per IP until stage 3 trusts CF-Connecting-IP. ---
+    login_limit_per_ip_per_minute: int = Field(default=20, ge=1)
+    login_limit_per_email_per_15_minutes: int = Field(default=10, ge=1)
+    register_limit_per_ip_per_hour: int = Field(default=10, ge=1)
+    accept_invitation_limit_per_user_per_minute: int = Field(default=10, ge=1)
+
+    # --- Email (stage 2: invitations) ---
+    # Without SMTP_HOST nothing is sent (only logged): the invitation link is still shown to
+    # whoever invites. In development SMTP_HOST=mailpit (see compose.yaml).
+    smtp_host: str | None = None
+    smtp_port: int = Field(default=1025, ge=1, le=65535)
+    smtp_username: str | None = None
+    smtp_password: SecretStr | None = None
+    smtp_starttls: bool = False
+    mail_from: str = "DocuMind AI <no-reply@documind.local>"
+
+    @field_validator("smtp_host", "smtp_username", "smtp_password", mode="before")
+    @classmethod
+    def _empty_is_unset(cls, value: object) -> object:
+        # `SMTP_HOST=` (as in .env.example) means "not configured", not a host named "".
+        return None if isinstance(value, str) and value.strip() == "" else value
+
     @field_validator("app_origin")
     @classmethod
     def _validate_origin(cls, value: str) -> str:

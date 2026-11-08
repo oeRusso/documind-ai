@@ -1,6 +1,6 @@
 # 0003 — Organización activa por header y RLS con contexto por transacción
 
-- **Estado:** propuesta
+- **Estado:** aceptada
 - **Fecha:** 2026-11-06
 - **Etapa:** 02
 
@@ -42,6 +42,9 @@ Para el contexto de PostgreSQL:
   Se usa `set_config` y no `SET LOCAL` porque `SET` no acepta parámetros con asyncpg.
 - Las políticas leen las variables con `NULLIF(current_setting('app.current_org', true), '')::uuid`.
   En una conexión reutilizada, una variable ya usada vuelve como `''` (no como `NULL`), y `''::uuid` falla.
+- Las políticas usan dos funciones, `current_org_id()` y `current_user_id()`, para que se lean fácil.
+- Crear una organización cambia el contexto: el caso de uso llama a `TenantContext.set_organization`
+  con el id nuevo antes de insertarla (puerto en `app/shared/tenancy.py`).
 - Todas las tablas con RLS usan `ENABLE` y `FORCE ROW LEVEL SECURITY`. La app usa el rol `app`
   (sin `BYPASSRLS` y no dueño de las tablas).
 
@@ -63,10 +66,23 @@ usuarios a través de las membresías de la organización activa.
 
 - Una consulta que olvida el `WHERE organization_id` devuelve solo filas de la organización activa
   (lo prueba `tests/security/`).
+- **Qué protege y qué no.** RLS frena consultas que olvidan el filtro: confía en `app.current_org`.
+  Fijar esa variable es trabajo de `CurrentMemberDep`, que antes verifica la membresía (capa 1).
+  Si esa verificación se rompiera, RLS no lo notaría. Por eso las dos capas tienen tests propios:
+  `test_tenant_isolation.py` cubre las dos, y se comprobó que sus tests de fuga fallan con RLS apagado.
+- **Única excepción a "membresía antes del contexto": aceptar una invitación** (`AcceptInvitation`).
+  Quien acepta todavía no es miembro, así que el caso de uso fija `app.current_org` con la organización
+  del link y busca el hash del token *dentro* de ella. Lo que autoriza es el token (256 bits): con
+  organización o token equivocados no encuentra nada, responde 404 y la transacción se deshace.
 - Sin contexto fijado, las tablas con RLS devuelven 0 filas: un error de programación falla "cerrado".
 - `FORCE` también afecta a `migrator` (dueño de las tablas): una migración que transforme datos vería 0 filas.
   Para eso hay que fijar el contexto o usar el superusuario. `TRUNCATE` no está sujeto a RLS, y por eso
   la limpieza de los tests usa `migrator`.
+- El slug duplicado se detecta por la restricción `UNIQUE` (que ve todas las filas), no con un SELECT
+  previo (que RLS limitaría a la organización activa).
+- Un INSERT con `RETURNING` exige que la fila nueva también pase la política de SELECT. Por eso los
+  repositorios mandan `created_at`/`updated_at` desde la app y no piden valores de vuelta a la base
+  (en `audit_logs`, un evento sin organización no es legible).
 - Los workers de Celery (etapa 5) van a fijar el mismo contexto con el `organization_id` que reciben en la tarea.
 - Si `users` llegara a guardar datos sensibles por organización, habría que revisar esta decisión.
 

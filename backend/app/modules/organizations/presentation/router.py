@@ -1,49 +1,83 @@
-"""HTTP endpoints. They translate HTTP <-> use cases; no business logic here.
+"""HTTP endpoints for organizations. They translate HTTP <-> use cases; no business logic here.
 
-Stage 1: no authentication yet (local development only). Stage 2 adds users and memberships.
+These endpoints identify the organization by its id in the path, so they only need the user
+(CurrentUserDep). Endpoints *inside* an organization (members, documents...) use
+CurrentMemberDep and the X-Organization-Id header instead.
 """
 
+from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Depends, status
 
+from app.core.dependencies import ClientIpDep
 from app.core.exceptions import ErrorResponse
+from app.core.pagination import Page
+from app.modules.auth.presentation.dependencies import CurrentUserDep
 from app.modules.organizations.application.create_organization import (
     CreateOrganization,
     CreateOrganizationCommand,
 )
-from app.modules.organizations.application.get_organization import GetOrganization
-from app.modules.organizations.presentation.dependencies import OrganizationRepositoryDep
+from app.modules.organizations.application.get_organization import (
+    GetOrganization,
+    ListMyOrganizations,
+    OrganizationWithRole,
+)
+from app.modules.organizations.domain.roles import Role
+from app.modules.organizations.presentation.dependencies import (
+    provide_create_organization,
+    provide_get_organization,
+    provide_list_my_organizations,
+)
 from app.modules.organizations.presentation.schemas import OrganizationCreate, OrganizationRead
 
 router = APIRouter(prefix="/organizations", tags=["organizations"])
+
+_UNAUTHORIZED: dict[int | str, dict[str, Any]] = {
+    status.HTTP_401_UNAUTHORIZED: {"model": ErrorResponse}
+}
+
+
+@router.get("", responses=_UNAUTHORIZED)
+async def list_my_organizations(
+    user: CurrentUserDep,
+    use_case: Annotated[ListMyOrganizations, Depends(provide_list_my_organizations)],
+) -> Page[OrganizationRead]:
+    """Las organizaciones a las que pertenecés, con tu rol (selector de organización)."""
+    items = await use_case.execute(user.id)
+    return Page(items=[OrganizationRead.build(item) for item in items])
 
 
 @router.post(
     "",
     status_code=status.HTTP_201_CREATED,
     responses={
+        **_UNAUTHORIZED,
         status.HTTP_409_CONFLICT: {"model": ErrorResponse},
         status.HTTP_422_UNPROCESSABLE_CONTENT: {"model": ErrorResponse},
     },
 )
 async def create_organization(
     body: OrganizationCreate,
-    repository: OrganizationRepositoryDep,
+    user: CurrentUserDep,
+    ip: ClientIpDep,
+    use_case: Annotated[CreateOrganization, Depends(provide_create_organization)],
 ) -> OrganizationRead:
-    organization = await CreateOrganization(repository).execute(
-        CreateOrganizationCommand(name=body.name, slug=body.slug)
+    """Crea una organización; quien la crea queda como owner."""
+    organization = await use_case.execute(
+        CreateOrganizationCommand(name=body.name, slug=body.slug, owner_id=user.id, ip=ip)
     )
-    return OrganizationRead.model_validate(organization)
+    return OrganizationRead.build(OrganizationWithRole(organization, Role.OWNER))
 
 
 @router.get(
     "/{organization_id}",
-    responses={status.HTTP_404_NOT_FOUND: {"model": ErrorResponse}},
+    responses={**_UNAUTHORIZED, status.HTTP_404_NOT_FOUND: {"model": ErrorResponse}},
 )
 async def get_organization(
     organization_id: UUID,
-    repository: OrganizationRepositoryDep,
+    user: CurrentUserDep,
+    use_case: Annotated[GetOrganization, Depends(provide_get_organization)],
 ) -> OrganizationRead:
-    organization = await GetOrganization(repository).execute(organization_id)
-    return OrganizationRead.model_validate(organization)
+    """404 si no existe **o** si no sos miembro: desde afuera no se distinguen."""
+    return OrganizationRead.build(await use_case.execute(organization_id, user.id))

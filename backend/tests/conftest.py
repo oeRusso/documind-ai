@@ -15,6 +15,7 @@ from app.main import create_app
 
 # Port 1 on localhost: connections are refused immediately.
 UNREACHABLE_DB_URL = "postgresql+asyncpg://nobody:nothing@127.0.0.1:1/nowhere"
+APP_ORIGIN = "http://localhost:3000"
 TEST_JWT_SECRET = (
     "test-only-jwt-secret-not-used-anywhere-else-0123456789"  # pragma: allowlist secret
 )
@@ -28,6 +29,7 @@ def offline_settings() -> Settings:
         database_url=UNREACHABLE_DB_URL,
         database_migration_url=UNREACHABLE_DB_URL,
         jwt_secret=TEST_JWT_SECRET,
+        app_origin=APP_ORIGIN,
     )
 
 

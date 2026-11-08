@@ -14,6 +14,11 @@ from app.core.health import router as health_router
 from app.core.logging import configure_logging
 from app.core.request_context import request_context_middleware
 from app.infrastructure.database.session import create_engine, create_session_factory
+from app.infrastructure.mail.smtp import build_mailer
+from app.infrastructure.rate_limit import InMemoryRateLimiter
+from app.modules.auth.presentation.router import router as auth_router
+from app.modules.organizations.presentation.invitations_router import router as invitations_router
+from app.modules.organizations.presentation.members_router import router as members_router
 from app.modules.organizations.presentation.router import router as organizations_router
 
 API_V1_PREFIX = "/api/v1"
@@ -34,12 +39,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.engine = engine
     app.state.session_factory = create_session_factory(engine)
+    app.state.mailer = build_mailer(settings)
+    app.state.rate_limiter = InMemoryRateLimiter()
 
     app.middleware("http")(request_context_middleware)
     register_exception_handlers(app)
 
     api_v1 = APIRouter(prefix=API_V1_PREFIX)
+    api_v1.include_router(auth_router)
     api_v1.include_router(organizations_router)
+    api_v1.include_router(members_router)
+    api_v1.include_router(invitations_router)
 
     app.include_router(health_router)
     app.include_router(api_v1)

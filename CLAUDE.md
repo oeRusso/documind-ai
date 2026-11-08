@@ -9,6 +9,7 @@ fragmento), usando solo IA local. Proyecto de portfolio y de aprendizaje
 - `docs/plan-parte-1-arquitectura.md`: qué se construye y cómo está organizado.
 - `docs/plan-parte-2-etapas.md`: en qué orden.
 - `docs/etapas/etapa-NN.md`: alcance y criterios de terminado de cada etapa.
+- `docs/arquitectura-del-codigo.md`: qué hace cada archivo hoy y cómo se conectan.
 - `docs/decisions/`: ADRs. Si el código contradice una ADR, gana la ADR o se escribe una nueva.
 
 Si algo de este archivo choca con los planes, avisá antes de elegir.
@@ -32,18 +33,25 @@ Si algo de este archivo choca con los planes, avisá antes de elegir.
   y avisar sus límites; si hay duda, preguntar en vez de usarlo.
 - **IA 100 % local con Ollama**: ninguna API comercial (OpenAI, Anthropic, etc.), ni en código ni en tests.
 - Nada se instala antes de su etapa (columna "Etapa" del stack en la Parte 1, §3).
+- **No usar servicios de terceros, SaaS ni APIs externas sin preguntar antes.** Todo corre en el VPS.
+  **No crear recursos en Cloudflare más allá de DNS** (el túnel lo crea Esteban, ver "Despliegue").
+  Ya aprobados: GitHub (repo, Actions, GHCR, Dependabot). Si un plan pide otro servicio externo
+  (Turnstile, Access, UptimeRobot, R2, reglas de Cloudflare...), frenar y preguntar.
 
 ## Stack
 Backend: Python 3.12 + uv, FastAPI, Pydantic v2 + pydantic-settings, SQLAlchemy 2 async (asyncpg),
 Alembic, Celery + Valkey, PostgreSQL 16 + pgvector, structlog, Ollama.
 Frontend: Next.js (App Router) + TypeScript + Tailwind + shadcn/ui + TanStack Query, cliente generado del OpenAPI. pnpm.
-Infra: Podman + podman-compose, Caddy (interno), Cloudflare Tunnel + Access, GitHub Actions + GHCR.
+Infra: Podman + podman-compose en la PC, Docker + Compose v2 en el VPS, Caddy (interno), Cloudflare Tunnel,
+GitHub Actions. (Cloudflare Access y GHCR quedan sujetos a la regla de servicios externos.)
 
 ## Comandos
 Existen a partir de la etapa 1 (backend) y la etapa 2 (frontend).
 - Backend (en `backend/`): `uv run pytest`, `uv run ruff check --fix`, `uv run ruff format`, `uv run mypy app`
 - Frontend (en `frontend/`): `pnpm lint`, `pnpm typecheck`, `pnpm test`
-- Entorno: `podman compose up -d`
+- Entorno: `podman compose up -d --build` (db, API, web en http://localhost:3000, Mailpit) y
+  `podman compose exec api python -m app.dev.seed` (usuarios de prueba, ver `docs/probar-la-api.md`).
+- Contrato API → frontend: `uv run python -m app.dev.openapi ../frontend/openapi.json` y `pnpm gen:api`.
 
 ## Reglas que nunca se rompen
 - Toda tabla de negocio tiene `organization_id` (también las hijas) y toda consulta filtra por él.
@@ -110,7 +118,9 @@ Ojo con los nombres repetidos:
 2. Leer este archivo y `docs/etapas/etapa-NN.md`. Proponer un plan en pasos de no más de 1 hora,
    con archivos a crear o modificar y tests de cada paso. **Sin código hasta que se apruebe.** Señalar dudas y riesgos.
 3. Implementar en pasos chicos; tests y linters en verde.
-4. Al cerrar: actualizar README, escribir la ADR si hubo decisión (`docs/decisions/NNNN-titulo.md`,
+   Al terminar cada bloque de pasos: levantar el servicio (`podman compose up -d --build`) para que
+   Esteban lo verifique, decirle qué probar, y commitear y pushear a `development`.
+4. Al cerrar: actualizar README y `docs/arquitectura-del-codigo.md` (mapa de archivos), escribir la ADR si hubo decisión (`docs/decisions/NNNN-titulo.md`,
    desde `0000-plantilla.md`), marcar la etapa como terminada en su archivo y en la sección siguiente.
 5. PR `development` → `main`.
 
@@ -122,13 +132,31 @@ Cada sesión de Claude Code arranca sin memoria de la anterior: el contexto vive
   y, en el archivo de la etapa, tildar tareas y dejar una sección "Resultado / Pendientes" con lo que
   falta y las decisiones tomadas. Commitear y pushear a `development`.
 
+## Despliegue (VPS compartido)
+Guía obligatoria, fuera del repo: `/run/media/estebanrusso/3ADAD252DAD20A51/PROYECTOS-PERSONALES/PORTAFOLIO2.0/docs/VPS-COMPARTIDO.md`.
+Leerla antes de cualquier tarea de deploy (etapas 0, 3 y 11). Resumen:
+- El VPS es compartido con otros proyectos (portfolio en producción). Se usa Docker + Compose v2, no Podman:
+  quitar los `:Z` de los volúmenes en el compose de producción.
+- Dirección: `https://documind.esteban-russo.com`. Túnel `documind`, ruta a `http://caddy:80`.
+  Los planes dicen `app.tudominio`: la dirección real es esa.
+- Ningún puerto publicado a internet; solo `127.0.0.1:<puerto>` si hace falta, sin chocar con los usados
+  (el `3306` es del portfolio). El tráfico entra por un contenedor `cloudflared` del propio compose.
+- HTTPS lo termina Cloudflare: confiar en `X-Forwarded-Proto` del proxy; la IP real viene en `CF-Connecting-IP`.
+- Secretos: los carga Esteban en el `.env` del VPS (600). El agente genera contraseñas aleatorias allá sin mostrarlas.
+- `sudo` lo corre Esteban: pasarle el comando exacto. Se despliega `main`; el agente no mergea.
+- RAM compartida (8 GB): `mem_limit` en base, workers y Ollama; LLM de 1–3B cuantizado y embeddings livianos.
+  Mirar `free -h` y `docker stats --no-stream` antes de levantar algo pesado.
+- No poner la IP del VPS en el repo (es público y el túnel la oculta).
+
 ## Entorno local
-- uv en `~/.local/bin` (instala Python 3.12 por su cuenta). Node 24 disponible; pnpm todavía no instalado.
+- uv y pnpm 10 en `~/.local/bin` (pnpm instalado con `npm install -g --prefix ~/.local`; no hay corepack). Node 24.
 - `podman compose` usa el socket de Podman del usuario (`systemctl --user enable --now podman.socket`).
 - `.env` en la raíz (permisos 600, ignorado por git) con contraseñas aleatorias para dev.
 
 ## Etapa actual
 - **Etapa 0** (en curso): falta lo del VPS y la prueba de humo de Ollama. Ver `docs/etapas/etapa-00.md`.
 - **Etapa 1**: terminada (mergeada a `main`, que quedó protegida).
-- **Etapa 2** (en curso): pasos 1 y 2 de 27 hechos (ADRs 0003/0004, configuración). Sigue el paso 3. Ver `docs/etapas/etapa-02.md`.
+- **Etapa 2**: terminada (2026-11-08). PR `development` → `main` pendiente de que Esteban lo revise y mergee.
+  Ver "Resultado" en `docs/etapas/etapa-02.md`.
+- **Siguiente: etapa 3** (en cuanto se mergee la 2). Leer antes "Despliegue" acá y las notas de `etapa-03.md`.
 Regla general: la etapa actual es la de **número más bajo** que no está marcada como terminada en `docs/etapas/`.

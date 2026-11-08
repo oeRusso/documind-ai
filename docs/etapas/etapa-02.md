@@ -3,7 +3,7 @@
 - **Fase:** A — Fundamentos
 - **Duración estimada:** 1,5 semanas
 - **Rama:** `development` (PR a `main` al cerrar la etapa)
-- **Estado:** en curso
+- **Estado:** terminada (2026-11-08). PR `development` → `main` pendiente de revisión.
 
 ## Objetivo
 
@@ -11,18 +11,18 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 
 ## Tareas
 
-- [ ] Tablas `users`, `memberships`, `refresh_tokens`, `invitations` y `audit_logs` (`organizations` ya existe desde la etapa 1).
-- [ ] Roles owner, admin, member y viewer, verificados en cada caso de uso.
-- [ ] Contraseñas con Argon2id (argon2-cffi).
-- [ ] Access token JWT de 15 minutos; refresh token rotativo, revocable y guardado en cookie HttpOnly, Secure, SameSite=Lax. Reusar un refresh token ya rotado invalida toda la familia.
-- [ ] Protección CSRF en los endpoints que usan cookies.
-- [ ] Dependencia de FastAPI que resuelve el usuario y su membresía, y entrega el `organization_id` a cada caso de uso. Los repositorios lo exigen como parámetro obligatorio.
-- [ ] Row Level Security en PostgreSQL: la app fija `app.current_org` por transacción (`SET LOCAL`) y usa un rol de base de datos que no puede saltarse RLS.
-- [ ] Invitaciones por link.
-- [ ] Rate limit en login y registro; Cloudflare Turnstile en el registro.
-- [ ] `audit_logs` con las acciones de seguridad (solo inserción).
-- [ ] Mailpit en `compose.yaml` para ver los emails de desarrollo (invitaciones).
-- [ ] Frontend mínimo en Next.js: registro, login, selector de organización y gestión de miembros, con un cliente TypeScript generado desde el OpenAPI y TanStack Query.
+- [x] Tablas `users`, `memberships`, `refresh_tokens`, `invitations` y `audit_logs` (`organizations` ya existe desde la etapa 1).
+- [x] Roles owner, admin, member y viewer, verificados en cada caso de uso.
+- [x] Contraseñas con Argon2id (argon2-cffi).
+- [x] Access token JWT de 15 minutos; refresh token rotativo, revocable y guardado en cookie HttpOnly, Secure, SameSite=Lax. Reusar un refresh token ya rotado invalida toda la familia.
+- [x] Protección CSRF en los endpoints que usan cookies.
+- [x] Dependencia de FastAPI que resuelve el usuario y su membresía, y entrega el `organization_id` a cada caso de uso. Los repositorios lo exigen como parámetro obligatorio.
+- [x] Row Level Security en PostgreSQL: la app fija `app.current_org` por transacción (`SET LOCAL`) y usa un rol de base de datos que no puede saltarse RLS.
+- [x] Invitaciones por link.
+- [x] Rate limit en login y registro; campo trampa (honeypot) en el registro. *(Sin Turnstile: ADR 0005.)*
+- [x] `audit_logs` con las acciones de seguridad (solo inserción).
+- [x] Mailpit en `compose.yaml` para ver los emails de desarrollo (invitaciones).
+- [x] Frontend mínimo en Next.js: registro, login, selector de organización y gestión de miembros, con un cliente TypeScript generado desde el OpenAPI y TanStack Query.
 
 ## Fuera de alcance
 
@@ -34,9 +34,9 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 
 ## Criterios de terminado
 
-- [ ] Un test demuestra que un usuario de la organización A no lee datos de B, incluso con el filtro del backend deshabilitado (lo frena RLS).
-- [ ] Reusar un refresh token ya rotado invalida la sesión.
-- [ ] Un viewer recibe 403 al intentar acciones de admin.
+- [x] Un test demuestra que un usuario de la organización A no lee datos de B, incluso con el filtro del backend deshabilitado (lo frena RLS). *(`tests/security/test_tenant_isolation.py`)*
+- [x] Reusar un refresh token ya rotado invalida la sesión. *(`tests/integration/test_auth_api.py::test_reusing_a_rotated_refresh_token_ends_the_session`)*
+- [x] Un viewer recibe 403 al intentar acciones de admin.
 
 ## Notas
 
@@ -60,39 +60,132 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 - Emails de invitación con `BackgroundTasks` hasta la etapa 5 (Celery); el link también se devuelve al admin,
   así que si el email falla no se pierde nada.
 - Rate limit en memoria detrás de una interfaz `RateLimiter` (se pasa a Valkey en la etapa 5).
-- Turnstile solo con las claves de prueba de Cloudflare en esta etapa.
+- Sin Turnstile (decisión de Esteban, ADR 0005): campo trampa en el registro + rate limit.
 - Las piezas críticas (RLS, rotación de tokens, permisos) las escribe Claude y la persona las revisa.
 
 ### Pasos
 
 - [x] 1. ADR 0003 (multi-tenancy y RLS) y 0004 (sesiones y tokens).
 - [x] 2. Configuración nueva (`JWT_SECRET`, `ACCESS_TOKEN_MINUTES`, `REFRESH_TOKEN_DAYS`, `APP_ORIGIN`).
-  `SMTP_*`/`MAIL_FROM` entran en el paso 19 y `TURNSTILE_*` en el 21, junto con el código que las usa.
-- [ ] 3. Migración 0002: tablas de identidad (sin RLS) y modelos.
-- [ ] 4. RLS I: contexto por transacción + políticas de `organizations` y `memberships`; limpieza de tests con `migrator`.
-- [ ] 5. RLS II: `invitations` y `audit_logs` (solo inserción).
-- [ ] 6. Módulo `audit`: `RecordAuditEvent`.
-- [ ] 7. Módulo `users`: entidad, política de contraseña, Argon2id, repositorio.
-- [ ] 8. Tokens: JWT de acceso (PyJWT) y refresh token opaco con hash.
-- [ ] 9. Roles y matriz de permisos; repositorio de memberships.
-- [ ] 10. Casos de uso `Register` y `Login`.
-- [ ] 11. `RefreshSession` (rotación y detección de reuso) y `Logout`.
-- [ ] 12. Router de auth I: register, login, me; errores 401 y 403.
-- [ ] 13. Router de auth II: refresh y logout con cookie y CSRF.
-- [ ] 14. Dependencia `CurrentMember` y endpoints de `organizations` rehechos.
-- [ ] 15. Test de aislamiento con el filtro del backend deshabilitado.
-- [ ] 16. Miembros: listar, cambiar rol, quitar.
-- [ ] 17. Invitaciones: crear, listar, revocar.
-- [ ] 18. Aceptar invitación.
-- [ ] 19. Mailpit y `Mailer`.
-- [ ] 20. Rate limit.
-- [ ] 21. Turnstile en el registro.
-- [ ] 22. Frontend: Next.js, Vitest, rewrites y CI.
-- [ ] 23. Frontend: cliente generado del OpenAPI con refresh compartido.
-- [ ] 24. Frontend: shadcn/ui, sesión, login y registro.
-- [ ] 25. Frontend: selector de organización.
-- [ ] 26. Frontend: miembros, invitaciones y aceptar invitación.
-- [ ] 27. Cierre: README, ADRs aceptadas, Resultado, PR.
+  `SMTP_*`/`MAIL_FROM` entran en el paso 19, junto con el código que las usa. `TURNSTILE_*` no entra (ADR 0005).
+- [x] 3. Migración 0002: tablas de identidad (sin RLS) y modelos.
+- [x] 4. RLS I: contexto por transacción + políticas de `organizations` y `memberships`; limpieza de tests con `migrator`.
+- [x] 5. RLS II: `invitations` y `audit_logs` (solo inserción). *(Hecho junto con el 4: migración 0003.)*
+- [x] 6. Módulo `audit`: `RecordAuditEvent`.
+- [x] 7. Módulo `users`: entidad, política de contraseña, Argon2id, repositorio.
+- [x] 8. Tokens: JWT de acceso (PyJWT) y refresh token opaco con hash.
+- [x] 9. Roles y matriz de permisos; repositorio de memberships.
+- [x] 10. Casos de uso `Register` y `Login`.
+- [x] 11. `RefreshSession` (rotación y detección de reuso) y `Logout`.
+- [x] 12. Router de auth I: register, login, me; errores 401 y 403.
+- [x] 13. Router de auth II: refresh y logout con cookie y CSRF.
+- [x] 14. Dependencia `CurrentMember` y endpoints de `organizations` rehechos.
+  (Los endpoints sin autenticación de la etapa 1 se quitaron en el paso 4: con RLS no pueden funcionar.)
+- [x] 15. Test de aislamiento con el filtro del backend deshabilitado.
+- [x] 16. Miembros: listar, cambiar rol, quitar.
+- [x] 17. Invitaciones: crear, listar, revocar.
+- [x] 18. Aceptar invitación.
+- [x] 19. Mailpit y `Mailer`.
+- [x] 20. Rate limit.
+- [x] 21. Campo trampa (honeypot) en el registro (en lugar de Turnstile, ADR 0005).
+- [x] 22. Frontend: Next.js, Vitest, rewrites y CI.
+- [x] 23. Frontend: cliente generado del OpenAPI con refresh compartido.
+- [x] 24. Frontend: shadcn/ui, sesión, login y registro.
+- [x] 25. Frontend: selector de organización.
+- [x] 26. Frontend: miembros, invitaciones y aceptar invitación.
+- [x] 27. Cierre: README, ADRs aceptadas, Resultado, PR.
+
+## Avance
+
+**2026-11-06: pasos 1 a 11.** Backend sin HTTP todavía: todo probado con tests unitarios y de integración.
+
+- Migraciones: `0002` (tablas de identidad) y `0003` (RLS). Funciones SQL `current_org_id()` y `current_user_id()`.
+- Puerto `TenantContext` (`app/shared/tenancy.py`) con implementación `SqlTenantContext`.
+  Crear una organización fija su contexto y crea la membresía owner.
+- Los endpoints sin login de la etapa 1 se quitaron (vuelven en el paso 14).
+- `DomainError.keep_changes`: los errores de seguridad que deben dejar rastro (login fallido, reuso de
+  refresh token) hacen commit antes de responder. Lo aplica `get_session`.
+- Tests: `tests/fakes.py` (fakes compartidos), `tests/integration/factories.py`, fixture `app_session`
+  (rol `app`, rollback al final). Las contraseñas falsas de los tests van en constantes con
+  `# pragma: allowlist secret`, si no detect-secrets frena el commit.
+- Sin Turnstile (ADR 0005): campo trampa en el registro (paso 21).
+
+**2026-11-06: pasos 12 a 15.** API HTTP de auth y organizaciones.
+
+- Endpoints: `POST /auth/register|login|refresh|logout`, `GET /auth/me`, `GET|POST /organizations`,
+  `GET /organizations/{id}`. Dependencias compartidas en `app/core/dependencies.py`
+  (`SessionDep`, `SettingsDep`, `ClientIpDep`); `CurrentUserDep` y `CurrentMemberDep` en
+  `app/modules/auth/presentation/dependencies.py`.
+- Los tests HTTP usan `base_url="https://test"` (cookies `Secure`) y `tests/integration/api_helpers.py`.
+- Criterios 1 y 2 cumplidos. El test de aislamiento se verificó a la inversa: con RLS apagado, falla.
+
+**2026-11-08: paso 16.** Miembros de la organización activa (header `X-Organization-Id`).
+
+- `GET /members`, `PATCH /members/{membership_id}` (cambiar rol), `DELETE /members/{membership_id}`.
+- Orden de los chequeos: permiso del rol (403) → el miembro existe en esta organización (404) →
+  rango (nadie maneja a alguien de su rango o mayor, salvo el owner: 403) → queda al menos un owner (409).
+- Antes de cambiar o quitar, `count_owners_for_update` bloquea las filas de los owners: dos owners que
+  se degradan a la vez no pueden dejar la organización sin owner. Probado también a la inversa.
+- El email de cada miembro sale del módulo `users` por su capa `application` (`GetUsersByIds`).
+- Sin cursor en `/members` por ahora (`next_cursor` siempre `null`): una organización tiene pocos miembros.
+- Hasta que existan las invitaciones (paso 17), los tests agregan miembros insertando la membresía.
+- Criterio 3 cumplido.
+
+**2026-11-08: pasos 17 a 19.** Invitaciones y email.
+
+- `POST|GET /invitations`, `DELETE /invitations/{id}` (revocar), `POST /invitations/accept`.
+  `POST /auth/register` acepta `invitation` en lugar de `organization_name`/`organization_slug`:
+  la persona invitada sin cuenta entra a la organización sin crear una propia.
+- El link lleva organización y token después de `#` (no llega al servidor ni a los logs). Se guarda solo
+  el hash. Vence a los 7 días; reinvitar un email con invitación vencida la reemplaza.
+- Para aceptar, el email de la cuenta tiene que ser el invitado (403 `invitation_email_mismatch`).
+  Aceptar es la única excepción a "membresía antes del contexto" (anotado en la ADR 0003).
+- Email: puertos `Mailer` y `OutgoingMail` (`app/shared/mail.py`), `SmtpMailer` con smtplib en un hilo,
+  envío con `BackgroundTasks` después de responder. Sin `SMTP_HOST` no se manda nada.
+  Mailpit en `compose.yaml` (UI en `127.0.0.1:8025`).
+- **Producción:** no hay servidor SMTP. Usar uno sería un servicio externo, así que hay que preguntar
+  antes. Mientras tanto, quien invita copia el link desde la respuesta o la UI.
+- Datos de prueba: `podman compose exec api python -m app.dev.seed`. Guía: `docs/probar-la-api.md`.
+
+**2026-11-08: pasos 20 a 27.** Abuso, frontend y cierre.
+
+- Límite de intentos (`RateLimiter` en memoria, ventana deslizante): login por IP y por email (antes de
+  correr Argon2), registro por IP, aceptar invitación por usuario. Pasado el límite: 429 `rate_limited`
+  con `Retry-After`. Configurable por variables de entorno.
+- Campo trampa `website` en el registro (ADR 0005).
+- Frontend en `frontend/`: Next.js 16, TypeScript, Tailwind, componentes de shadcn/ui, TanStack Query,
+  Vitest. Cliente tipado generado del OpenAPI (`backend/app/dev/openapi.py` → `frontend/openapi.json` →
+  `pnpm gen:api`); el CI falla si alguna de las dos copias quedó vieja.
+- Sesión en el navegador: access token solo en memoria; un único refresh compartido por pestaña
+  (`SessionStore`) y reintento del pedido tras un 401 (`createAuthFetch`).
+- Contenedor `web` en `compose.yaml` (http://localhost:3000), workflow `frontend.yml`, Dependabot para npm.
+
+## Resultado
+
+**Criterios de terminado: los tres cumplidos.**
+
+1. A no ve datos de B aunque el backend olvide filtrar: `backend/tests/security/test_tenant_isolation.py`
+   (verificado a la inversa: con RLS apagado, falla).
+2. Reusar un refresh token rotado invalida la sesión: `backend/tests/integration/test_auth_api.py`.
+3. Un viewer recibe 403 en acciones de admin: `test_member_use_cases.py`, `test_members_api.py` e
+   `test_invitations_api.py`; en la UI ni siquiera se le ofrecen.
+
+**Números:** 306 tests de backend (unitarios, integración contra PostgreSQL con RLS y seguridad) y 21 de
+frontend. Recorrido completo probado en Chrome headless (login, recarga con renovación de sesión,
+invitación, registro desde el link, viewer sin controles de admin).
+
+**Decisiones:** ADR 0003 (RLS en dos capas), 0004 (sesiones y tokens) y 0005 (sin Turnstile), aceptadas.
+
+**Pendientes para etapas siguientes:**
+
+- **Etapa 3:** confiar en `CF-Connecting-IP` detrás del proxy (si no, el rate limit es global y el audit
+  log guarda la IP del proxy). Anotado en `etapa-03.md`.
+- **Email en producción:** no hay SMTP; sumarlo es un servicio externo y hay que preguntar. Mientras
+  tanto, quien invita copia el link.
+- El rate limit vive en memoria del proceso: si la API corre con varios procesos, pasarlo a Valkey.
+- `/members` e `/invitations` no paginan todavía (`next_cursor` siempre `null`).
+- Las sesiones de alguien quitado de una organización siguen vivas (pierde el acceso a esa organización
+  en el siguiente pedido, por el chequeo de membresía).
 
 ## Referencias
 

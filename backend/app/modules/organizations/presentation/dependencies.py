@@ -1,20 +1,89 @@
-"""Wiring: which concrete implementation each use case receives (dependency injection)."""
+"""Wiring: which concrete implementation each organizations use case receives."""
 
-from typing import Annotated
+from app.core.dependencies import SessionDep, SettingsDep
+from app.core.mail import OutgoingMailDep
+from app.infrastructure.database.tenant import SqlTenantContext
+from app.modules.audit.application.record_audit_event import RecordAuditEvent
+from app.modules.audit.infrastructure.sql_repository import SqlAuditLogRepository
+from app.modules.organizations.application.create_organization import CreateOrganization
+from app.modules.organizations.application.get_organization import (
+    GetOrganization,
+    ListMyOrganizations,
+)
+from app.modules.organizations.application.invitations import (
+    CreateInvitation,
+    ListInvitations,
+    RevokeInvitation,
+)
+from app.modules.organizations.application.manage_members import (
+    ChangeMemberRole,
+    ListMembers,
+    RemoveMember,
+)
+from app.modules.organizations.infrastructure.sql_repository import (
+    SqlInvitationRepository,
+    SqlMembershipRepository,
+    SqlOrganizationRepository,
+)
+from app.modules.users.application.find_user_by_email import FindUserByEmail
+from app.modules.users.application.get_users_by_ids import GetUsersByIds
+from app.modules.users.infrastructure.sql_repository import SqlUserRepository
 
-from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.database.session import get_session
-from app.modules.organizations.domain.repository import OrganizationRepository
-from app.modules.organizations.infrastructure.sql_repository import SqlOrganizationRepository
-
-# scope="function": commit before the response is sent (see get_session).
-SessionDep = Annotated[AsyncSession, Depends(get_session, scope="function")]
-
-
-def get_organization_repository(session: SessionDep) -> OrganizationRepository:
-    return SqlOrganizationRepository(session)
+def provide_create_organization(session: SessionDep) -> CreateOrganization:
+    return CreateOrganization(
+        SqlOrganizationRepository(session),
+        SqlMembershipRepository(session),
+        SqlTenantContext(session),
+        RecordAuditEvent(SqlAuditLogRepository(session)),
+    )
 
 
-OrganizationRepositoryDep = Annotated[OrganizationRepository, Depends(get_organization_repository)]
+def provide_get_organization(session: SessionDep) -> GetOrganization:
+    return GetOrganization(SqlOrganizationRepository(session), SqlMembershipRepository(session))
+
+
+def provide_list_my_organizations(session: SessionDep) -> ListMyOrganizations:
+    return ListMyOrganizations(SqlOrganizationRepository(session), SqlMembershipRepository(session))
+
+
+def provide_list_members(session: SessionDep) -> ListMembers:
+    return ListMembers(SqlMembershipRepository(session), GetUsersByIds(SqlUserRepository(session)))
+
+
+def provide_change_member_role(session: SessionDep) -> ChangeMemberRole:
+    return ChangeMemberRole(
+        SqlMembershipRepository(session),
+        RecordAuditEvent(SqlAuditLogRepository(session)),
+        GetUsersByIds(SqlUserRepository(session)),
+    )
+
+
+def provide_remove_member(session: SessionDep) -> RemoveMember:
+    return RemoveMember(
+        SqlMembershipRepository(session), RecordAuditEvent(SqlAuditLogRepository(session))
+    )
+
+
+def provide_create_invitation(
+    session: SessionDep, settings: SettingsDep, outgoing_mail: OutgoingMailDep
+) -> CreateInvitation:
+    return CreateInvitation(
+        SqlInvitationRepository(session),
+        SqlMembershipRepository(session),
+        SqlOrganizationRepository(session),
+        FindUserByEmail(SqlUserRepository(session)),
+        RecordAuditEvent(SqlAuditLogRepository(session)),
+        outgoing_mail,
+        app_origin=settings.app_origin,
+    )
+
+
+def provide_list_invitations(session: SessionDep) -> ListInvitations:
+    return ListInvitations(SqlInvitationRepository(session))
+
+
+def provide_revoke_invitation(session: SessionDep) -> RevokeInvitation:
+    return RevokeInvitation(
+        SqlInvitationRepository(session), RecordAuditEvent(SqlAuditLogRepository(session))
+    )

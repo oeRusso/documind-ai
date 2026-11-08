@@ -13,7 +13,15 @@ from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.request_context import REQUEST_ID_HEADER, current_request_id
-from app.shared.errors import ConflictError, DomainError, NotFoundError, ValidationError
+from app.shared.errors import (
+    ConflictError,
+    DomainError,
+    ForbiddenError,
+    NotFoundError,
+    TooManyRequestsError,
+    UnauthorizedError,
+    ValidationError,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -31,9 +39,12 @@ class ErrorResponse(BaseModel):
 
 # Most specific class first: the first isinstance() match wins.
 _DOMAIN_STATUS: list[tuple[type[DomainError], int]] = [
+    (UnauthorizedError, status.HTTP_401_UNAUTHORIZED),
+    (ForbiddenError, status.HTTP_403_FORBIDDEN),
     (NotFoundError, status.HTTP_404_NOT_FOUND),
     (ConflictError, status.HTTP_409_CONFLICT),
     (ValidationError, status.HTTP_422_UNPROCESSABLE_CONTENT),
+    (TooManyRequestsError, status.HTTP_429_TOO_MANY_REQUESTS),
 ]
 
 _HTTP_CODES: dict[int, tuple[str, str]] = {
@@ -47,12 +58,15 @@ def error_response(
     code: str,
     message: str,
     details: list[dict[str, Any]] | None = None,
+    headers: dict[str, str] | None = None,
 ) -> JSONResponse:
     request_id = current_request_id()
     body = ErrorResponse(
         error=ErrorBody(code=code, message=message, request_id=request_id, details=details)
     )
-    headers = {REQUEST_ID_HEADER: request_id} if request_id else None
+    headers = dict(headers or {})
+    if request_id:
+        headers[REQUEST_ID_HEADER] = request_id
     return JSONResponse(
         status_code=status_code,
         content=body.model_dump(exclude_none=True),
@@ -67,7 +81,11 @@ def register_exception_handlers(app: FastAPI) -> None:
             (code for cls, code in _DOMAIN_STATUS if isinstance(exc, cls)),
             status.HTTP_400_BAD_REQUEST,
         )
-        return error_response(status_code, exc.code, exc.message)
+        # RFC 9110: a 401 says how to authenticate.
+        headers = {"WWW-Authenticate": "Bearer"} if status_code == 401 else None
+        if isinstance(exc, TooManyRequestsError):
+            headers = {"Retry-After": str(exc.retry_after_seconds)}
+        return error_response(status_code, exc.code, exc.message, headers=headers)
 
     @app.exception_handler(StarletteHTTPException)
     async def handle_http_error(_: Request, exc: StarletteHTTPException) -> JSONResponse:
