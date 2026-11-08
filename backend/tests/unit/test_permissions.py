@@ -23,6 +23,9 @@ EXPECTED: dict[Permission, set[Role]] = {
     Permission.MANAGE_MEMBERS: {OWN, ADM},
     Permission.MANAGE_ORGANIZATION: {OWN},
     Permission.VIEW_AUDIT_LOG: {OWN, ADM},
+    Permission.VIEW_DOCUMENTS: {OWN, ADM, MEM, VIE},
+    Permission.UPLOAD_DOCUMENTS: {OWN, ADM, MEM},
+    Permission.DELETE_ANY_DOCUMENT: {OWN, ADM},
 }
 
 

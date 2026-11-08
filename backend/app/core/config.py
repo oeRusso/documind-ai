@@ -56,6 +56,18 @@ class Settings(BaseSettings):
     smtp_starttls: bool = False
     mail_from: str = "DocuMind AI <no-reply@documind.local>"
 
+    # --- Documents (stage 4) ---
+    # Where uploaded files live: /{organization_id}/{random uuid}. A volume in compose.
+    storage_path: Path = Path("/data/documents")
+    max_upload_mb: int = Field(default=25, ge=1, le=95)  # Cloudflare (free) cuts at 100 MB
+    max_upload_pages: int = Field(default=500, ge=1)
+    # A deleted document keeps its files this long, so restoring a recent backup still works.
+    document_purge_days: int = Field(default=30, ge=0)
+
+    @property
+    def max_upload_bytes(self) -> int:
+        return self.max_upload_mb * 1024 * 1024
+
     @field_validator("smtp_host", "smtp_username", "smtp_password", mode="before")
     @classmethod
     def _empty_is_unset(cls, value: object) -> object:

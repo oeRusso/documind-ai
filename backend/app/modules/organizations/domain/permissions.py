@@ -18,6 +18,9 @@ class Permission(StrEnum):
     MANAGE_MEMBERS = "members.manage"  # change roles, remove members
     MANAGE_ORGANIZATION = "organization.manage"  # rename, delete
     VIEW_AUDIT_LOG = "audit.view"
+    VIEW_DOCUMENTS = "documents.view"  # list, read and download
+    UPLOAD_DOCUMENTS = "documents.upload"  # upload, add versions, delete your own
+    DELETE_ANY_DOCUMENT = "documents.delete_any"
 
 
 _GRANTS: dict[Role, frozenset[Permission]] = {
@@ -28,10 +31,15 @@ _GRANTS: dict[Role, frozenset[Permission]] = {
             Permission.INVITE_MEMBERS,
             Permission.MANAGE_MEMBERS,
             Permission.VIEW_AUDIT_LOG,
+            Permission.VIEW_DOCUMENTS,
+            Permission.UPLOAD_DOCUMENTS,
+            Permission.DELETE_ANY_DOCUMENT,
         }
     ),
-    Role.MEMBER: frozenset({Permission.VIEW_MEMBERS}),
-    Role.VIEWER: frozenset({Permission.VIEW_MEMBERS}),
+    Role.MEMBER: frozenset(
+        {Permission.VIEW_MEMBERS, Permission.VIEW_DOCUMENTS, Permission.UPLOAD_DOCUMENTS}
+    ),
+    Role.VIEWER: frozenset({Permission.VIEW_MEMBERS, Permission.VIEW_DOCUMENTS}),
 }
 
 _RANK: dict[Role, int] = {Role.VIEWER: 0, Role.MEMBER: 1, Role.ADMIN: 2, Role.OWNER: 3}

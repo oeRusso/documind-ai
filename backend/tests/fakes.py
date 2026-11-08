@@ -3,12 +3,22 @@
 They satisfy the Protocols in each module's `domain` without inheriting from them.
 """
 
-from collections.abc import Collection
+from collections.abc import AsyncIterator, Collection, Sequence
 from datetime import datetime
+from pathlib import Path
 from uuid import UUID
 
 from app.modules.audit.domain.entities import AuditEvent
 from app.modules.auth.domain.refresh_tokens import RefreshToken
+from app.modules.documents.domain.entities import (
+    Document,
+    DocumentVersion,
+    DocumentWithVersion,
+    FileKind,
+    InspectedFile,
+    PurgeItem,
+)
+from app.modules.documents.domain.errors import DuplicateDocumentError
 from app.modules.organizations.domain.entities import Organization
 from app.modules.organizations.domain.errors import (
     InvitationAlreadyPendingError,
@@ -244,3 +254,149 @@ class FakeOutgoingMail:
 
     async def send(self, message: EmailMessage) -> None:  # also usable as a Mailer
         self.sent.append(message)
+
+
+class InMemoryDocumentRepository:
+    def __init__(self) -> None:
+        self.documents: dict[UUID, Document] = {}
+        self.versions: list[DocumentVersion] = []
+        self.deleted_versions: set[UUID] = set()
+
+    def _live(self, organization_id: UUID, document_id: UUID) -> Document | None:
+        doc = self.documents.get(document_id)
+        if doc is None or doc.organization_id != organization_id or doc.is_deleted:
+            return None
+        return doc
+
+    def _check_duplicate(self, version: DocumentVersion) -> None:
+        for v in self.versions:
+            if (
+                v.organization_id == version.organization_id
+                and v.sha256 == version.sha256
+                and v.id not in self.deleted_versions
+            ):
+                existing = self.documents[v.document_id]
+                raise DuplicateDocumentError(existing.id, existing.title)
+
+    async def add(self, document: Document, version: DocumentVersion) -> None:
+        self._check_duplicate(version)
+        self.documents[document.id] = document
+        self.versions.append(version)
+
+    async def add_version(self, document: Document, version: DocumentVersion) -> None:
+        self._check_duplicate(version)
+        self.documents[document.id] = document
+        self.versions.append(version)
+
+    async def get(self, organization_id: UUID, document_id: UUID) -> Document | None:
+        return self._live(organization_id, document_id)
+
+    async def get_for_update(self, organization_id: UUID, document_id: UUID) -> Document | None:
+        return self._live(organization_id, document_id)
+
+    async def list_page(
+        self, organization_id: UUID, *, limit: int, before_id: UUID | None
+    ) -> list[DocumentWithVersion]:
+        docs = sorted(
+            (
+                d
+                for d in self.documents.values()
+                if d.organization_id == organization_id and not d.is_deleted
+            ),
+            key=lambda d: d.id,
+            reverse=True,
+        )
+        if before_id is not None:
+            docs = [d for d in docs if d.id < before_id]
+        result = []
+        for doc in docs[:limit]:
+            latest = max(
+                (v for v in self.versions if v.document_id == doc.id), key=lambda v: v.number
+            )
+            result.append(DocumentWithVersion(doc, latest))
+        return result
+
+    async def list_versions(
+        self, organization_id: UUID, document_id: UUID
+    ) -> list[DocumentVersion]:
+        return sorted(
+            (
+                v
+                for v in self.versions
+                if v.organization_id == organization_id and v.document_id == document_id
+            ),
+            key=lambda v: v.number,
+            reverse=True,
+        )
+
+    async def find_live_by_sha256(self, organization_id: UUID, sha256: str) -> Document | None:
+        for v in self.versions:
+            if (
+                v.organization_id == organization_id
+                and v.sha256 == sha256
+                and v.id not in self.deleted_versions
+            ):
+                return self.documents[v.document_id]
+        return None
+
+    async def mark_deleted(self, document: Document) -> None:
+        self.documents[document.id] = document
+        self.deleted_versions |= {v.id for v in self.versions if v.document_id == document.id}
+
+    async def remove(self, organization_id: UUID, document_id: UUID) -> None:
+        doc = self.documents.get(document_id)
+        if doc is not None and doc.organization_id == organization_id:
+            del self.documents[document_id]
+            self.versions = [v for v in self.versions if v.document_id != document_id]
+
+
+class InMemoryPurgeQueue:
+    def __init__(self) -> None:
+        self.items: list[PurgeItem] = []
+
+    async def add(self, items: Sequence[PurgeItem]) -> None:
+        self.items.extend(items)
+
+    async def due(self, now: datetime, limit: int) -> list[PurgeItem]:
+        return [i for i in self.items if i.purge_after <= now][:limit]
+
+    async def done(self, item_ids: Sequence[UUID]) -> None:
+        self.items = [i for i in self.items if i.id not in item_ids]
+
+
+class InMemoryStorage:
+    """StorageBackend in a dict. `save` reads the staged file, like the real one moves it."""
+
+    def __init__(self, staging: Path) -> None:
+        self._staging = staging
+        self.files: dict[str, bytes] = {}
+
+    def staging_dir(self) -> Path:
+        self._staging.mkdir(parents=True, exist_ok=True)
+        return self._staging
+
+    async def save(self, key: str, staged_file: Path) -> None:
+        self.files[key] = staged_file.read_bytes()
+        staged_file.unlink()
+
+    async def read(self, key: str) -> AsyncIterator[bytes]:
+        yield self.files[key]
+
+    async def delete(self, key: str) -> None:
+        self.files.pop(key, None)
+
+    async def exists(self, key: str) -> bool:
+        return key in self.files
+
+
+class FakeFileInspector:
+    """Trusts the extension; `refuse` makes it raise like the real inspector would."""
+
+    def __init__(self) -> None:
+        self.refuse: Exception | None = None
+
+    def inspect(self, path: Path, filename: str) -> InspectedFile:
+        if self.refuse is not None:
+            raise self.refuse
+        kind = FileKind(Path(filename).suffix.lstrip(".") or "txt")
+        return InspectedFile(kind, 3 if kind is FileKind.PDF else None)

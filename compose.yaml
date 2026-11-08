@@ -22,6 +22,14 @@ x-backend: &backend
     SMTP_HOST: ${SMTP_HOST:-mailpit}
     SMTP_PORT: ${SMTP_PORT:-1025}
     MAIL_FROM: ${MAIL_FROM:-DocuMind AI <no-reply@documind.local>}
+    STORAGE_PATH: /data/documents
+    MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-25}
+    MAX_UPLOAD_PAGES: ${MAX_UPLOAD_PAGES:-500}
+    DOCUMENT_PURGE_DAYS: ${DOCUMENT_PURGE_DAYS:-30}
+    # Uploads bigger than 1 MB spill from memory to a temp file: on the volume, not in RAM.
+    TMPDIR: /data/tmp
+  volumes:
+    - documents:/data
   read_only: true
   tmpfs:
     - /tmp
@@ -99,3 +107,4 @@ services:
 
 volumes:
   pgdata:
+  documents:

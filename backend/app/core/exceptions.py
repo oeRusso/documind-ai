@@ -18,8 +18,10 @@ from app.shared.errors import (
     DomainError,
     ForbiddenError,
     NotFoundError,
+    PayloadTooLargeError,
     TooManyRequestsError,
     UnauthorizedError,
+    UnsupportedMediaTypeError,
     ValidationError,
 )
 
@@ -43,6 +45,8 @@ _DOMAIN_STATUS: list[tuple[type[DomainError], int]] = [
     (ForbiddenError, status.HTTP_403_FORBIDDEN),
     (NotFoundError, status.HTTP_404_NOT_FOUND),
     (ConflictError, status.HTTP_409_CONFLICT),
+    (PayloadTooLargeError, status.HTTP_413_CONTENT_TOO_LARGE),
+    (UnsupportedMediaTypeError, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE),
     (ValidationError, status.HTTP_422_UNPROCESSABLE_CONTENT),
     (TooManyRequestsError, status.HTTP_429_TOO_MANY_REQUESTS),
 ]
@@ -50,6 +54,8 @@ _DOMAIN_STATUS: list[tuple[type[DomainError], int]] = [
 _HTTP_CODES: dict[int, tuple[str, str]] = {
     404: ("not_found", "Recurso no encontrado"),
     405: ("method_not_allowed", "Método no permitido"),
+    411: ("length_required", "Falta el tamaño del pedido (Content-Length)"),
+    413: ("payload_too_large", "El archivo es demasiado grande"),
 }
 
 
@@ -85,7 +91,9 @@ def register_exception_handlers(app: FastAPI) -> None:
         headers = {"WWW-Authenticate": "Bearer"} if status_code == 401 else None
         if isinstance(exc, TooManyRequestsError):
             headers = {"Retry-After": str(exc.retry_after_seconds)}
-        return error_response(status_code, exc.code, exc.message, headers=headers)
+        return error_response(
+            status_code, exc.code, exc.message, details=exc.details, headers=headers
+        )
 
     @app.exception_handler(StarletteHTTPException)
     async def handle_http_error(_: Request, exc: StarletteHTTPException) -> JSONResponse:

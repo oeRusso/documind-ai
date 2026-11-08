@@ -4,7 +4,7 @@ They are plain Python (no HTTP, no FastAPI): `domain` and `application` raise th
 `app/core/exceptions.py` translates them to HTTP responses with the uniform error format.
 """
 
-from typing import ClassVar
+from typing import Any, ClassVar
 
 
 class DomainError(Exception):
@@ -17,9 +17,13 @@ class DomainError(Exception):
     # committed anyway, and then the error response is sent. See get_session.
     keep_changes: ClassVar[bool] = False
 
-    def __init__(self, message: str | None = None) -> None:
+    def __init__(
+        self, message: str | None = None, *, details: list[dict[str, Any]] | None = None
+    ) -> None:
         if message is not None:
             self.message = message
+        # Extra machine-readable data for the client (e.g. the id of an existing duplicate).
+        self.details = details
         super().__init__(self.message)
 
 
@@ -53,6 +57,20 @@ class ForbiddenError(DomainError):
 class ValidationError(DomainError):
     code = "invalid_data"
     message = "Datos inválidos"
+
+
+class PayloadTooLargeError(DomainError):
+    """The request body or the uploaded file is bigger than allowed. HTTP 413."""
+
+    code = "payload_too_large"
+    message = "El archivo es demasiado grande"
+
+
+class UnsupportedMediaTypeError(DomainError):
+    """The content is not of an accepted type (checked by its bytes, not its name). HTTP 415."""
+
+    code = "unsupported_media_type"
+    message = "Tipo de archivo no permitido"
 
 
 class TooManyRequestsError(DomainError):

@@ -25,7 +25,7 @@ def migrated_database() -> Iterator[None]:
 
 
 @pytest.fixture(scope="session")
-def db_settings(migrated_database: None) -> Settings:
+def db_settings(migrated_database: None, tmp_path_factory: pytest.TempPathFactory) -> Settings:
     # The API connects with the restricted `app` role, exactly like in production.
     return Settings(
         app_env="test",
@@ -34,6 +34,7 @@ def db_settings(migrated_database: None) -> Settings:
         database_migration_url=migrator_test_url(),
         jwt_secret=TEST_JWT_SECRET,
         app_origin=APP_ORIGIN,
+        storage_path=tmp_path_factory.mktemp("storage"),
     )
 
 

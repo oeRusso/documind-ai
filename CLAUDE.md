@@ -104,17 +104,18 @@ Ojo con los nombres repetidos:
 
 ## Git
 - Repo: https://github.com/oeRusso/documind-ai (público).
-- Ramas: `main` = estable (desde la etapa 3, lo que llega a `main` se despliega a producción);
-  `development` = integración. **Todo el trabajo de las etapas se commitea y pushea a `development`.**
-  Al cerrar una etapa, PR `development` → `main`.
-  (Esto reemplaza las ramas `etapa-NN-descripcion` que propone la Parte 2.)
+- Ramas: `main` = estable (lo que llega a `main` se despliega a producción); `development` = integración.
+  **Todo el trabajo se commitea y pushea a `development`.**
+- **Decisión de Esteban (2026-11-08): no abrir PRs ni mergear a `main` al cerrar cada etapa.** Todas las
+  etapas restantes quedan en `development`; al final se hace un solo PR `development` → `main` y el despliegue.
+  El agente nunca mergea a `main`.
 - Conventional Commits: `feat(documents): add upload endpoint`, `fix(auth): ...`, `test(...)`, `docs(...)`, `chore(...)`.
 - Un commit por paso chico.
-- Tags al cerrar cada fase: `v0.1.0` (A), `v0.2.0` (B), `v0.3.0` (C), `v1.0.0` (D).
-- Durante una etapa se commitea y pushea a `development`. **Nunca** commitear ni pushear directo a `main`.
+- Tags al cerrar cada fase: `v0.1.0` (A), `v0.2.0` (B), `v0.3.0` (C), `v1.0.0` (D) — se ponen sobre `main` al final.
+- **Nunca** commitear ni pushear directo a `main`.
 
 ## Flujo de cada etapa
-1. Trabajar en `development` (actualizada con `main`).
+1. Trabajar en `development`.
 2. Leer este archivo y `docs/etapas/etapa-NN.md`. Proponer un plan en pasos de no más de 1 hora,
    con archivos a crear o modificar y tests de cada paso. **Sin código hasta que se apruebe.** Señalar dudas y riesgos.
 3. Implementar en pasos chicos; tests y linters en verde.
@@ -122,7 +123,7 @@ Ojo con los nombres repetidos:
    Esteban lo verifique, decirle qué probar, y commitear y pushear a `development`.
 4. Al cerrar: actualizar README y `docs/arquitectura-del-codigo.md` (mapa de archivos), escribir la ADR si hubo decisión (`docs/decisions/NNNN-titulo.md`,
    desde `0000-plantilla.md`), marcar la etapa como terminada en su archivo y en la sección siguiente.
-5. PR `development` → `main`.
+5. Sin PR por etapa (ver "Git"): queda en `development` y se sigue con la siguiente.
 
 ## Continuidad entre sesiones
 Cada sesión de Claude Code arranca sin memoria de la anterior: el contexto vive en este repo.

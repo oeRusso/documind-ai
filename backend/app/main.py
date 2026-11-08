@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI
 
+from app.core.body_limit import MULTIPART_OVERHEAD, body_limit_middleware
 from app.core.config import Settings, get_settings
 from app.core.exceptions import register_exception_handlers
 from app.core.health import router as health_router
@@ -16,7 +17,9 @@ from app.core.request_context import request_context_middleware
 from app.infrastructure.database.session import create_engine, create_session_factory
 from app.infrastructure.mail.smtp import build_mailer
 from app.infrastructure.rate_limit import InMemoryRateLimiter
+from app.infrastructure.storage.filesystem import FilesystemStorage
 from app.modules.auth.presentation.router import router as auth_router
+from app.modules.documents.presentation.router import router as documents_router
 from app.modules.organizations.presentation.invitations_router import router as invitations_router
 from app.modules.organizations.presentation.members_router import router as members_router
 from app.modules.organizations.presentation.router import router as organizations_router
@@ -41,7 +44,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.session_factory = create_session_factory(engine)
     app.state.mailer = build_mailer(settings)
     app.state.rate_limiter = InMemoryRateLimiter()
+    app.state.storage = FilesystemStorage(settings.storage_path)
 
+    # The last one added runs first: the request id exists before the size check answers.
+    app.middleware("http")(body_limit_middleware(settings.max_upload_bytes + MULTIPART_OVERHEAD))
     app.middleware("http")(request_context_middleware)
     register_exception_handlers(app)
 
@@ -50,6 +56,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api_v1.include_router(organizations_router)
     api_v1.include_router(members_router)
     api_v1.include_router(invitations_router)
+    api_v1.include_router(documents_router)
 
     app.include_router(health_router)
     app.include_router(api_v1)

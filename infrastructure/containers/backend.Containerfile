@@ -16,8 +16,17 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-dev --no-install-project
 
 FROM ${PYTHON_IMAGE} AS runtime
+# libmagic1: detects the real type of uploaded files (python-magic, stage 4).
+RUN apt-get update \
+ && apt-get install --yes --no-install-recommends libmagic1 \
+ && rm -rf /var/lib/apt/lists/*
+# /data is the mount point of the documents volume: a new volume copies this owner,
+# so the `app` user can write uploads there.
 RUN groupadd --system --gid 10001 app \
- && useradd --system --uid 10001 --gid app --no-create-home --shell /usr/sbin/nologin app
+ && useradd --system --uid 10001 --gid app --no-create-home --shell /usr/sbin/nologin app \
+ && mkdir -p /data/documents /data/tmp \
+ && chown -R app:app /data \
+ && chmod 700 /data/documents /data/tmp
 WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 COPY alembic.ini ./

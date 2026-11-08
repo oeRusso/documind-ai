@@ -440,7 +440,7 @@ toda la familia (las dos copias dejan de servir).
 |---|---|
 | `containers/backend.Containerfile` | Imagen de la API en dos etapas: instala dependencias con uv y copia a la final solo el entorno y el código (Python 3.12 slim, usuario `app` sin root). |
 | `containers/frontend.Containerfile` | Imagen de la web: build de Next.js en una etapa, y en la final solo la salida `standalone` con Node, usuario sin root. |
-| `scripts/db-init/roles.sh` | Se ejecuta al crear la base por primera vez: crea los roles `migrator` y `app` con sus permisos. |
+| `scripts/db-init/10-roles.sh` | Se ejecuta al crear la base por primera vez: crea los roles `migrator` y `app`, la base de tests y la extensión `vector`. |
 | `proxy/` | Vacía: Caddy (etapa 3). |
 | `tunnel/` | Vacía: Cloudflare Tunnel (etapa 3). |
 | `monitoring/` | Vacía: Prometheus y Grafana (etapa 10). |
