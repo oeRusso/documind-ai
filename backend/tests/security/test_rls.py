@@ -31,6 +31,8 @@ TENANT_TABLES = (
     "audit_logs",
     "documents",
     "document_versions",
+    "processing_jobs",
+    "document_chunks",
 )
 
 
@@ -91,15 +93,33 @@ async def _seed_organization(
             document_id,
             org_id,
         )
+        version_id = new_id()
         await connection.execute(
             "INSERT INTO document_versions (id, organization_id, document_id, number, "
             "storage_key, filename, sha256, kind, size_bytes) "
             "VALUES ($1, $2, $3, 1, $4, 'contrato.pdf', $5, 'pdf', 10)",
-            new_id(),
+            version_id,
             org_id,
             document_id,
             f"{org_id}/{new_id()}",
             "a" * 64,  # the same bytes in both organizations: allowed, each has its own copy
+        )
+        await connection.execute(
+            "INSERT INTO processing_jobs (id, organization_id, document_id, version_id, status, "
+            "attempts, pages_done, ocr_pages, chunk_count) "
+            "VALUES ($1, $2, $3, $4, 'ready', 1, 1, 0, 1)",
+            new_id(),
+            org_id,
+            document_id,
+            version_id,
+        )
+        await connection.execute(
+            "INSERT INTO document_chunks (id, organization_id, document_id, version_id, position, "
+            "content, token_count) VALUES ($1, $2, $3, $4, 0, 'El plazo es de 30 días.', 7)",
+            new_id(),
+            org_id,
+            document_id,
+            version_id,
         )
     return org_id
 
@@ -126,7 +146,7 @@ async def seed(migrated: None) -> AsyncIterator[Seed]:
     finally:
         await connection.execute(
             "TRUNCATE organizations, memberships, invitations, audit_logs, users, "
-            "documents, document_versions CASCADE"
+            "documents, document_versions, processing_jobs, document_chunks CASCADE"
         )
         await connection.close()
 
@@ -276,7 +296,8 @@ async def test_cannot_update_or_delete_rows_of_another_organization(
             == "DELETE 0"
         )
         assert await app_db.execute("UPDATE documents SET title = 'hacked'") == "UPDATE 1"
-        assert await app_db.execute("DELETE FROM document_versions") == "DELETE 1"  # only A's
+        assert await app_db.execute("DELETE FROM document_chunks") == "DELETE 1"  # only A's
+        assert await app_db.execute("DELETE FROM document_versions") == "DELETE 1"
 
 
 async def test_cannot_move_a_row_into_another_organization(
@@ -378,3 +399,17 @@ async def test_every_table_with_organization_id_has_forced_rls(app_db: asyncpg.C
     assert set(tables) >= set(TENANT_TABLES)
     unprotected = [name for name, flags in tables.items() if flags != (True, True)]
     assert sorted(unprotected) == sorted(WITHOUT_RLS_ON_PURPOSE)
+
+
+async def test_spanish_full_text_search_finds_word_forms(
+    app_db: asyncpg.Connection, seed: Seed
+) -> None:
+    """document_chunks.tsv is computed by PostgreSQL in Spanish: "plazos" finds "plazo"."""
+    async with app_db.transaction():
+        await act_as(app_db, user=seed.ana, org=seed.org_a)
+
+        found = await app_db.fetchval(
+            "SELECT count(*) FROM document_chunks WHERE tsv @@ plainto_tsquery('spanish', 'plazos')"
+        )
+
+    assert found == 1  # and only A's chunk, although B has the same text

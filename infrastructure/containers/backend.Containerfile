@@ -40,3 +40,16 @@ EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=3s --retries=5 \
   CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
 CMD ["uvicorn", "app.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+
+# Worker image (stage 5): the same app plus Tesseract's Spanish and English data for OCR.
+# PyMuPDF has the Tesseract engine built in; it only needs the language files.
+FROM runtime AS worker
+USER root
+RUN apt-get update \
+ && apt-get install --yes --no-install-recommends tesseract-ocr-spa tesseract-ocr-eng \
+ && rm -rf /var/lib/apt/lists/* \
+ && ls /usr/share/tesseract-ocr/*/tessdata/spa.traineddata
+ENV TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata
+USER app
+HEALTHCHECK NONE
+CMD ["celery", "-A", "app.worker", "worker", "--concurrency=1", "--loglevel=INFO"]

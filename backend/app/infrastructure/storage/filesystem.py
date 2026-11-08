@@ -9,6 +9,7 @@ import asyncio
 import os
 import shutil
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from app.shared.storage import InvalidStorageKeyError, ensure_valid_key
@@ -51,6 +52,15 @@ class FilesystemStorage:
                 yield chunk
         finally:
             await asyncio.to_thread(handle.close)
+
+    @asynccontextmanager
+    async def local_copy(self, key: str) -> AsyncIterator[Path]:
+        """The file on local disk, for libraries that need a path (PyMuPDF). Here it is the
+        stored file itself: nothing to copy, and the caller must not modify it."""
+        path = self._path(key)
+        if not await asyncio.to_thread(path.is_file):
+            raise FileNotFoundError(key)
+        yield path
 
     async def delete(self, key: str) -> None:
         path = self._path(key)

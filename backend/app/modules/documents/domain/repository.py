@@ -8,6 +8,7 @@ from uuid import UUID
 
 from app.modules.documents.domain.entities import (
     Document,
+    DocumentStatus,
     DocumentVersion,
     DocumentWithVersion,
     InspectedFile,
@@ -45,6 +46,14 @@ class DocumentRepository(Protocol):
         """Newest version first."""
         ...
 
+    async def get_version(self, organization_id: UUID, version_id: UUID) -> DocumentVersion | None:
+        """A version of a live (not deleted) document."""
+        ...
+
+    async def set_status(
+        self, organization_id: UUID, document_id: UUID, status: DocumentStatus, now: datetime
+    ) -> None: ...
+
     async def find_live_by_sha256(self, organization_id: UUID, sha256: str) -> Document | None: ...
 
     async def mark_deleted(self, document: Document) -> None:
@@ -71,3 +80,11 @@ class FileInspector(Protocol):
     def inspect(self, path: Path, filename: str) -> InspectedFile:
         """Raises a domain error when the file is not acceptable (type, size, pages, password)."""
         ...
+
+
+class ProcessingScheduler(Protocol):
+    """Queues the processing of a new version (implemented by the ingestion module)."""
+
+    async def schedule(
+        self, organization_id: UUID, document_id: UUID, version_id: UUID
+    ) -> None: ...

@@ -181,6 +181,28 @@ class SqlDocumentRepository:
         )
         return [_version(model) for model in models]
 
+    async def get_version(self, organization_id: UUID, version_id: UUID) -> DocumentVersion | None:
+        model = await self._session.scalar(
+            select(DocumentVersionModel).where(
+                DocumentVersionModel.organization_id == organization_id,
+                DocumentVersionModel.id == version_id,
+                DocumentVersionModel.deleted_at.is_(None),
+            )
+        )
+        return _version(model) if model else None
+
+    async def set_status(
+        self, organization_id: UUID, document_id: UUID, status: DocumentStatus, now: datetime
+    ) -> None:
+        await self._session.execute(
+            update(DocumentModel)
+            .where(
+                DocumentModel.organization_id == organization_id,
+                DocumentModel.id == document_id,
+            )
+            .values(status=status.value, updated_at=now)
+        )
+
     async def find_live_by_sha256(self, organization_id: UUID, sha256: str) -> Document | None:
         model = await self._session.scalar(
             select(DocumentModel)

@@ -11,6 +11,7 @@ from app.modules.documents.infrastructure.models import (
     DocumentPurgeModel,
     DocumentVersionModel,
 )
+from app.modules.ingestion.infrastructure.models import DocumentChunkModel, ProcessingJobModel
 from app.modules.organizations.infrastructure.models import (
     InvitationModel,
     MembershipModel,
@@ -21,12 +22,14 @@ from app.modules.users.infrastructure.models import UserModel
 __all__ = [
     "AuditLogModel",
     "Base",
+    "DocumentChunkModel",
     "DocumentModel",
     "DocumentPurgeModel",
     "DocumentVersionModel",
     "InvitationModel",
     "MembershipModel",
     "OrganizationModel",
+    "ProcessingJobModel",
     "RefreshTokenModel",
     "UserModel",
 ]

@@ -5,7 +5,8 @@ Order of the checks (cheapest and least revealing first):
 2. (new version) The document exists in this organization -> 404, also for another org's id.
 3. The file is what it claims and within limits -> 413/415/422 (FileInspector).
 4. The same bytes are not already here -> 409 with the existing document's id.
-Then the rows are written, the file is moved to its final place and the event is audited.
+Then the rows are written, the file is moved to its final place, its processing is scheduled
+(the worker starts after the request commits) and the event is audited.
 If anything fails, the request's transaction rolls back and the staged file is discarded.
 """
 
@@ -29,7 +30,11 @@ from app.modules.documents.domain.entities import (
     title_from_filename,
 )
 from app.modules.documents.domain.errors import DocumentNotFoundError, DuplicateDocumentError
-from app.modules.documents.domain.repository import DocumentRepository, FileInspector
+from app.modules.documents.domain.repository import (
+    DocumentRepository,
+    FileInspector,
+    ProcessingScheduler,
+)
 from app.modules.organizations.domain.membership import Membership
 from app.modules.organizations.domain.permissions import Permission, ensure_permission
 from app.shared.ids import new_id, utc_now
@@ -58,6 +63,7 @@ class _Uploads:
         storage: StorageBackend,
         inspector: FileInspector,
         record_audit_event: RecordAuditEvent,
+        scheduler: ProcessingScheduler,
         *,
         id_factory: Callable[[], UUID] = new_id,
         clock: Callable[[], datetime] = utc_now,
@@ -66,6 +72,7 @@ class _Uploads:
         self._storage = storage
         self._inspector = inspector
         self._audit = record_audit_event
+        self._scheduler = scheduler
         self._id_factory = id_factory
         self._clock = clock
 
@@ -141,6 +148,7 @@ class UploadDocument(_Uploads):
         version = self._new_version(document, 1, file, inspected, actor, now)
         await self._documents.add(document, version)
         await self._storage.save(version.storage_key, file.path)
+        await self._scheduler.schedule(actor.organization_id, document.id, version.id)
         await self._audit_upload(AuditAction.DOCUMENT_UPLOADED, actor, version, command.ip)
         return DocumentWithVersion(document, version)
 
@@ -162,5 +170,6 @@ class UploadDocumentVersion(_Uploads):
         version = self._new_version(document, number, file, inspected, actor, now)
         await self._documents.add_version(document, version)
         await self._storage.save(version.storage_key, file.path)
+        await self._scheduler.schedule(actor.organization_id, document.id, version.id)
         await self._audit_upload(AuditAction.DOCUMENT_VERSION_UPLOADED, actor, version, command.ip)
         return DocumentWithVersion(document, version)

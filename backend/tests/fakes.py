@@ -4,6 +4,7 @@ They satisfy the Protocols in each module's `domain` without inheriting from the
 """
 
 from collections.abc import AsyncIterator, Collection, Sequence
+from dataclasses import replace as dataclass_replace
 from datetime import datetime
 from pathlib import Path
 from uuid import UUID
@@ -12,6 +13,7 @@ from app.modules.audit.domain.entities import AuditEvent
 from app.modules.auth.domain.refresh_tokens import RefreshToken
 from app.modules.documents.domain.entities import (
     Document,
+    DocumentStatus,
     DocumentVersion,
     DocumentWithVersion,
     FileKind,
@@ -329,6 +331,23 @@ class InMemoryDocumentRepository:
             reverse=True,
         )
 
+    async def get_version(self, organization_id: UUID, version_id: UUID) -> DocumentVersion | None:
+        for v in self.versions:
+            if (
+                v.id == version_id
+                and v.organization_id == organization_id
+                and v.id not in self.deleted_versions
+            ):
+                return v
+        return None
+
+    async def set_status(
+        self, organization_id: UUID, document_id: UUID, status: DocumentStatus, now: datetime
+    ) -> None:
+        doc = self.documents.get(document_id)
+        if doc is not None and doc.organization_id == organization_id:
+            self.documents[document_id] = dataclass_replace(doc, status=status, updated_at=now)
+
     async def find_live_by_sha256(self, organization_id: UUID, sha256: str) -> Document | None:
         for v in self.versions:
             if (
@@ -400,3 +419,21 @@ class FakeFileInspector:
             raise self.refuse
         kind = FileKind(Path(filename).suffix.lstrip(".") or "txt")
         return InspectedFile(kind, 3 if kind is FileKind.PDF else None)
+
+
+class FakeScheduler:
+    """ProcessingScheduler that only remembers what was scheduled."""
+
+    def __init__(self) -> None:
+        self.scheduled: list[tuple[UUID, UUID, UUID]] = []
+
+    async def schedule(self, organization_id: UUID, document_id: UUID, version_id: UUID) -> None:
+        self.scheduled.append((organization_id, document_id, version_id))
+
+
+class FakeJobQueue:
+    def __init__(self) -> None:
+        self.sent: list[tuple[UUID, UUID]] = []
+
+    def enqueue(self, organization_id: UUID, job_id: UUID) -> None:
+        self.sent.append((organization_id, job_id))

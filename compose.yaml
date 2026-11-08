@@ -8,6 +8,7 @@ x-backend: &backend
   build:
     context: ./backend
     dockerfile: ../infrastructure/containers/backend.Containerfile
+    target: runtime
   image: localhost/documind-backend:dev
   environment:
     APP_ENV: development
@@ -26,6 +27,7 @@ x-backend: &backend
     MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-25}
     MAX_UPLOAD_PAGES: ${MAX_UPLOAD_PAGES:-500}
     DOCUMENT_PURGE_DAYS: ${DOCUMENT_PURGE_DAYS:-30}
+    CELERY_BROKER_URL: redis://valkey:6379/0
     # Uploads bigger than 1 MB spill from memory to a temp file: on the volume, not in RAM.
     TMPDIR: /data/tmp
   volumes:
@@ -75,6 +77,51 @@ services:
         condition: service_completed_successfully
       mailpit:
         condition: service_started
+      valkey:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Processes uploaded documents (text, OCR, chunks), one at a time. Also runs the daily purge
+  # of deleted files (--beat). Limited so it never starves the rest of the server.
+  worker:
+    <<: *backend
+    build:
+      context: ./backend
+      dockerfile: ../infrastructure/containers/backend.Containerfile
+      target: worker
+    image: localhost/documind-worker:dev
+    command:
+      - celery
+      - -A
+      - app.worker
+      - worker
+      - --beat
+      - --schedule=/data/tmp/celerybeat-schedule
+      - --concurrency=1
+      - --max-tasks-per-child=50
+      - --loglevel=INFO
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+    mem_limit: 1g
+    cpus: 1.0
+    restart: unless-stopped
+
+  # Task queue (Redis-compatible, open source). Small and with an append-only file, so queued
+  # tasks survive a restart.
+  valkey:
+    image: docker.io/valkey/valkey:8.1.10-alpine
+    command: ["valkey-server", "--appendonly", "yes", "--maxmemory", "64mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - valkey:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    mem_limit: 128m
     restart: unless-stopped
 
   # Web app. Open http://localhost:3000 (use "localhost": it is the APP_ORIGIN the API trusts).
@@ -108,3 +155,4 @@ services:
 volumes:
   pgdata:
   documents:
+  valkey:

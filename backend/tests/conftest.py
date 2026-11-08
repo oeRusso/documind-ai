@@ -30,6 +30,7 @@ def offline_settings() -> Settings:
         database_migration_url=UNREACHABLE_DB_URL,
         jwt_secret=TEST_JWT_SECRET,
         app_origin=APP_ORIGIN,
+        celery_broker_url=None,
     )
 
 

@@ -20,6 +20,8 @@ from app.modules.documents.infrastructure.sql_repository import (
     SqlDocumentRepository,
     SqlPurgeQueue,
 )
+from app.modules.ingestion.application.jobs import ScheduleProcessing
+from app.modules.ingestion.presentation.dependencies import provide_scheduler
 from app.modules.users.application.get_users_by_ids import GetUsersByIds
 from app.modules.users.infrastructure.sql_repository import SqlUserRepository
 from app.shared.storage import StorageBackend
@@ -33,25 +35,30 @@ def get_storage(request: Request) -> StorageBackend:
 StorageDep = Annotated[StorageBackend, Depends(get_storage)]
 
 
+SchedulerDep = Annotated[ScheduleProcessing, Depends(provide_scheduler)]
+
+
 def provide_upload_document(
-    session: SessionDep, settings: SettingsDep, storage: StorageDep
+    session: SessionDep, settings: SettingsDep, storage: StorageDep, scheduler: SchedulerDep
 ) -> UploadDocument:
     return UploadDocument(
         SqlDocumentRepository(session),
         storage,
         LibmagicFileInspector(max_pages=settings.max_upload_pages),
         RecordAuditEvent(SqlAuditLogRepository(session)),
+        scheduler,
     )
 
 
 def provide_upload_version(
-    session: SessionDep, settings: SettingsDep, storage: StorageDep
+    session: SessionDep, settings: SettingsDep, storage: StorageDep, scheduler: SchedulerDep
 ) -> UploadDocumentVersion:
     return UploadDocumentVersion(
         SqlDocumentRepository(session),
         storage,
         LibmagicFileInspector(max_pages=settings.max_upload_pages),
         RecordAuditEvent(SqlAuditLogRepository(session)),
+        scheduler,
     )
 
 

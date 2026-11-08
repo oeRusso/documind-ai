@@ -35,6 +35,7 @@ def db_settings(migrated_database: None, tmp_path_factory: pytest.TempPathFactor
         jwt_secret=TEST_JWT_SECRET,
         app_origin=APP_ORIGIN,
         storage_path=tmp_path_factory.mktemp("storage"),
+        celery_broker_url=None,  # no queue in tests: jobs are captured (see test_processing_api)
     )
 
 

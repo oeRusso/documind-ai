@@ -41,6 +41,7 @@ from app.modules.users.domain.entities import User
 from app.shared.ids import new_id
 from tests.fakes import (
     FakeFileInspector,
+    FakeScheduler,
     FakeTenantContext,
     InMemoryAuditLogRepository,
     InMemoryDocumentRepository,
@@ -66,14 +67,15 @@ class Library:
         self.queue = InMemoryPurgeQueue()
         self.users = InMemoryUserRepository()
         self.tenant = FakeTenantContext()
+        self.scheduler = FakeScheduler()
         self.now = NOW
         record = RecordAuditEvent(self.audit, clock=lambda: self.now)
         clock = lambda: self.now  # noqa: E731
         self.upload_uc = UploadDocument(
-            self.documents, self.storage, self.inspector, record, clock=clock
+            self.documents, self.storage, self.inspector, record, self.scheduler, clock=clock
         )
         self.version_uc = UploadDocumentVersion(
-            self.documents, self.storage, self.inspector, record, clock=clock
+            self.documents, self.storage, self.inspector, record, self.scheduler, clock=clock
         )
         get_users = GetUsersByIds(self.users)
         self.list_uc = ListDocuments(self.documents, get_users)
@@ -141,6 +143,9 @@ async def test_member_uploads_a_pending_document(lib: Library) -> None:
     assert created.version.storage_key.startswith(f"{lib.organization_id}/")
     assert lib.storage.files[created.version.storage_key] == b"%PDF contenido"
     assert lib.audit.actions == ["document.uploaded"]
+    assert lib.scheduler.scheduled == [
+        (lib.organization_id, created.document.id, created.version.id)
+    ]
 
 
 async def test_viewer_cannot_upload(lib: Library) -> None:
@@ -157,6 +162,7 @@ async def test_refused_file_saves_nothing(lib: Library) -> None:
         await lib.upload(lib.editor)
 
     assert (lib.documents.documents, lib.storage.files) == ({}, {})
+    assert lib.scheduler.scheduled == []
 
 
 async def test_same_file_twice_is_a_duplicate(lib: Library) -> None:
@@ -191,6 +197,7 @@ async def test_new_version_gets_the_next_number_and_is_pending_again(lib: Librar
 
     assert updated.version.number == 2
     assert updated.document.updated_at == lib.now
+    assert lib.scheduler.scheduled[-1][2] == updated.version.id  # the new version is processed
     detail = await lib.get_uc.execute(lib.viewer, created.document.id)
     assert [(v.version.number, v.uploaded_by_email) for v in detail.versions] == [
         (2, "otro@example.com"),

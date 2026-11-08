@@ -64,11 +64,17 @@ class Settings(BaseSettings):
     # A deleted document keeps its files this long, so restoring a recent backup still works.
     document_purge_days: int = Field(default=30, ge=0)
 
+    # --- Processing queue (stage 5): Valkey speaks the Redis protocol, hence redis:// ---
+    # Without it the API still works, but documents stay "pending" (nothing processes them).
+    celery_broker_url: str | None = None
+
     @property
     def max_upload_bytes(self) -> int:
         return self.max_upload_mb * 1024 * 1024
 
-    @field_validator("smtp_host", "smtp_username", "smtp_password", mode="before")
+    @field_validator(
+        "smtp_host", "smtp_username", "smtp_password", "celery_broker_url", mode="before"
+    )
     @classmethod
     def _empty_is_unset(cls, value: object) -> object:
         # `SMTP_HOST=` (as in .env.example) means "not configured", not a host named "".
