@@ -14,6 +14,7 @@ from app.core.health import router as health_router
 from app.core.logging import configure_logging
 from app.core.request_context import request_context_middleware
 from app.infrastructure.database.session import create_engine, create_session_factory
+from app.infrastructure.mail.smtp import build_mailer
 from app.modules.auth.presentation.router import router as auth_router
 from app.modules.organizations.presentation.invitations_router import router as invitations_router
 from app.modules.organizations.presentation.members_router import router as members_router
@@ -37,6 +38,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.engine = engine
     app.state.session_factory = create_session_factory(engine)
+    app.state.mailer = build_mailer(settings)
 
     app.middleware("http")(request_context_middleware)
     register_exception_handlers(app)

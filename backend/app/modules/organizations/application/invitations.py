@@ -1,7 +1,7 @@
 """Use cases: invite someone by email, list and revoke invitations, accept one.
 
-The link is the only place where the token exists: it is shown once to whoever invites
-(and emailed, step 19). The database keeps only its SHA-256 hash.
+The link is the only place where the token exists: it is shown once to whoever invites and
+emailed to the invitee. The database keeps only its SHA-256 hash.
 
 The token goes after `#` in the link: browsers never send that part to the server, so the
 token does not end up in access logs or in the Referer header.
@@ -44,6 +44,7 @@ from app.modules.organizations.domain.roles import Role
 from app.modules.users.application.find_user_by_email import FindUserByEmail
 from app.modules.users.domain.entities import normalize_email
 from app.shared.ids import new_id, utc_now
+from app.shared.mail import EmailMessage, OutgoingMail
 from app.shared.secure_tokens import generate_token, hash_token
 from app.shared.tenancy import TenantContext
 
@@ -69,13 +70,35 @@ class CreatedInvitation:
     link: str  # contains the token: shown once, never stored
 
 
+_ROLE_LABELS = {Role.ADMIN: "administrador", Role.MEMBER: "miembro", Role.VIEWER: "lector"}
+
+
+def invitation_email(
+    *, to: str, organization_name: str, role: Role, link: str, expires_at: datetime
+) -> EmailMessage:
+    return EmailMessage(
+        to=to,
+        subject=f"Te invitaron a {organization_name} en DocuMind AI",
+        text=(
+            f"Hola:\n\n"
+            f"Te invitaron a unirte a {organization_name} en DocuMind AI "
+            f"como {_ROLE_LABELS.get(role, str(role))}.\n\n"
+            f"Para aceptar, abrí este link:\n{link}\n\n"
+            f"Vence el {expires_at:%d/%m/%Y a las %H:%M} (UTC). "
+            f"Si no esperabas esta invitación, ignorá este email.\n"
+        ),
+    )
+
+
 class CreateInvitation:
     def __init__(
         self,
         invitations: InvitationRepository,
         memberships: MembershipRepository,
+        organizations: OrganizationRepository,
         find_user: FindUserByEmail,
         record_audit_event: RecordAuditEvent,
+        outgoing_mail: OutgoingMail,
         *,
         app_origin: str,
         id_factory: Callable[[], UUID] = new_id,
@@ -84,8 +107,10 @@ class CreateInvitation:
     ) -> None:
         self._invitations = invitations
         self._memberships = memberships
+        self._organizations = organizations
         self._find_user = find_user
         self._audit = record_audit_event
+        self._outgoing_mail = outgoing_mail
         self._app_origin = app_origin
         self._id_factory = id_factory
         self._clock = clock
@@ -131,6 +156,19 @@ class CreateInvitation:
             )
         )
         link = invitation_link(self._app_origin, actor.organization_id, token)
+        organization = await self._organizations.get_by_id(actor.organization_id)
+        if organization is None:  # cannot happen: CurrentMemberDep found the membership
+            raise OrganizationNotFoundError()
+        # Sent after the response, once the invitation is committed (see OutgoingMail).
+        self._outgoing_mail.queue(
+            invitation_email(
+                to=email,
+                organization_name=organization.name,
+                role=invitation.role,
+                link=link,
+                expires_at=invitation.expires_at,
+            )
+        )
         return CreatedInvitation(invitation=invitation, link=link)
 
 

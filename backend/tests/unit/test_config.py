@@ -69,3 +69,17 @@ def test_app_origin_rejects_non_origins(raw: str) -> None:
 def test_token_lifetimes_have_bounds(field: str, value: int) -> None:
     with pytest.raises(ValidationError, match=field):
         make_settings(**{field: value})
+
+
+def test_empty_smtp_values_mean_not_configured(offline_settings: Settings) -> None:
+    settings = Settings.model_validate(
+        {
+            **offline_settings.model_dump(),
+            "jwt_secret": offline_settings.jwt_secret.get_secret_value(),
+            "smtp_host": "",
+            "smtp_password": " ",
+        }
+    )
+
+    assert settings.smtp_host is None
+    assert settings.smtp_password is None

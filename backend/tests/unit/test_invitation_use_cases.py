@@ -35,6 +35,7 @@ from app.modules.users.domain.errors import InvalidEmailError
 from app.shared.ids import new_id
 from app.shared.secure_tokens import hash_token
 from tests.fakes import (
+    FakeOutgoingMail,
     FakeTenantContext,
     InMemoryAuditLogRepository,
     InMemoryInvitationRepository,
@@ -66,17 +67,20 @@ class World:
         self.users = InMemoryUserRepository()
         self.audit = InMemoryAuditLogRepository()
         record = RecordAuditEvent(self.audit, clock=self.clock)
-        self.create = CreateInvitation(
-            self.invitations,
-            self.memberships,
-            FindUserByEmail(self.users),
-            record,
-            app_origin=ORIGIN,
-            clock=self.clock,
-        )
         self.organizations = InMemoryOrganizationRepository(self.tenant)
         self.organizations.items[self.organization_id] = Organization.create(
             id=self.organization_id, name="Acme", slug="acme", now=START
+        )
+        self.mail = FakeOutgoingMail()
+        self.create = CreateInvitation(
+            self.invitations,
+            self.memberships,
+            self.organizations,
+            FindUserByEmail(self.users),
+            record,
+            self.mail,
+            app_origin=ORIGIN,
+            clock=self.clock,
         )
         self.accept = AcceptInvitation(
             self.invitations,
@@ -199,6 +203,26 @@ async def test_an_expired_invitation_is_replaced_by_a_new_one(world: World) -> N
 
     assert old.status(world.clock.now) is InvitationStatus.REVOKED
     assert new.status(world.clock.now) is InvitationStatus.PENDING
+
+
+async def test_the_invitee_gets_an_email_with_the_link(world: World) -> None:
+    created = await world.invite("nueva@example.com", Role.VIEWER)
+
+    [email] = world.mail.sent
+    assert email.to == "nueva@example.com"
+    assert email.subject == "Te invitaron a Acme en DocuMind AI"
+    assert created.link in email.text
+    assert "como lector" in email.text
+    assert "15/11/2026" in email.text  # expiry date
+
+
+async def test_no_email_when_the_invitation_is_refused(world: World) -> None:
+    with pytest.raises(PermissionDeniedError):
+        await world.invite(actor=world.viewer)
+    with pytest.raises(AlreadyMemberError):
+        await world.invite("member@example.com")
+
+    assert world.mail.sent == []
 
 
 async def test_creation_is_audited_without_the_token(world: World) -> None:

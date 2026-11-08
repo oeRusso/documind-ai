@@ -1,6 +1,7 @@
 """Wiring: which concrete implementation each organizations use case receives."""
 
 from app.core.dependencies import SessionDep, SettingsDep
+from app.core.mail import OutgoingMailDep
 from app.infrastructure.database.tenant import SqlTenantContext
 from app.modules.audit.application.record_audit_event import RecordAuditEvent
 from app.modules.audit.infrastructure.sql_repository import SqlAuditLogRepository
@@ -64,12 +65,16 @@ def provide_remove_member(session: SessionDep) -> RemoveMember:
     )
 
 
-def provide_create_invitation(session: SessionDep, settings: SettingsDep) -> CreateInvitation:
+def provide_create_invitation(
+    session: SessionDep, settings: SettingsDep, outgoing_mail: OutgoingMailDep
+) -> CreateInvitation:
     return CreateInvitation(
         SqlInvitationRepository(session),
         SqlMembershipRepository(session),
+        SqlOrganizationRepository(session),
         FindUserByEmail(SqlUserRepository(session)),
         RecordAuditEvent(SqlAuditLogRepository(session)),
+        outgoing_mail,
         app_origin=settings.app_origin,
     )
 

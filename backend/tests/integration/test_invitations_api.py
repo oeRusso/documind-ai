@@ -6,6 +6,7 @@ from urllib.parse import parse_qs, urlsplit
 import httpx
 
 from tests.conftest import APP_ORIGIN
+from tests.fakes import FakeOutgoingMail
 from tests.integration.api_helpers import PASSWORD, Acme, register
 
 
@@ -126,6 +127,30 @@ async def test_invitations_of_another_organization_are_invisible(
 
     assert listed.json()["items"] == []
     assert revoke.status_code == 404
+
+
+async def test_the_invitee_receives_the_link_by_email(
+    client: httpx.AsyncClient, acme: Acme, sent_emails: FakeOutgoingMail
+) -> None:
+    created = await invite(client, acme, "dana@example.com", "viewer")
+
+    [email] = sent_emails.sent
+    assert email.to == "dana@example.com"
+    assert email.subject == "Te invitaron a Acme en DocuMind AI"
+    assert created["link"] in email.text
+
+
+async def test_no_email_when_the_invitation_fails(
+    client: httpx.AsyncClient, acme: Acme, sent_emails: FakeOutgoingMail
+) -> None:
+    response = await client.post(
+        "/api/v1/invitations",
+        json={"email": "bob@example.com", "role": "viewer"},
+        headers=acme.headers(acme.owner),
+    )
+
+    assert response.status_code == 409
+    assert sent_emails.sent == []
 
 
 # --- Step 18: accept ------------------------------------------------------------------------

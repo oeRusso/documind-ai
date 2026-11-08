@@ -19,6 +19,7 @@ from app.modules.organizations.domain.membership import Membership
 from app.modules.organizations.domain.roles import Role
 from app.modules.users.domain.entities import User
 from app.modules.users.domain.errors import EmailAlreadyRegisteredError
+from app.shared.mail import EmailMessage
 
 
 class FakeTenantContext:
@@ -230,3 +231,16 @@ class InMemoryInvitationRepository:
 
     async def save_status(self, invitation: Invitation) -> None:
         """The entities in `items` are the same objects the use case changed."""
+
+
+class FakeOutgoingMail:
+    """Keeps queued emails in a list instead of sending them."""
+
+    def __init__(self) -> None:
+        self.sent: list[EmailMessage] = []
+
+    def queue(self, message: EmailMessage) -> None:
+        self.sent.append(message)
+
+    async def send(self, message: EmailMessage) -> None:  # also usable as a Mailer
+        self.sent.append(message)
