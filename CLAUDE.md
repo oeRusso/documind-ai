@@ -9,6 +9,7 @@ fragmento), usando solo IA local. Proyecto de portfolio y de aprendizaje
 - `docs/plan-parte-1-arquitectura.md`: qué se construye y cómo está organizado.
 - `docs/plan-parte-2-etapas.md`: en qué orden.
 - `docs/etapas/etapa-NN.md`: alcance y criterios de terminado de cada etapa.
+- `docs/arquitectura-del-codigo.md`: qué hace cada archivo hoy y cómo se conectan.
 - `docs/decisions/`: ADRs. Si el código contradice una ADR, gana la ADR o se escribe una nueva.
 
 Si algo de este archivo choca con los planes, avisá antes de elegir.
@@ -119,7 +120,7 @@ Ojo con los nombres repetidos:
 3. Implementar en pasos chicos; tests y linters en verde.
    Al terminar cada bloque de pasos: levantar el servicio (`podman compose up -d --build`) para que
    Esteban lo verifique, decirle qué probar, y commitear y pushear a `development`.
-4. Al cerrar: actualizar README, escribir la ADR si hubo decisión (`docs/decisions/NNNN-titulo.md`,
+4. Al cerrar: actualizar README y `docs/arquitectura-del-codigo.md` (mapa de archivos), escribir la ADR si hubo decisión (`docs/decisions/NNNN-titulo.md`,
    desde `0000-plantilla.md`), marcar la etapa como terminada en su archivo y en la sección siguiente.
 5. PR `development` → `main`.
 
