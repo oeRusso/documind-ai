@@ -15,6 +15,7 @@ from app.core.logging import configure_logging
 from app.core.request_context import request_context_middleware
 from app.infrastructure.database.session import create_engine, create_session_factory
 from app.modules.auth.presentation.router import router as auth_router
+from app.modules.organizations.presentation.invitations_router import router as invitations_router
 from app.modules.organizations.presentation.members_router import router as members_router
 from app.modules.organizations.presentation.router import router as organizations_router
 
@@ -44,6 +45,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api_v1.include_router(auth_router)
     api_v1.include_router(organizations_router)
     api_v1.include_router(members_router)
+    api_v1.include_router(invitations_router)
 
     app.include_router(health_router)
     app.include_router(api_v1)

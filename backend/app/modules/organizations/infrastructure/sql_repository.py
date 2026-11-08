@@ -3,15 +3,23 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import ColumnElement, delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.organizations.domain.entities import Organization
-from app.modules.organizations.domain.errors import OrganizationSlugTakenError
+from app.modules.organizations.domain.errors import (
+    InvitationAlreadyPendingError,
+    OrganizationSlugTakenError,
+)
+from app.modules.organizations.domain.invitation import Invitation
 from app.modules.organizations.domain.membership import Membership
 from app.modules.organizations.domain.roles import Role
-from app.modules.organizations.infrastructure.models import MembershipModel, OrganizationModel
+from app.modules.organizations.infrastructure.models import (
+    InvitationModel,
+    MembershipModel,
+    OrganizationModel,
+)
 
 
 def _to_entity(model: OrganizationModel) -> Organization:
@@ -147,5 +155,113 @@ class SqlMembershipRepository:
             delete(MembershipModel).where(
                 MembershipModel.organization_id == organization_id,
                 MembershipModel.id == membership_id,
+            )
+        )
+
+
+def _invitation_to_entity(model: InvitationModel) -> Invitation:
+    return Invitation(
+        id=model.id,
+        organization_id=model.organization_id,
+        email=model.email,
+        role=Role(model.role),
+        token_hash=model.token_hash,
+        invited_by_id=model.invited_by_id,
+        expires_at=model.expires_at,
+        accepted_at=model.accepted_at,
+        revoked_at=model.revoked_at,
+        created_at=model.created_at,
+        updated_at=model.updated_at,
+    )
+
+
+class SqlInvitationRepository:
+    """Does not commit: the transaction belongs to the request (see get_session)."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def add(self, invitation: Invitation) -> None:
+        self._session.add(
+            InvitationModel(
+                id=invitation.id,
+                organization_id=invitation.organization_id,
+                email=invitation.email,
+                role=str(invitation.role),
+                token_hash=invitation.token_hash,
+                invited_by_id=invitation.invited_by_id,
+                expires_at=invitation.expires_at,
+                accepted_at=invitation.accepted_at,
+                revoked_at=invitation.revoked_at,
+                created_at=invitation.created_at,
+                updated_at=invitation.updated_at,
+            )
+        )
+        try:
+            await self._session.flush()
+        except IntegrityError as exc:  # uq_invitations_organization_id_email_open
+            raise InvitationAlreadyPendingError() from exc
+
+    @staticmethod
+    def _open(organization_id: UUID) -> tuple[ColumnElement[bool], ...]:
+        """WHERE conditions of an open invitation (not accepted, not revoked)."""
+        return (
+            InvitationModel.organization_id == organization_id,
+            InvitationModel.accepted_at.is_(None),
+            InvitationModel.revoked_at.is_(None),
+        )
+
+    async def list_open(self, organization_id: UUID) -> list[Invitation]:
+        result = await self._session.execute(
+            select(InvitationModel)
+            .where(*self._open(organization_id))
+            .order_by(InvitationModel.created_at, InvitationModel.id)
+        )
+        return [_invitation_to_entity(model) for model in result.scalars()]
+
+    async def get_by_id(self, organization_id: UUID, invitation_id: UUID) -> Invitation | None:
+        result = await self._session.execute(
+            select(InvitationModel).where(
+                InvitationModel.organization_id == organization_id,
+                InvitationModel.id == invitation_id,
+            )
+        )
+        model = result.scalar_one_or_none()
+        return _invitation_to_entity(model) if model else None
+
+    async def get_open_by_email(self, organization_id: UUID, email: str) -> Invitation | None:
+        result = await self._session.execute(
+            select(InvitationModel).where(
+                *self._open(organization_id), InvitationModel.email == email
+            )
+        )
+        model = result.scalar_one_or_none()
+        return _invitation_to_entity(model) if model else None
+
+    async def get_by_token_hash_for_update(
+        self, organization_id: UUID, token_hash: str
+    ) -> Invitation | None:
+        result = await self._session.execute(
+            select(InvitationModel)
+            .where(
+                InvitationModel.organization_id == organization_id,
+                InvitationModel.token_hash == token_hash,
+            )
+            .with_for_update()
+        )
+        model = result.scalar_one_or_none()
+        return _invitation_to_entity(model) if model else None
+
+    async def save_status(self, invitation: Invitation) -> None:
+        await self._session.execute(
+            update(InvitationModel)
+            .where(
+                InvitationModel.organization_id == invitation.organization_id,
+                InvitationModel.id == invitation.id,
+            )
+            .values(
+                accepted_at=invitation.accepted_at,
+                revoked_at=invitation.revoked_at,
+                updated_at=invitation.updated_at,
             )
         )

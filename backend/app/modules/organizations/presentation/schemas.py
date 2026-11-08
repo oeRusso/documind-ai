@@ -1,12 +1,14 @@
 """HTTP request/response shapes (Pydantic). Validation of format only; rules live in domain."""
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 from app.modules.organizations.application.get_organization import OrganizationWithRole
 from app.modules.organizations.application.manage_members import MemberView
+from app.modules.organizations.domain.invitation import Invitation, InvitationStatus
 from app.modules.organizations.domain.roles import Role
 
 
@@ -56,3 +58,39 @@ class MemberRead(BaseModel):
 
 class MemberRoleUpdate(BaseModel):
     role: Role
+
+
+InvitableRole = Literal[Role.ADMIN, Role.MEMBER, Role.VIEWER]
+
+
+class InvitationCreate(BaseModel):
+    email: str = Field(max_length=254, examples=["carla@acme.com"])
+    role: InvitableRole = Field(description="owner no se invita: se asigna a un miembro existente")
+
+
+class InvitationRead(BaseModel):
+    id: UUID
+    email: str
+    role: Role
+    status: InvitationStatus
+    expires_at: datetime
+    created_at: datetime
+    invited_by_id: UUID | None
+
+    @classmethod
+    def build(cls, invitation: Invitation, now: datetime) -> "InvitationRead":
+        return cls(
+            id=invitation.id,
+            email=invitation.email,
+            role=invitation.role,
+            status=invitation.status(now),
+            expires_at=invitation.expires_at,
+            created_at=invitation.created_at,
+            invited_by_id=invitation.invited_by_id,
+        )
+
+
+class CreatedInvitationRead(InvitationRead):
+    link: str = Field(
+        description="Link para aceptar. Se muestra **solo esta vez**: el token no se guarda."
+    )

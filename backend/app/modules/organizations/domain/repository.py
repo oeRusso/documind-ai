@@ -9,6 +9,7 @@ from typing import Protocol
 from uuid import UUID
 
 from app.modules.organizations.domain.entities import Organization
+from app.modules.organizations.domain.invitation import Invitation
 from app.modules.organizations.domain.membership import Membership
 from app.modules.organizations.domain.roles import Role
 
@@ -56,3 +57,27 @@ class MembershipRepository(Protocol):
     ) -> None: ...
 
     async def remove(self, organization_id: UUID, membership_id: UUID) -> None: ...
+
+
+class InvitationRepository(Protocol):
+    async def add(self, invitation: Invitation) -> None:
+        """Raises InvitationAlreadyPendingError if the email already has an open invitation."""
+        ...
+
+    async def list_open(self, organization_id: UUID) -> list[Invitation]:
+        """Not accepted and not revoked (expired ones included, so they can be revoked)."""
+        ...
+
+    async def get_by_id(self, organization_id: UUID, invitation_id: UUID) -> Invitation | None: ...
+
+    async def get_open_by_email(self, organization_id: UUID, email: str) -> Invitation | None: ...
+
+    async def get_by_token_hash_for_update(
+        self, organization_id: UUID, token_hash: str
+    ) -> Invitation | None:
+        """Locks the row: the same link accepted twice at once only works once."""
+        ...
+
+    async def save_status(self, invitation: Invitation) -> None:
+        """Persist accepted_at, revoked_at and updated_at."""
+        ...

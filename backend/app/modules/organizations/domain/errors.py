@@ -29,3 +29,28 @@ class LastOwnerError(ConflictError):
 class MembershipNotFoundError(NotFoundError):
     code = "membership_not_found"
     message = "Miembro no encontrado"
+
+
+class InvitationNotFoundError(NotFoundError):
+    code = "invitation_not_found"
+    message = "La invitación no existe, ya se usó o fue revocada"
+
+
+class InvitationExpiredError(ConflictError):
+    code = "invitation_expired"
+    message = "La invitación venció: pedí una nueva"
+
+
+class InvitationAlreadyPendingError(ConflictError):
+    code = "invitation_already_pending"
+    message = "Ya hay una invitación pendiente para ese email"
+
+
+class AlreadyMemberError(ConflictError):
+    code = "already_member"
+    message = "Esa persona ya es miembro de la organización"
+
+
+class InvitationEmailMismatchError(ForbiddenError):
+    code = "invitation_email_mismatch"
+    message = "Esta invitación es para otro email"

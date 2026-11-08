@@ -11,6 +11,7 @@ from app.infrastructure.database.models import Base
 from app.main import create_app
 from tests.conftest import APP_ORIGIN, TEST_JWT_SECRET
 from tests.db import app_test_url, ensure_database_available, migrator_test_url, reset_schema
+from tests.integration.api_helpers import Acme, setup_acme
 
 pytestmark = pytest.mark.integration
 
@@ -82,3 +83,9 @@ async def app_session(db_settings: Settings) -> AsyncIterator[AsyncSession]:
             if transaction.is_active:
                 await transaction.rollback()
     await engine.dispose()
+
+
+@pytest.fixture
+async def acme(client: httpx.AsyncClient) -> Acme:
+    """ana owns acme; carla is admin and bob is viewer there (each also owns their own org)."""
+    return await setup_acme(client)

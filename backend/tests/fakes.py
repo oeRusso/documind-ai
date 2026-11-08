@@ -10,7 +10,11 @@ from uuid import UUID
 from app.modules.audit.domain.entities import AuditEvent
 from app.modules.auth.domain.refresh_tokens import RefreshToken
 from app.modules.organizations.domain.entities import Organization
-from app.modules.organizations.domain.errors import OrganizationSlugTakenError
+from app.modules.organizations.domain.errors import (
+    InvitationAlreadyPendingError,
+    OrganizationSlugTakenError,
+)
+from app.modules.organizations.domain.invitation import Invitation
 from app.modules.organizations.domain.membership import Membership
 from app.modules.organizations.domain.roles import Role
 from app.modules.users.domain.entities import User
@@ -171,3 +175,58 @@ class InMemoryRefreshTokenRepository:
 
     def family(self, family_id: UUID) -> list[RefreshToken]:
         return [t for t in self.items.values() if t.family_id == family_id]
+
+
+class InMemoryInvitationRepository:
+    def __init__(self, tenant: FakeTenantContext) -> None:
+        self.items: list[Invitation] = []
+        self.tenant = tenant
+
+    def _open(self, organization_id: UUID) -> list[Invitation]:
+        return [
+            i
+            for i in self.items
+            if i.organization_id == organization_id
+            and i.accepted_at is None
+            and i.revoked_at is None
+        ]
+
+    async def add(self, invitation: Invitation) -> None:
+        assert self.tenant.organization_id == invitation.organization_id, "tenant not set"
+        if any(i.email == invitation.email for i in self._open(invitation.organization_id)):
+            raise InvitationAlreadyPendingError()
+        self.items.append(invitation)
+
+    async def list_open(self, organization_id: UUID) -> list[Invitation]:
+        return self._open(organization_id)
+
+    async def get_by_id(self, organization_id: UUID, invitation_id: UUID) -> Invitation | None:
+        return next(
+            (
+                i
+                for i in self.items
+                if i.organization_id == organization_id and i.id == invitation_id
+            ),
+            None,
+        )
+
+    async def get_open_by_email(self, organization_id: UUID, email: str) -> Invitation | None:
+        return next((i for i in self._open(organization_id) if i.email == email), None)
+
+    async def get_by_token_hash_for_update(
+        self, organization_id: UUID, token_hash: str
+    ) -> Invitation | None:
+        # Like RLS: only the organization in the tenant context is visible.
+        if self.tenant.organization_id != organization_id:
+            return None
+        return next(
+            (
+                i
+                for i in self.items
+                if i.organization_id == organization_id and i.token_hash == token_hash
+            ),
+            None,
+        )
+
+    async def save_status(self, invitation: Invitation) -> None:
+        """The entities in `items` are the same objects the use case changed."""
