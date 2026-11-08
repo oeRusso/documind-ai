@@ -18,10 +18,10 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 - [x] Protección CSRF en los endpoints que usan cookies.
 - [x] Dependencia de FastAPI que resuelve el usuario y su membresía, y entrega el `organization_id` a cada caso de uso. Los repositorios lo exigen como parámetro obligatorio.
 - [x] Row Level Security en PostgreSQL: la app fija `app.current_org` por transacción (`SET LOCAL`) y usa un rol de base de datos que no puede saltarse RLS.
-- [ ] Invitaciones por link.
+- [x] Invitaciones por link.
 - [ ] Rate limit en login y registro; campo trampa (honeypot) en el registro. *(Sin Turnstile: ADR 0005.)*
 - [x] `audit_logs` con las acciones de seguridad (solo inserción).
-- [ ] Mailpit en `compose.yaml` para ver los emails de desarrollo (invitaciones).
+- [x] Mailpit en `compose.yaml` para ver los emails de desarrollo (invitaciones).
 - [ ] Frontend mínimo en Next.js: registro, login, selector de organización y gestión de miembros, con un cliente TypeScript generado desde el OpenAPI y TanStack Query.
 
 ## Fuera de alcance
@@ -83,9 +83,9 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
   (Los endpoints sin autenticación de la etapa 1 se quitaron en el paso 4: con RLS no pueden funcionar.)
 - [x] 15. Test de aislamiento con el filtro del backend deshabilitado.
 - [x] 16. Miembros: listar, cambiar rol, quitar.
-- [ ] 17. Invitaciones: crear, listar, revocar.
-- [ ] 18. Aceptar invitación.
-- [ ] 19. Mailpit y `Mailer`.
+- [x] 17. Invitaciones: crear, listar, revocar.
+- [x] 18. Aceptar invitación.
+- [x] 19. Mailpit y `Mailer`.
 - [ ] 20. Rate limit.
 - [ ] 21. Campo trampa (honeypot) en el registro (en lugar de Turnstile, ADR 0005).
 - [ ] 22. Frontend: Next.js, Vitest, rewrites y CI.
@@ -131,7 +131,23 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 - Hasta que existan las invitaciones (paso 17), los tests agregan miembros insertando la membresía.
 - Criterio 3 cumplido.
 
-**Pendiente:** pasos 17 a 27 (invitaciones, Mailpit, rate limit, campo trampa, frontend, cierre).
+**2026-11-08: pasos 17 a 19.** Invitaciones y email.
+
+- `POST|GET /invitations`, `DELETE /invitations/{id}` (revocar), `POST /invitations/accept`.
+  `POST /auth/register` acepta `invitation` en lugar de `organization_name`/`organization_slug`:
+  la persona invitada sin cuenta entra a la organización sin crear una propia.
+- El link lleva organización y token después de `#` (no llega al servidor ni a los logs). Se guarda solo
+  el hash. Vence a los 7 días; reinvitar un email con invitación vencida la reemplaza.
+- Para aceptar, el email de la cuenta tiene que ser el invitado (403 `invitation_email_mismatch`).
+  Aceptar es la única excepción a "membresía antes del contexto" (anotado en la ADR 0003).
+- Email: puertos `Mailer` y `OutgoingMail` (`app/shared/mail.py`), `SmtpMailer` con smtplib en un hilo,
+  envío con `BackgroundTasks` después de responder. Sin `SMTP_HOST` no se manda nada.
+  Mailpit en `compose.yaml` (UI en `127.0.0.1:8025`).
+- **Producción:** no hay servidor SMTP. Usar uno sería un servicio externo, así que hay que preguntar
+  antes. Mientras tanto, quien invita copia el link desde la respuesta o la UI.
+- Datos de prueba: `podman compose exec api python -m app.dev.seed`. Guía: `docs/probar-la-api.md`.
+
+**Pendiente:** pasos 20 a 27 (rate limit, campo trampa, frontend, cierre).
 
 ## Referencias
 

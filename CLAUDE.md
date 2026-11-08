@@ -153,6 +153,6 @@ Leerla antes de cualquier tarea de deploy (etapas 0, 3 y 11). Resumen:
 ## Etapa actual
 - **Etapa 0** (en curso): falta lo del VPS y la prueba de humo de Ollama. Ver `docs/etapas/etapa-00.md`.
 - **Etapa 1**: terminada (mergeada a `main`, que quedó protegida).
-- **Etapa 2** (en curso): pasos 1 a 16 de 27 hechos (base, RLS, auth, organizaciones y miembros por HTTP;
-  criterios 1, 2 y 3). Sigue el paso 17 (invitaciones). Ver "Avance" en `docs/etapas/etapa-02.md`.
+- **Etapa 2** (en curso): pasos 1 a 19 de 27 hechos (base, RLS, auth, organizaciones, miembros, invitaciones
+  y Mailpit; criterios 1, 2 y 3). Sigue el paso 20 (rate limit). Ver "Avance" en `docs/etapas/etapa-02.md`.
 Regla general: la etapa actual es la de **número más bajo** que no está marcada como terminada en `docs/etapas/`.

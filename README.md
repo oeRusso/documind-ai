@@ -24,6 +24,7 @@ software libre y planes gratuitos.
 - [Parte 2 — Plan por etapas](docs/plan-parte-2-etapas.md)
 - [Etapas](docs/etapas/): objetivo, tareas y criterios de terminado de cada una
 - [Decisiones de arquitectura (ADR)](docs/decisions/)
+- [Probar la API a mano](docs/probar-la-api.md): usuarios de prueba, Swagger y Mailpit
 
 ## Licencia
 
