@@ -69,6 +69,26 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  # Web app. Open http://localhost:3000 (use "localhost": it is the APP_ORIGIN the API trusts).
+  web:
+    build:
+      context: ./frontend
+      dockerfile: ../infrastructure/containers/frontend.Containerfile
+      args:
+        API_INTERNAL_URL: http://api:8000
+    image: localhost/documind-web:dev
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      api:
+        condition: service_started
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
   # Development only: catches every email and shows it in a web page. Never sends anything.
   mailpit:
     image: docker.io/axllent/mailpit:v1.32.0
