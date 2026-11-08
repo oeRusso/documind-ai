@@ -3,6 +3,7 @@
 They satisfy the Protocols in each module's `domain` without inheriting from them.
 """
 
+from collections.abc import Collection
 from datetime import datetime
 from uuid import UUID
 
@@ -11,6 +12,7 @@ from app.modules.auth.domain.refresh_tokens import RefreshToken
 from app.modules.organizations.domain.entities import Organization
 from app.modules.organizations.domain.errors import OrganizationSlugTakenError
 from app.modules.organizations.domain.membership import Membership
+from app.modules.organizations.domain.roles import Role
 from app.modules.users.domain.entities import User
 from app.modules.users.domain.errors import EmailAlreadyRegisteredError
 
@@ -65,6 +67,39 @@ class InMemoryMembershipRepository:
     async def list_by_user(self, user_id: UUID) -> list[Membership]:
         return [m for m in self.items if m.user_id == user_id]
 
+    async def list_for_organization(self, organization_id: UUID) -> list[Membership]:
+        return [m for m in self.items if m.organization_id == organization_id]
+
+    async def get_by_id(self, organization_id: UUID, membership_id: UUID) -> Membership | None:
+        return next(
+            (
+                m
+                for m in self.items
+                if m.organization_id == organization_id and m.id == membership_id
+            ),
+            None,
+        )
+
+    async def count_owners_for_update(self, organization_id: UUID) -> int:
+        return sum(
+            1 for m in self.items if m.organization_id == organization_id and m.role is Role.OWNER
+        )
+
+    async def update_role(
+        self, organization_id: UUID, membership_id: UUID, role: Role, now: datetime
+    ) -> None:
+        membership = await self.get_by_id(organization_id, membership_id)
+        if membership is not None:
+            membership.role = role
+            membership.updated_at = now
+
+    async def remove(self, organization_id: UUID, membership_id: UUID) -> None:
+        self.items = [
+            m
+            for m in self.items
+            if not (m.organization_id == organization_id and m.id == membership_id)
+        ]
+
 
 class InMemoryUserRepository:
     def __init__(self) -> None:
@@ -77,6 +112,9 @@ class InMemoryUserRepository:
 
     async def get_by_id(self, user_id: UUID) -> User | None:
         return self.items.get(user_id)
+
+    async def list_by_ids(self, user_ids: Collection[UUID]) -> list[User]:
+        return [u for u in self.items.values() if u.id in user_ids]
 
     async def get_by_email(self, email: str) -> User | None:
         return next((u for u in self.items.values() if u.email == email), None)

@@ -1,5 +1,6 @@
 """UserRepository implemented with SQLAlchemy (PostgreSQL)."""
 
+from collections.abc import Collection
 from uuid import UUID
 
 from sqlalchemy import select
@@ -47,6 +48,14 @@ class SqlUserRepository:
     async def get_by_id(self, user_id: UUID) -> User | None:
         model = await self._session.get(UserModel, user_id)
         return _to_entity(model) if model else None
+
+    async def list_by_ids(self, user_ids: Collection[UUID]) -> list[User]:
+        if not user_ids:
+            return []
+        result = await self._session.execute(
+            select(UserModel).where(UserModel.id.in_(list(user_ids)))
+        )
+        return [_to_entity(model) for model in result.scalars()]
 
     async def get_by_email(self, email: str) -> User | None:
         result = await self._session.execute(select(UserModel).where(UserModel.email == email))

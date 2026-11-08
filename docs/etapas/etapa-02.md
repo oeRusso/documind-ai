@@ -12,7 +12,7 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 ## Tareas
 
 - [x] Tablas `users`, `memberships`, `refresh_tokens`, `invitations` y `audit_logs` (`organizations` ya existe desde la etapa 1).
-- [ ] Roles owner, admin, member y viewer, verificados en cada caso de uso.
+- [x] Roles owner, admin, member y viewer, verificados en cada caso de uso.
 - [x] Contraseñas con Argon2id (argon2-cffi).
 - [x] Access token JWT de 15 minutos; refresh token rotativo, revocable y guardado en cookie HttpOnly, Secure, SameSite=Lax. Reusar un refresh token ya rotado invalida toda la familia.
 - [x] Protección CSRF en los endpoints que usan cookies.
@@ -36,7 +36,7 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 
 - [x] Un test demuestra que un usuario de la organización A no lee datos de B, incluso con el filtro del backend deshabilitado (lo frena RLS). *(`tests/security/test_tenant_isolation.py`)*
 - [x] Reusar un refresh token ya rotado invalida la sesión. *(`tests/integration/test_auth_api.py::test_reusing_a_rotated_refresh_token_ends_the_session`)*
-- [ ] Un viewer recibe 403 al intentar acciones de admin.
+- [x] Un viewer recibe 403 al intentar acciones de admin.
 
 ## Notas
 
@@ -82,7 +82,7 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 - [x] 14. Dependencia `CurrentMember` y endpoints de `organizations` rehechos.
   (Los endpoints sin autenticación de la etapa 1 se quitaron en el paso 4: con RLS no pueden funcionar.)
 - [x] 15. Test de aislamiento con el filtro del backend deshabilitado.
-- [ ] 16. Miembros: listar, cambiar rol, quitar.
+- [x] 16. Miembros: listar, cambiar rol, quitar.
 - [ ] 17. Invitaciones: crear, listar, revocar.
 - [ ] 18. Aceptar invitación.
 - [ ] 19. Mailpit y `Mailer`.
@@ -119,8 +119,19 @@ Que ninguna organización pueda ver datos de otra, garantizado por dos capas ind
 - Los tests HTTP usan `base_url="https://test"` (cookies `Secure`) y `tests/integration/api_helpers.py`.
 - Criterios 1 y 2 cumplidos. El test de aislamiento se verificó a la inversa: con RLS apagado, falla.
 
-**Pendiente:** pasos 16 a 27 (miembros, invitaciones, Mailpit, rate limit, campo trampa, frontend, cierre).
-Criterio 3 (viewer → 403) llega con el paso 16.
+**2026-11-08: paso 16.** Miembros de la organización activa (header `X-Organization-Id`).
+
+- `GET /members`, `PATCH /members/{membership_id}` (cambiar rol), `DELETE /members/{membership_id}`.
+- Orden de los chequeos: permiso del rol (403) → el miembro existe en esta organización (404) →
+  rango (nadie maneja a alguien de su rango o mayor, salvo el owner: 403) → queda al menos un owner (409).
+- Antes de cambiar o quitar, `count_owners_for_update` bloquea las filas de los owners: dos owners que
+  se degradan a la vez no pueden dejar la organización sin owner. Probado también a la inversa.
+- El email de cada miembro sale del módulo `users` por su capa `application` (`GetUsersByIds`).
+- Sin cursor en `/members` por ahora (`next_cursor` siempre `null`): una organización tiene pocos miembros.
+- Hasta que existan las invitaciones (paso 17), los tests agregan miembros insertando la membresía.
+- Criterio 3 cumplido.
+
+**Pendiente:** pasos 17 a 27 (invitaciones, Mailpit, rate limit, campo trampa, frontend, cierre).
 
 ## Referencias
 

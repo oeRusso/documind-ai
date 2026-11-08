@@ -115,6 +115,8 @@ Ojo con los nombres repetidos:
 2. Leer este archivo y `docs/etapas/etapa-NN.md`. Proponer un plan en pasos de no más de 1 hora,
    con archivos a crear o modificar y tests de cada paso. **Sin código hasta que se apruebe.** Señalar dudas y riesgos.
 3. Implementar en pasos chicos; tests y linters en verde.
+   Al terminar cada bloque de pasos: levantar el servicio (`podman compose up -d --build`) para que
+   Esteban lo verifique, decirle qué probar, y commitear y pushear a `development`.
 4. Al cerrar: actualizar README, escribir la ADR si hubo decisión (`docs/decisions/NNNN-titulo.md`,
    desde `0000-plantilla.md`), marcar la etapa como terminada en su archivo y en la sección siguiente.
 5. PR `development` → `main`.
@@ -151,6 +153,6 @@ Leerla antes de cualquier tarea de deploy (etapas 0, 3 y 11). Resumen:
 ## Etapa actual
 - **Etapa 0** (en curso): falta lo del VPS y la prueba de humo de Ollama. Ver `docs/etapas/etapa-00.md`.
 - **Etapa 1**: terminada (mergeada a `main`, que quedó protegida).
-- **Etapa 2** (en curso): pasos 1 a 15 de 27 hechos (base, RLS, auth y organizaciones por HTTP; criterios 1 y 2).
-  Sigue el paso 16 (miembros). Ver "Avance" en `docs/etapas/etapa-02.md`.
+- **Etapa 2** (en curso): pasos 1 a 16 de 27 hechos (base, RLS, auth, organizaciones y miembros por HTTP;
+  criterios 1, 2 y 3). Sigue el paso 17 (invitaciones). Ver "Avance" en `docs/etapas/etapa-02.md`.
 Regla general: la etapa actual es la de **número más bajo** que no está marcada como terminada en `docs/etapas/`.

@@ -4,11 +4,13 @@ Rule of the project: methods on tenant data take `organization_id` as a required
 even though RLS would also filter (two independent layers, ADR 0003).
 """
 
+from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
 from app.modules.organizations.domain.entities import Organization
 from app.modules.organizations.domain.membership import Membership
+from app.modules.organizations.domain.roles import Role
 
 
 class OrganizationRepository(Protocol):
@@ -31,3 +33,26 @@ class MembershipRepository(Protocol):
         RLS allows it through the `own_memberships` policy (only the user's own rows).
         """
         ...
+
+    async def list_for_organization(self, organization_id: UUID) -> list[Membership]:
+        """Every member of the organization, oldest first."""
+        ...
+
+    async def get_by_id(self, organization_id: UUID, membership_id: UUID) -> Membership | None:
+        """None when the id does not exist *or* belongs to another organization."""
+        ...
+
+    async def count_owners_for_update(self, organization_id: UUID) -> int:
+        """Count the owners and lock their rows until the transaction ends.
+
+        Two owners demoting each other at the same time could otherwise both see "2 owners"
+        and leave the organization with none. With the lock, the second one waits and then
+        sees the first change.
+        """
+        ...
+
+    async def update_role(
+        self, organization_id: UUID, membership_id: UUID, role: Role, now: datetime
+    ) -> None: ...
+
+    async def remove(self, organization_id: UUID, membership_id: UUID) -> None: ...
