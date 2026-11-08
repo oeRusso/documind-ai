@@ -26,6 +26,9 @@ class RegisterRequest(BaseModel):
         default=None, min_length=2, max_length=63, examples=["acme"]
     )
     invitation: InvitationAccept | None = None
+    # Honeypot (ADR 0005): the web form hides this field, so people leave it empty and bots
+    # that fill every input do not. Named like a normal field on purpose.
+    website: str | None = Field(default=None, max_length=200, description="Dejar vacío")
 
     @model_validator(mode="after")
     def _organization_or_invitation(self) -> "RegisterRequest":

@@ -2,6 +2,7 @@
 
 from typing import Annotated, Any
 
+import structlog
 from fastapi import APIRouter, Cookie, Depends, Response, status
 
 from app.core.dependencies import ClientIpDep
@@ -32,6 +33,7 @@ from app.modules.auth.presentation.schemas import (
     TokenResponse,
     UserRead,
 )
+from app.shared.errors import ValidationError
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -40,6 +42,16 @@ _ERRORS: dict[int | str, dict[str, Any]] = {
     status.HTTP_403_FORBIDDEN: {"model": ErrorResponse},
     status.HTTP_422_UNPROCESSABLE_CONTENT: {"model": ErrorResponse},
 }
+
+logger = structlog.get_logger(__name__)
+
+
+class LooksLikeABotError(ValidationError):
+    """Same code and message as any invalid form: the bot learns nothing (ADR 0005)."""
+
+    code = "validation_error"
+    message = "Datos inválidos"
+
 
 RefreshCookie = Annotated[str | None, Cookie(alias=REFRESH_COOKIE, include_in_schema=False)]
 
@@ -72,6 +84,9 @@ async def register(
     Con `organization_name` y `organization_slug` crea su primera organización (como owner).
     Con `invitation` entra a la organización que lo invitó, con el rol de la invitación.
     """
+    if body.website:
+        logger.info("register_honeypot_filled", ip=ip)
+        raise LooksLikeABotError()
     result = await use_case.execute(
         RegisterCommand(
             email=body.email,

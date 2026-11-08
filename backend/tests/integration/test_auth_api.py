@@ -211,3 +211,41 @@ async def test_logout_clears_cookies_and_ends_the_session(client: httpx.AsyncCli
     cleared = " ".join(response.headers.get_list("set-cookie")).lower()
     assert "refresh_token=" in cleared and "max-age=0" in cleared
     assert (await refresh(client, session)).status_code == 401
+
+
+async def test_a_filled_honeypot_looks_like_any_invalid_form(client: httpx.AsyncClient) -> None:
+    """ADR 0005: the hidden `website` field is only filled by bots. Nothing is created and the
+    answer is the same generic one as any invalid form."""
+    response = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "bot@example.com",
+            "password": PASSWORD,
+            "organization_name": "Spam",
+            "organization_slug": "spam",
+            "website": "https://spam.example",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"
+    assert response.json()["error"]["message"] == "Datos inválidos"
+    login = await client.post(
+        "/api/v1/auth/login", json={"email": "bot@example.com", "password": PASSWORD}
+    )
+    assert login.status_code == 401
+
+
+async def test_an_empty_honeypot_is_fine(client: httpx.AsyncClient) -> None:
+    response = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "ana@example.com",
+            "password": PASSWORD,
+            "organization_name": "Acme",
+            "organization_slug": "acme",
+            "website": "",
+        },
+    )
+
+    assert response.status_code == 201
