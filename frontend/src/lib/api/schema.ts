@@ -151,6 +151,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/documents/{document_id}/chunks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Chunks
+         * @description Los fragmentos del documento, en orden de lectura, con su sección y sus páginas.
+         */
+        get: operations["list_chunks_api_v1_documents__document_id__chunks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/documents/{document_id}/download": {
         parameters: {
             query?: never;
@@ -165,6 +185,48 @@ export interface paths {
         get: operations["download_document_api_v1_documents__document_id__download_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/processing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Processing
+         * @description Estado del procesamiento de la versión más nueva. Consultalo cada pocos segundos.
+         *
+         *     Si el trabajo quedó trabado (el worker se cayó), se vuelve a encolar automáticamente.
+         */
+        get: operations["get_processing_api_v1_documents__document_id__processing_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/reprocess": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reprocess
+         * @description Vuelve a procesar la versión más nueva (por ejemplo, después de un error).
+         */
+        post: operations["reprocess_api_v1_documents__document_id__reprocess_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -409,6 +471,21 @@ export interface components {
              */
             file: string;
         };
+        /** ChunkRead */
+        ChunkRead: {
+            /** Content */
+            content: string;
+            /** Page End */
+            page_end: number | null;
+            /** Page Start */
+            page_start: number | null;
+            /** Position */
+            position: number;
+            /** Section */
+            section: string | null;
+            /** Token Count */
+            token_count: number;
+        };
         /** CreatedInvitationRead */
         CreatedInvitationRead: {
             /**
@@ -581,6 +658,11 @@ export interface components {
          * @enum {string}
          */
         InvitationStatus: "pending" | "expired" | "accepted" | "revoked";
+        /**
+         * JobStatus
+         * @enum {string}
+         */
+        JobStatus: "pending" | "extracting" | "ocr" | "chunking" | "ready" | "failed";
         /** LoginRequest */
         LoginRequest: {
             /** Email */
@@ -652,6 +734,13 @@ export interface components {
              */
             updated_at: string;
         };
+        /** Page[ChunkRead] */
+        Page_ChunkRead_: {
+            /** Items */
+            items: components["schemas"]["ChunkRead"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
         /** Page[DocumentRead] */
         Page_DocumentRead_: {
             /** Items */
@@ -679,6 +768,41 @@ export interface components {
             items: components["schemas"]["OrganizationRead"][];
             /** Next Cursor */
             next_cursor?: string | null;
+        };
+        /**
+         * ProcessingRead
+         * @description `status` is null when the document has no job (uploaded before stage 5).
+         */
+        ProcessingRead: {
+            /**
+             * Attempts
+             * @default 0
+             */
+            attempts: number;
+            /**
+             * Chunk Count
+             * @default 0
+             */
+            chunk_count: number;
+            /** Error */
+            error?: string | null;
+            /** Finished At */
+            finished_at?: string | null;
+            /**
+             * Ocr Pages
+             * @default 0
+             */
+            ocr_pages: number;
+            /**
+             * Pages Done
+             * @default 0
+             */
+            pages_done: number;
+            /** Pages Total */
+            pages_total?: number | null;
+            /** Started At */
+            started_at?: string | null;
+            status: components["schemas"]["JobStatus"] | null;
         };
         /**
          * RegisterRequest
@@ -1303,6 +1427,71 @@ export interface operations {
             };
         };
     };
+    list_chunks_api_v1_documents__document_id__chunks_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                /** @description `next_cursor` anterior */
+                cursor?: number | null;
+            };
+            header: {
+                /** @description Organización activa */
+                "X-Organization-Id": string;
+            };
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ChunkRead_"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     download_document_api_v1_documents__document_id__download_get: {
         parameters: {
             query?: {
@@ -1327,6 +1516,128 @@ export interface operations {
                 };
                 content: {
                     "application/octet-stream": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_processing_api_v1_documents__document_id__processing_get: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Organización activa */
+                "X-Organization-Id": string;
+            };
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProcessingRead"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reprocess_api_v1_documents__document_id__reprocess_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Organización activa */
+                "X-Organization-Id": string;
+            };
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Unauthorized */

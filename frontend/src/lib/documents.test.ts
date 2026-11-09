@@ -3,7 +3,16 @@ import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api/client";
 import { SessionStore } from "@/lib/api/session";
 
-import { canDelete, canUpload, duplicateOf, formatBytes, uploadDocument } from "./documents";
+import {
+  canDelete,
+  canUpload,
+  duplicateOf,
+  formatBytes,
+  isDocumentBusy,
+  isProcessingFinal,
+  pageRange,
+  uploadDocument,
+} from "./documents";
 
 /** A scripted XMLHttpRequest: answers each send() with the next status/body. */
 function fakeXhrs(answers: { status: number; body: unknown }[]) {
@@ -118,5 +127,22 @@ describe("helpers", () => {
   it("only reports duplicates for the duplicate error", () => {
     expect(duplicateOf(new ApiError(415, "unsupported_file_type", "x"))).toBeNull();
     expect(duplicateOf(new Error("x"))).toBeNull();
+  });
+});
+
+describe("processing helpers", () => {
+  it("knows when to stop asking", () => {
+    expect(isProcessingFinal("ready")).toBe(true);
+    expect(isProcessingFinal("failed")).toBe(true);
+    expect(isProcessingFinal(null)).toBe(true); // documents from before stage 5
+    expect(isProcessingFinal("ocr")).toBe(false);
+    expect(isDocumentBusy("processing")).toBe(true);
+    expect(isDocumentBusy("ready")).toBe(false);
+  });
+
+  it("writes page ranges", () => {
+    expect(pageRange(3, 3)).toBe("pág. 3");
+    expect(pageRange(3, 5)).toBe("págs. 3–5");
+    expect(pageRange(null, null)).toBeNull();
   });
 });

@@ -7,6 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { DocumentUploader, KindBadge, KindIcon, StatusBadge } from "@/components/documents";
+import { ChunkList, ProcessingPanel } from "@/components/processing";
 import { ErrorMessage } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -176,6 +177,17 @@ export default function DocumentPage() {
         </Card>
 
         <div className="grid content-start gap-6">
+          <ProcessingPanel
+            organizationId={organizationId}
+            documentId={id}
+            canReprocess={deletable}
+            onFinished={() =>
+              Promise.all([
+                queryClient.invalidateQueries({ queryKey: key }),
+                queryClient.invalidateQueries({ queryKey: ["chunks", organizationId, id] }),
+              ])
+            }
+          />
           <Card>
             <CardHeader>
               <CardTitle>Detalles</CardTitle>
@@ -219,6 +231,10 @@ export default function DocumentPage() {
             </Card>
           )}
         </div>
+      </div>
+
+      <div className="mt-6">
+        <ChunkList organizationId={organizationId} documentId={id} />
       </div>
     </>
   );

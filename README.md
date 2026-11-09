@@ -9,12 +9,14 @@ software libre y planes gratuitos.
 
 ## Estado actual
 
-**Etapas 1, 2 y 4 terminadas** (todo el trabajo nuevo queda en `development` hasta el despliegue):
+**Etapas 1, 2, 4 y 5 terminadas** (todo el trabajo nuevo queda en `development` hasta el despliegue):
 
 - Cuentas, organizaciones, roles e invitaciones, con aislamiento entre organizaciones en dos capas
   (chequeo en el backend + Row Level Security en PostgreSQL) y sesiones con refresh token rotativo.
 - Documentos: subida de PDF, Word, TXT y Markdown (hasta 25 MB) con validación del tipo real, versiones,
   detección de duplicados, descarga solo por la API y borrado diferido.
+- Procesamiento en segundo plano: texto página por página, OCR de páginas escaneadas (Tesseract) y
+  fragmentos por título con su página y sección, visibles en la web.
 
 Las etapas 0 y 3 (VPS y despliegue) quedan para el final.
 

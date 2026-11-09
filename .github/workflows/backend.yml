@@ -45,6 +45,9 @@ jobs:
       DATABASE_MIGRATION_URL: postgresql+asyncpg://migrator:migrator@localhost:5432/documind  # pragma: allowlist secret
       JWT_SECRET: ci-only-jwt-secret-not-used-anywhere-else-0123456789  # pragma: allowlist secret
       REQUIRE_DB: "1"
+      # The OCR test must run here (stage 5 criterion: a scanned PDF ends with readable text).
+      REQUIRE_OCR: "1"
+      TESSDATA_PREFIX: /usr/share/tesseract-ocr/5/tessdata
 
     steps:
       - uses: actions/checkout@v5
@@ -57,6 +60,12 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --locked
+
+      - name: Tesseract language data (OCR tests)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends tesseract-ocr-spa tesseract-ocr-eng
+          ls "$TESSDATA_PREFIX/spa.traineddata"
 
       - name: Ruff (lint)
         run: uv run ruff check --output-format=github .

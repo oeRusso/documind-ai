@@ -26,6 +26,29 @@ export const STATUS_LABELS: Record<string, string> = {
   failed: "Falló el procesamiento",
 };
 
+/** Steps of the pipeline, in order (stage 5). `ocr` only happens for scanned pages. */
+export const PROCESSING_STEPS = [
+  { status: "pending", label: "En cola" },
+  { status: "extracting", label: "Leyendo el texto" },
+  { status: "ocr", label: "Reconociendo páginas escaneadas" },
+  { status: "chunking", label: "Armando fragmentos" },
+  { status: "ready", label: "Listo" },
+] as const;
+
+export function isProcessingFinal(status: string | null | undefined): boolean {
+  return status == null || status === "ready" || status === "failed";
+}
+
+/** The document list keeps refreshing while something is still being processed. */
+export function isDocumentBusy(status: string): boolean {
+  return status === "pending" || status === "processing";
+}
+
+export function pageRange(start: number | null | undefined, end: number | null | undefined): string | null {
+  if (start == null) return null;
+  return end == null || end === start ? `pág. ${start}` : `págs. ${start}–${end}`;
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   const units = ["KB", "MB", "GB"];

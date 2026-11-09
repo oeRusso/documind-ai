@@ -31,6 +31,65 @@
         "title": "Body_upload_version_api_v1_documents__document_id__versions_post",
         "type": "object"
       },
+      "ChunkRead": {
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "page_end": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page End"
+          },
+          "page_start": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Start"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "section": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section"
+          },
+          "token_count": {
+            "title": "Token Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "position",
+          "content",
+          "section",
+          "page_start",
+          "page_end",
+          "token_count"
+        ],
+        "title": "ChunkRead",
+        "type": "object"
+      },
       "CreatedInvitationRead": {
         "properties": {
           "created_at": {
@@ -411,6 +470,18 @@
         "title": "InvitationStatus",
         "type": "string"
       },
+      "JobStatus": {
+        "enum": [
+          "pending",
+          "extracting",
+          "ocr",
+          "chunking",
+          "ready",
+          "failed"
+        ],
+        "title": "JobStatus",
+        "type": "string"
+      },
       "LoginRequest": {
         "properties": {
           "email": {
@@ -549,6 +620,33 @@
         "title": "OrganizationRead",
         "type": "object"
       },
+      "Page_ChunkRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ChunkRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[ChunkRead]",
+        "type": "object"
+      },
       "Page_DocumentRead_": {
         "properties": {
           "items": {
@@ -655,6 +753,92 @@
           "items"
         ],
         "title": "Page[OrganizationRead]",
+        "type": "object"
+      },
+      "ProcessingRead": {
+        "description": "`status` is null when the document has no job (uploaded before stage 5).",
+        "properties": {
+          "attempts": {
+            "default": 0,
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "chunk_count": {
+            "default": 0,
+            "title": "Chunk Count",
+            "type": "integer"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "ocr_pages": {
+            "default": 0,
+            "title": "Ocr Pages",
+            "type": "integer"
+          },
+          "pages_done": {
+            "default": 0,
+            "title": "Pages Done",
+            "type": "integer"
+          },
+          "pages_total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pages Total"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "ProcessingRead",
         "type": "object"
       },
       "RegisterRequest": {
@@ -1590,6 +1774,128 @@
         ]
       }
     },
+    "/api/v1/documents/{document_id}/chunks": {
+      "get": {
+        "description": "Los fragmentos del documento, en orden de lectura, con su sección y sus páginas.",
+        "operationId": "list_chunks_api_v1_documents__document_id__chunks_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "`next_cursor` anterior",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`next_cursor` anterior",
+              "title": "Cursor"
+            }
+          },
+          {
+            "description": "Organización activa",
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": true,
+            "schema": {
+              "description": "Organización activa",
+              "format": "uuid",
+              "title": "X-Organization-Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_ChunkRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Chunks",
+        "tags": [
+          "processing"
+        ]
+      }
+    },
     "/api/v1/documents/{document_id}/download": {
       "get": {
         "description": "Descarga el archivo. Es la única forma de obtenerlo: no hay URLs públicas.",
@@ -1693,6 +1999,186 @@
         "summary": "Download Document",
         "tags": [
           "documents"
+        ]
+      }
+    },
+    "/api/v1/documents/{document_id}/processing": {
+      "get": {
+        "description": "Estado del procesamiento de la versión más nueva. Consultalo cada pocos segundos.\n\nSi el trabajo quedó trabado (el worker se cayó), se vuelve a encolar automáticamente.",
+        "operationId": "get_processing_api_v1_documents__document_id__processing_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organización activa",
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": true,
+            "schema": {
+              "description": "Organización activa",
+              "format": "uuid",
+              "title": "X-Organization-Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessingRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Processing",
+        "tags": [
+          "processing"
+        ]
+      }
+    },
+    "/api/v1/documents/{document_id}/reprocess": {
+      "post": {
+        "description": "Vuelve a procesar la versión más nueva (por ejemplo, después de un error).",
+        "operationId": "reprocess_api_v1_documents__document_id__reprocess_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organización activa",
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": true,
+            "schema": {
+              "description": "Organización activa",
+              "format": "uuid",
+              "title": "X-Organization-Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reprocess",
+        "tags": [
+          "processing"
         ]
       }
     },

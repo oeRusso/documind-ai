@@ -49,7 +49,7 @@ GitHub Actions. (Cloudflare Access y GHCR quedan sujetos a la regla de servicios
 Existen a partir de la etapa 1 (backend) y la etapa 2 (frontend).
 - Backend (en `backend/`): `uv run pytest`, `uv run ruff check --fix`, `uv run ruff format`, `uv run mypy app`
 - Frontend (en `frontend/`): `pnpm lint`, `pnpm typecheck`, `pnpm test`
-- Entorno: `podman compose up -d --build` (db, API, web en http://localhost:3000, Mailpit) y
+- Entorno: `podman compose up -d --build` (db, API, worker, Valkey, web en http://localhost:3000, Mailpit) y
   `podman compose exec api python -m app.dev.seed` (usuarios de prueba, ver `docs/probar-la-api.md`).
 - Contrato API → frontend: `uv run python -m app.dev.openapi ../frontend/openapi.json` y `pnpm gen:api`.
 
@@ -161,11 +161,8 @@ Leerla antes de cualquier tarea de deploy (etapas 0, 3 y 11). Resumen:
 - **Etapa 3** (despliegue): **pospuesta al final** por decisión de Esteban (2026-11-08), junto con lo del VPS
   de la etapa 0. Necesita el túnel, el acceso al VPS y la guía `VPS-COMPARTIDO.md` (disco externo).
 - **Etapa 4**: terminada (2026-11-08) en `development`. Ver "Resultado" en `docs/etapas/etapa-04.md`.
-- **Etapa 5** (en curso, 2026-11-08): backend completo en `development` (Valkey + Celery worker, `processing_jobs`,
-  `document_chunks` con tsv en español, lectores PDF/DOCX/TXT/MD, OCR con Tesseract vía PyMuPDF, chunking,
-  recuperación de trabajos trabados). OCR verificado en el contenedor del worker. **Falta:** frontend (estado
-  del procesamiento con polling y vista de fragmentos), instalar `tesseract-ocr-spa` en el CI (`REQUIRE_OCR=1`),
-  ADR 0007 (OCR con PyMuPDF en vez de OCRmyPDF; tokens aproximados), cerrar `etapa-05.md`, actualizar
-  `docs/arquitectura-del-codigo.md` y `.env.example` (CELERY_BROKER_URL apunta a `valkey`, solo válido en compose).
+- **Etapa 5**: terminada (2026-11-09) en `development`. Ver "Resultado" en `docs/etapas/etapa-05.md`.
+- **Siguiente: etapa 6** (dataset de evaluación, embeddings y búsqueda híbrida). Necesita que Esteban
+  apruebe descargar el modelo de embeddings para Ollama.
 Regla general: la etapa actual es la de **número más bajo** que no está marcada como terminada en
 `docs/etapas/`, **salvo las etapas 0 y 3**, que quedan para el final.

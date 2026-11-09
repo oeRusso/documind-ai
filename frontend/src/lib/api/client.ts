@@ -18,6 +18,8 @@ export type InvitationRead = Schemas["InvitationRead"];
 export type DocumentRead = Schemas["DocumentRead"];
 export type DocumentDetailRead = Schemas["DocumentDetailRead"];
 export type VersionRead = Schemas["VersionRead"];
+export type ProcessingRead = Schemas["ProcessingRead"];
+export type ChunkRead = Schemas["ChunkRead"];
 
 /** The `params` for endpoints inside an organization. */
 export function inOrganization(organizationId: string) {

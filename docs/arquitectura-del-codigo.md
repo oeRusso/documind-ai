@@ -1,6 +1,6 @@
 # Arquitectura del código
 
-Mapa del código **tal como está hoy** (fin de la etapa 4): qué hace cada carpeta y cada archivo, y cómo
+Mapa del código **tal como está hoy** (fin de la etapa 5): qué hace cada carpeta y cada archivo, y cómo
 se comunican las piezas. El *diseño* completo del producto está en `plan-parte-1-arquitectura.md`;
 este documento describe lo que ya existe. Se actualiza al cerrar cada etapa.
 
@@ -17,6 +17,9 @@ flowchart LR
     W -->|"reenvía /api/* (rewrite)"| A["api<br/>FastAPI"]
     A -->|"SQL como rol app<br/>+ RLS"| D[("db<br/>PostgreSQL 16")]
     A -->|"SMTP"| M["mailpit<br/>(emails de desarrollo)"]
+    A -->|"encola tareas"| V[("valkey<br/>cola")]
+    V --> K["worker<br/>Celery: texto, OCR, fragmentos"]
+    K -->|"SQL como rol app + RLS"| D
 ```
 
 - El navegador **solo habla con la web** (`localhost:3000`). Las llamadas a `/api/...` las reenvía Next.js
@@ -31,6 +34,8 @@ flowchart LR
 | `db` | `pgvector/pgvector:pg16` (PostgreSQL 16 con la extensión de vectores para la etapa 6) | `127.0.0.1:5432` | Datos. Roles `migrator` (dueño de las tablas) y `app` (la API, sujeto a RLS). |
 | `api` | `infrastructure/containers/backend.Containerfile` | `127.0.0.1:8000` | La API. Arranca cuando `migrate` terminó. |
 | `web` | `infrastructure/containers/frontend.Containerfile` | `127.0.0.1:3000` | La interfaz. |
+| `worker` | `backend.Containerfile` (etapa `worker`, con datos de Tesseract) | — | Procesa documentos de a uno (`mem_limit 1g`) y corre la purga diaria. |
+| `valkey` | `valkey/valkey:8.1.10-alpine` | — | Cola de tareas (compatible con Redis), 128 MB. |
 | `mailpit` | `axllent/mailpit` | `127.0.0.1:8025` (web), `1025` (SMTP) | Atrapa los emails para verlos sin mandarlos de verdad. |
 
 ---
@@ -175,7 +180,7 @@ Puntos clave:
 | `mail/smtp.py` | `SmtpMailer` (manda por SMTP, a Mailpit en desarrollo) y `LoggingMailer` (si no hay SMTP configurado: solo anota destinatario y asunto en el log). |
 | `rate_limit.py` | `InMemoryRateLimiter`: cuenta intentos en una ventana deslizante, en memoria. Alcanza con una sola instancia de la API. |
 | `storage/filesystem.py` | Archivos subidos en disco (ver el módulo `documents`). |
-| `queue/`, `workers/` | Vacías: Celery + Valkey (etapa 5). |
+| `queue/celery_app.py` | La app de Celery: tareas confirmadas al terminar, de a una, tiempo límite, purga diaria. |
 
 #### `modules/users/`: cuentas
 
@@ -274,11 +279,60 @@ Piezas compartidas que sumó esta etapa:
 | `core/body_limit.py` | Middleware que rechaza cuerpos más grandes que el máximo (413) antes de leerlos. |
 | `jobs/purge_documents.py` | Comando `python -m app.jobs.purge_documents` para correr una vez por día. |
 
+#### `modules/extraction/`: leer y limpiar el texto (etapa 5, ADR 0007)
+
+| Archivo | Qué hace |
+|---|---|
+| `domain/text.py` | `TextBlock` (párrafo o título, con su página) y `PageText` (una página, si necesita OCR). |
+| `domain/normalization.py` | Limpieza: Unicode (ligaduras), palabras cortadas al final de línea, saltos de línea, espacios, y **encabezados y pies repetidos** en la mayoría de las páginas. |
+| `domain/headings.py` | Reconoce títulos en texto plano: Markdown (`#`), "CLÁUSULA…", "Artículo 5", "3.2 Alcance", líneas cortas en mayúsculas. |
+| `infrastructure/readers.py` | `FileTextExtractor`: abre PDF (PyMuPDF; títulos por tamaño de letra; OCR con Tesseract para páginas escaneadas), DOCX (python-docx; estilos "Título N" y tablas), TXT y Markdown. Lee de a una página. |
+
+#### `modules/ingestion/`: trabajos, fragmentos y el pipeline (etapa 5, ADR 0007)
+
+| Archivo | Qué hace |
+|---|---|
+| `domain/chunking.py` | **Corta en fragmentos**: primero por títulos, después por tamaño (~450 tokens), con un solapamiento chico; cada fragmento guarda sección y páginas. Funciones puras. |
+| `domain/jobs.py` | `ProcessingJob` y sus estados (`pending` → `extracting` → `ocr` → `chunking` → `ready` / `failed`), el turno (`LEASE`) y cuándo un trabajo está trabado. |
+| `domain/ports.py` | Interfaces: `JobRepository`, `ChunkRepository`, `DocumentGateway` (lo que pide a documents), `ProcessingUnitOfWork`, `TextExtractor`, `LocalFiles`, `JobQueue`. |
+| `application/process_version.py` | `ProcessDocumentVersion` (lo corre el worker): toma el trabajo → verifica la versión → lee página por página con latido → OCR → limpia → fragmenta → guarda todo en una transacción. Loguea el tiempo por página. |
+| `application/jobs.py` | `ScheduleProcessing` (crea o reinicia el trabajo y lo encola), `GetProcessingStatus` (y re-encola si está trabado), `ReprocessDocument`, `ListChunks`. |
+| `infrastructure/models.py`, `sql_repository.py` | Tablas `processing_jobs` y `document_chunks`; la toma del trabajo es un solo UPDATE; `SqlUnitOfWorkFactory` abre transacciones cortas dentro de una organización. |
+| `infrastructure/job_queue.py` | `CeleryJobQueue` (manda la tarea a Valkey) y `LoggingJobQueue` (sin broker: no hace nada). |
+| `presentation/router.py` | `GET /documents/{id}/processing`, `POST /documents/{id}/reprocess`, `GET /documents/{id}/chunks`. |
+| `presentation/tasks.py` | Las tareas de Celery: `ingestion.process_version` (con reintentos a 1, 2 y 4 minutos) y `documents.purge_deleted`. |
+
+Piezas compartidas que sumó esta etapa: `infrastructure/queue/celery_app.py` (configuración de Celery),
+`core/jobs.py` (encola después de la respuesta, o sea, después del commit), `worker.py` (punto de
+arranque del worker) y `documents/application/ingestion_gateway.py` (lo que documents le ofrece a ingestion).
+
+```mermaid
+sequenceDiagram
+    participant Web
+    participant API
+    participant DB as PostgreSQL
+    participant Q as Valkey
+    participant W as Worker
+
+    Web->>API: POST /documents (archivo)
+    API->>DB: documento + versión + trabajo "pending" (una transacción)
+    API-->>Web: 201
+    API->>Q: encola (después del commit)
+    Q->>W: tarea (organización, trabajo)
+    W->>DB: toma el trabajo (turno de 3 min)
+    loop cada página
+        W->>W: lee el texto (u OCR)
+        W->>DB: latido: páginas hechas, turno renovado
+    end
+    W->>DB: fragmentos + trabajo "ready" + documento "ready" (una transacción)
+    Web->>API: GET /documents/{id}/processing (cada 2 s)
+    API-->>Web: estado y progreso
+```
+
 #### Módulos vacíos (se llenan más adelante)
 
 | Carpeta | Etapa | Para qué |
 |---|---|---|
-| `modules/ingestion/`, `modules/extraction/` | 5 | Pipeline: extraer texto (PyMuPDF, OCR) y partir en fragmentos. |
 | `modules/knowledge/` | 6 | Fragmentos con embeddings y búsqueda híbrida. |
 | `modules/conversations/` | 7–8 | Chat con citas e historial. |
 | `modules/analytics/` | 10 | Métricas de uso. |
@@ -299,6 +353,7 @@ Piezas compartidas que sumó esta etapa:
 | `migrations/versions/0001_initial_organizations.py` | Tabla `organizations`. |
 | `migrations/versions/0002_identity_tables.py` | `users`, `memberships`, `refresh_tokens`, `audit_logs`, `invitations`. |
 | `migrations/versions/0003_row_level_security.py` | Activa RLS (`ENABLE` + `FORCE`) y crea las políticas y las funciones `current_org_id()` / `current_user_id()`. Da permisos al rol `app`. |
+| `migrations/versions/0005_processing.py` | `processing_jobs` y `document_chunks` (con `tsv` en español e índice GIN), con RLS. |
 | `migrations/versions/0004_documents.py` | `documents`, `document_versions` (con RLS) y `document_purge_queue` (sin RLS a propósito, ADR 0006). |
 
 ```mermaid
@@ -310,6 +365,8 @@ erDiagram
     organizations ||--o{ audit_logs : registra
     organizations ||--o{ documents : guarda
     documents ||--|{ document_versions : "versiones"
+    document_versions ||--o| processing_jobs : "se procesa en"
+    document_versions ||--o{ document_chunks : "se divide en"
     users ||--o{ audit_logs : "actor de"
 ```
 
@@ -390,6 +447,7 @@ flowchart TB
 | `app-shell.tsx` | Barra lateral: selector de organización, menú, usuario y "Salir". |
 | `people.tsx` | `Avatar` (iniciales), `RoleBadge` (rol con color) y `PageHeader`. |
 | `members-table.tsx` | Tabla de miembros; muestra controles solo donde la API los permitiría. |
+| `processing.tsx` | `ProcessingPanel` (pasos del procesamiento, consulta cada 2 s hasta terminar, Reprocesar) y `ChunkList` (fragmentos con sección y páginas). |
 | `documents.tsx` | `DocumentUploader` (arrastrar, cola de subidas, progreso, link al duplicado), íconos y etiquetas de tipo y estado. |
 | `login-form.tsx` | Formulario de login (se reusa en aceptar invitación). |
 | `honeypot.tsx` | Campo invisible contra bots (ADR 0005). |

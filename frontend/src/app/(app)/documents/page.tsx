@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api, errorMessage, inOrganization, unwrap } from "@/lib/api/client";
-import { canUpload, formatBytes } from "@/lib/documents";
+import { canUpload, formatBytes, isDocumentBusy } from "@/lib/documents";
 import { useActiveOrganization } from "@/lib/organizations";
 
 const PAGE_SIZE = 20;
@@ -33,6 +33,11 @@ export default function DocumentsPage() {
       ),
     getNextPageParam: (last) => last.next_cursor ?? null,
     enabled: Boolean(organization),
+    // While a document is being processed, refresh the list every few seconds.
+    refetchInterval: (query) =>
+      query.state.data?.pages.some((page) => page.items.some((doc) => isDocumentBusy(doc.status)))
+        ? 3000
+        : false,
   });
 
   if (!organization) return null;

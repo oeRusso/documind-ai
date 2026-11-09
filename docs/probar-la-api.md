@@ -94,6 +94,21 @@ En Swagger, `POST /documents` tiene un botón para elegir el archivo. La descarg
 devuelve el archivo; un borrado lo oculta al instante y el archivo se elimina del disco a los 30 días
 (`podman compose exec api python -m app.jobs.purge_documents`).
 
+### Procesamiento (etapa 5)
+
+Después de subir un documento, entrá a su detalle: el panel **Procesamiento** muestra los pasos en vivo
+(En cola → Leyendo el texto → Reconociendo páginas escaneadas → Armando fragmentos → Listo). Abajo aparecen
+los **Fragmentos**, cada uno con su sección y su página.
+
+| Para ver… | Cómo | Resultado esperado |
+|---|---|---|
+| OCR | Subí `backend/tests/fixtures/escaneado.pdf` (una imagen, sin texto) | Fragmento con "El personal deberá usar casco…" y "1 con OCR" |
+| Cortes por cláusula | Subí `backend/tests/fixtures/contrato.pdf` | 3 fragmentos, uno por cláusula, cada uno con su página; sin el encabezado ni "Página N de 3" |
+| Word con tabla | `backend/tests/fixtures/politica.docx` | La tabla aparece como "CABA \| $30.000" dentro de "Montos diarios" |
+| Worker caído | `podman compose stop worker`, subí algo, `podman compose start worker` | Queda "En cola" y se procesa solo al volver el worker |
+| Reprocesar | Botón **Reprocesar** en el detalle | Vuelve a correr y los fragmentos se reemplazan (no se duplican) |
+| Tiempos | `podman compose logs worker` | Líneas `page_extracted` / `page_ocr` con `ms` por página |
+
 ## 6. Empezar de cero
 
 ```bash
