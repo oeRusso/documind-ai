@@ -41,3 +41,4 @@ yarn-error.log*
 *.swp
 .DS_Store
 Thumbs.db
+backend/evaluation/.cache/

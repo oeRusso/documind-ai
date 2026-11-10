@@ -1,0 +1,573 @@
+{
+  "description": "Preguntas de evaluación de la búsqueda (etapa 6). document=null: no tiene respuesta en el corpus. expected_page se calcula buscando el anchor en el PDF (python -m evaluation.dataset --fix).",
+  "questions": [
+    {
+      "id": "q001",
+      "question": "¿Cuánto dura el período de prueba en un empleo por tiempo indeterminado?",
+      "document": "ley-20744-contrato-de-trabajo",
+      "article": "Art. 92 bis",
+      "anchor": "se entenderá celebrado a prueba",
+      "expected_page": 18
+    },
+    {
+      "id": "q002",
+      "question": "¿Cómo se calcula el aguinaldo?",
+      "document": "ley-20744-contrato-de-trabajo",
+      "article": "Art. 121",
+      "anchor": "la doceava parte del total de las remuneraciones",
+      "expected_page": 28
+    },
+    {
+      "id": "q003",
+      "question": "¿Cuántos días de vacaciones me tocan si tengo menos de cinco años de antigüedad?",
+      "document": "ley-20744-contrato-de-trabajo",
+      "article": "Art. 150",
+      "anchor": "De catorce (14) días corridos cuando la antigüedad",
+      "expected_page": 37
+    },
+    {
+      "id": "q004",
+      "question": "¿Cuántos días de licencia me dan si me caso?",
+      "document": "ley-20744-contrato-de-trabajo",
+      "article": "Art. 158",
+      "anchor": "Por matrimonio, diez (10) días corridos",
+      "expected_page": 40
+    },
+    {
+      "id": "q005",
+      "question": "¿Cuánto tiempo antes y después del parto no se puede trabajar?",
+      "document": "ley-20744-contrato-de-trabajo",
+      "article": "Art. 177",
+      "anchor": "durante los cuarenta y cinco (45) días anteriores al parto",
+      "expected_page": 43
+    },
+    {
+      "id": "q006",
+      "question": "¿Qué norma fija la duración máxima de la jornada de trabajo?",
+      "document": "ley-20744-contrato-de-trabajo",
+      "article": "Art. 196",
+      "anchor": "regirá por la ley 11.544",
+      "expected_page": 48
+    },
+    {
+      "id": "q007",
+      "question": "¿El empleador tiene que avisar con anticipación antes de despedir?",
+      "document": "ley-20744-contrato-de-trabajo",
+      "article": "Art. 231",
+      "anchor": "no podrá ser disuelto por voluntad de una de las partes, sin previo aviso",
+      "expected_page": 58
+    },
+    {
+      "id": "q008",
+      "question": "¿Cuánto me corresponde de indemnización si me despiden sin causa?",
+      "document": "ley-20744-contrato-de-trabajo",
+      "article": "Art. 245",
+      "anchor": "equivalente a un (1) mes de sueldo por cada año",
+      "expected_page": 62
+    },
+    {
+      "id": "q009",
+      "question": "¿Qué es una relación de consumo?",
+      "document": "ley-24240-defensa-del-consumidor",
+      "article": "Art. 3",
+      "anchor": "Relación de consumo es el vínculo jurídico entre el proveedor y el consumidor",
+      "expected_page": 2
+    },
+    {
+      "id": "q010",
+      "question": "¿La empresa puede cobrarme por darme información sobre el producto?",
+      "document": "ley-24240-defensa-del-consumidor",
+      "article": "Art. 4",
+      "anchor": "La información debe ser siempre gratuita para el consumidor",
+      "expected_page": 2
+    },
+    {
+      "id": "q011",
+      "question": "Contraté internet por teléfono, ¿puedo darlo de baja también por teléfono?",
+      "document": "ley-24240-defensa-del-consumidor",
+      "article": "Art. 10 ter",
+      "anchor": "mediante el mismo medio utilizado en la contratación",
+      "expected_page": 5
+    },
+    {
+      "id": "q012",
+      "question": "¿Qué garantía tienen los electrodomésticos y otros bienes durables que compro?",
+      "document": "ley-24240-defensa-del-consumidor",
+      "article": "Art. 11",
+      "anchor": "gozarán de garantía legal por los defectos o vicios de cualquier índole",
+      "expected_page": 5
+    },
+    {
+      "id": "q013",
+      "question": "Compré algo por internet y me arrepentí, ¿cuántos días tengo para devolverlo?",
+      "document": "ley-24240-defensa-del-consumidor",
+      "article": "Art. 34",
+      "anchor": "revocar la aceptación durante el plazo de DIEZ (10) días corridos",
+      "expected_page": 12
+    },
+    {
+      "id": "q014",
+      "question": "¿Qué castigos puede recibir una empresa que no respeta los derechos del consumidor?",
+      "document": "ley-24240-defensa-del-consumidor",
+      "article": "Art. 47",
+      "anchor": "quienes la hayan cometido serán pasibles de las siguientes sanciones",
+      "expected_page": 18
+    },
+    {
+      "id": "q015",
+      "question": "¿Qué son los datos sensibles?",
+      "document": "ley-25326-datos-personales",
+      "article": "Art. 2",
+      "anchor": "Datos personales que revelan origen racial y étnico",
+      "expected_page": 1
+    },
+    {
+      "id": "q016",
+      "question": "¿Qué me tienen que avisar antes de pedirme mis datos personales?",
+      "document": "ley-25326-datos-personales",
+      "article": "Art. 6",
+      "anchor": "se deberá informar previamente a sus titulares en forma expresa y clara",
+      "expected_page": 3
+    },
+    {
+      "id": "q017",
+      "question": "¿Puedo saber qué información personal mía tiene guardada una empresa?",
+      "document": "ley-25326-datos-personales",
+      "article": "Art. 14",
+      "anchor": "tiene derecho a solicitar y obtener información de sus datos personales",
+      "expected_page": 6
+    },
+    {
+      "id": "q018",
+      "question": "¿Puedo exigir que corrijan o borren mis datos personales?",
+      "document": "ley-25326-datos-personales",
+      "article": "Art. 16",
+      "anchor": "suprimidos o sometidos a confidencialidad los datos personales",
+      "expected_page": 7
+    },
+    {
+      "id": "q019",
+      "question": "¿Qué funciones tiene el organismo que controla la protección de datos?",
+      "document": "ley-25326-datos-personales",
+      "article": "Art. 29",
+      "anchor": "El órgano de control deberá realizar todas las acciones necesarias",
+      "expected_page": 11
+    },
+    {
+      "id": "q020",
+      "question": "¿Qué es la firma digital?",
+      "document": "ley-25506-firma-digital",
+      "article": "Art. 2",
+      "anchor": "resultado de aplicar a un documento digital un procedimiento matemático",
+      "expected_page": 1
+    },
+    {
+      "id": "q021",
+      "question": "Si una ley pide firma de puño y letra, ¿sirve firmar digitalmente?",
+      "document": "ley-25506-firma-digital",
+      "article": "Art. 3",
+      "anchor": "esa exigencia también queda satisfecha por una firma digital",
+      "expected_page": 1
+    },
+    {
+      "id": "q022",
+      "question": "¿Qué es una firma electrónica y en qué se diferencia de la digital?",
+      "document": "ley-25506-firma-digital",
+      "article": "Art. 5",
+      "anchor": "Se entiende por firma electrónica al conjunto de datos electrónicos",
+      "expected_page": 1
+    },
+    {
+      "id": "q023",
+      "question": "¿A quién se le atribuye una firma digital?",
+      "document": "ley-25506-firma-digital",
+      "article": "Art. 7",
+      "anchor": "pertenece al titular del certificado digital",
+      "expected_page": 2
+    },
+    {
+      "id": "q024",
+      "question": "¿Cuándo es válida una firma digital?",
+      "document": "ley-25506-firma-digital",
+      "article": "Art. 9",
+      "anchor": "Una firma digital es válida si cumple con los siguientes requisitos",
+      "expected_page": 2
+    },
+    {
+      "id": "q025",
+      "question": "¿Para qué sirve la ley de riesgos del trabajo?",
+      "document": "ley-24557-riesgos-del-trabajo",
+      "article": "Art. 1",
+      "anchor": "Reducir la siniestralidad laboral",
+      "expected_page": 1
+    },
+    {
+      "id": "q026",
+      "question": "Si me accidento yendo al trabajo, ¿cuenta como accidente laboral?",
+      "document": "ley-24557-riesgos-del-trabajo",
+      "article": "Art. 6",
+      "anchor": "en el trayecto entre el domicilio del trabajador y el lugar de trabajo",
+      "expected_page": 4
+    },
+    {
+      "id": "q027",
+      "question": "¿Qué cobro mientras estoy de baja por un accidente de trabajo?",
+      "document": "ley-24557-riesgos-del-trabajo",
+      "article": "Art. 13",
+      "anchor": "percibirá una prestación de pago mensual",
+      "expected_page": 9
+    },
+    {
+      "id": "q028",
+      "question": "¿Quiénes gestionan las prestaciones por accidentes de trabajo?",
+      "document": "ley-24557-riesgos-del-trabajo",
+      "article": "Art. 26",
+      "anchor": "entidades de derecho privado, previamente autorizadas por la SRT",
+      "expected_page": 15
+    },
+    {
+      "id": "q029",
+      "question": "¿Qué principios rigen los trámites ante la administración pública?",
+      "document": "ley-19549-procedimientos-administrativos",
+      "article": "Art. 1 bis",
+      "anchor": "Son principios fundamentales del procedimiento administrativo",
+      "expected_page": 2
+    },
+    {
+      "id": "q030",
+      "question": "¿Qué requisitos tiene que cumplir un acto administrativo?",
+      "document": "ley-19549-procedimientos-administrativos",
+      "article": "Art. 7",
+      "anchor": "Son requisitos esenciales del acto administrativo",
+      "expected_page": 7
+    },
+    {
+      "id": "q031",
+      "question": "Si el Estado no responde mi reclamo, ¿qué significa ese silencio?",
+      "document": "ley-19549-procedimientos-administrativos",
+      "article": "Art. 10",
+      "anchor": "se interpretarán como negativa",
+      "expected_page": 9
+    },
+    {
+      "id": "q032",
+      "question": "¿Las decisiones de la administración se presumen válidas?",
+      "document": "ley-19549-procedimientos-administrativos",
+      "article": "Art. 12",
+      "anchor": "goza de presunción de legitimidad",
+      "expected_page": 10
+    },
+    {
+      "id": "q033",
+      "question": "¿Cuánto tiempo tengo para demandar al Estado por un acto administrativo?",
+      "document": "ley-19549-procedimientos-administrativos",
+      "article": "Art. 25",
+      "anchor": "ciento ochenta (180) días hábiles judiciales",
+      "expected_page": 15
+    },
+    {
+      "id": "q034",
+      "question": "¿Qué principios guían el acceso a la información pública?",
+      "document": "ley-27275-acceso-a-la-informacion",
+      "article": "Art. 1",
+      "anchor": "Presunción de publicidad",
+      "expected_page": 1
+    },
+    {
+      "id": "q035",
+      "question": "¿Tengo que justificar para qué quiero información del Estado?",
+      "document": "ley-27275-acceso-a-la-informacion",
+      "article": "Art. 4",
+      "anchor": "no pudiendo exigirse al solicitante que motive la solicitud",
+      "expected_page": 3
+    },
+    {
+      "id": "q036",
+      "question": "¿En qué casos el Estado puede negarse a entregar información?",
+      "document": "ley-27275-acceso-a-la-informacion",
+      "article": "Art. 8",
+      "anchor": "sólo podrán exceptuarse de proveer la información",
+      "expected_page": 4
+    },
+    {
+      "id": "q037",
+      "question": "¿En cuántos días tienen que responder un pedido de información pública?",
+      "document": "ley-27275-acceso-a-la-informacion",
+      "article": "Art. 11",
+      "anchor": "plazo no mayor de quince (15) días hábiles",
+      "expected_page": 6
+    },
+    {
+      "id": "q038",
+      "question": "¿Qué organismo controla que se cumpla el acceso a la información pública?",
+      "document": "ley-27275-acceso-a-la-informacion",
+      "article": "Art. 19",
+      "anchor": "Créase la Agencia de Acceso a la Información Pública",
+      "expected_page": 8
+    },
+    {
+      "id": "q039",
+      "question": "¿Cómo se define el horario de trabajo en el teletrabajo?",
+      "document": "ley-27555-teletrabajo",
+      "article": "Art. 4",
+      "anchor": "La jornada laboral debe ser pactada previamente por escrito",
+      "expected_page": 1
+    },
+    {
+      "id": "q040",
+      "question": "¿Me pueden llamar o escribir fuera de horario si trabajo desde casa?",
+      "document": "ley-27555-teletrabajo",
+      "article": "Art. 5",
+      "anchor": "derecho a no ser contactada y a desconectarse",
+      "expected_page": 2
+    },
+    {
+      "id": "q041",
+      "question": "Trabajo desde casa y cuido a mi hijo de 5 años, ¿tengo algún derecho especial?",
+      "document": "ley-27555-teletrabajo",
+      "article": "Art. 6",
+      "anchor": "Tareas de cuidados",
+      "expected_page": 2
+    },
+    {
+      "id": "q042",
+      "question": "Si paso a trabajar desde casa, ¿puedo volver a la oficina después?",
+      "document": "ley-27555-teletrabajo",
+      "article": "Art. 8",
+      "anchor": "podrá ser revocado por la misma en cualquier momento",
+      "expected_page": 2
+    },
+    {
+      "id": "q043",
+      "question": "¿Quién paga la computadora y el software para teletrabajar?",
+      "document": "ley-27555-teletrabajo",
+      "article": "Art. 9",
+      "anchor": "El empleador debe proporcionar el equipamiento",
+      "expected_page": 2
+    },
+    {
+      "id": "q044",
+      "question": "¿Qué objetivos tiene la política ambiental del país?",
+      "document": "ley-25675-ambiente",
+      "article": "Art. 2",
+      "anchor": "La política ambiental nacional deberá cumplir los siguientes objetivos",
+      "expected_page": 1
+    },
+    {
+      "id": "q045",
+      "question": "¿Qué dice el principio precautorio en materia ambiental?",
+      "document": "ley-25675-ambiente",
+      "article": "Art. 4",
+      "anchor": "Principio precautorio",
+      "expected_page": 2
+    },
+    {
+      "id": "q046",
+      "question": "¿Qué proyectos necesitan una evaluación de impacto ambiental?",
+      "document": "ley-25675-ambiente",
+      "article": "Art. 11",
+      "anchor": "estará sujeta a un procedimiento de evaluación de impacto ambiental",
+      "expected_page": 4
+    },
+    {
+      "id": "q047",
+      "question": "¿Quién está obligado a tener un seguro ambiental?",
+      "document": "ley-25675-ambiente",
+      "article": "Art. 22",
+      "anchor": "deberá contratar un seguro de cobertura",
+      "expected_page": 6
+    },
+    {
+      "id": "q048",
+      "question": "¿Qué se considera daño ambiental?",
+      "document": "ley-25675-ambiente",
+      "article": "Art. 27",
+      "anchor": "Se define el daño ambiental como toda alteración relevante",
+      "expected_page": 7
+    },
+    {
+      "id": "q049",
+      "question": "¿Qué derechos tienen las personas con problemas de salud mental?",
+      "document": "ley-26657-salud-mental",
+      "article": "Art. 7",
+      "anchor": "El Estado reconoce a las personas con padecimiento mental los siguientes derechos",
+      "expected_page": 2
+    },
+    {
+      "id": "q050",
+      "question": "¿Cuándo se justifica internar a alguien por salud mental?",
+      "document": "ley-26657-salud-mental",
+      "article": "Art. 14",
+      "anchor": "La internación es considerada como un recurso terapéutico de carácter restrictivo",
+      "expected_page": 4
+    },
+    {
+      "id": "q051",
+      "question": "¿Se puede internar a una persona sin su consentimiento?",
+      "document": "ley-26657-salud-mental",
+      "article": "Art. 20",
+      "anchor": "riesgo cierto e inminente para sí o para terceros",
+      "expected_page": 6
+    },
+    {
+      "id": "q052",
+      "question": "¿Está permitido abrir nuevos hospitales psiquiátricos monovalentes?",
+      "document": "ley-26657-salud-mental",
+      "article": "Art. 27",
+      "anchor": "la creación de nuevos manicomios",
+      "expected_page": 7
+    },
+    {
+      "id": "q053",
+      "question": "¿El software está protegido por derechos de autor?",
+      "document": "ley-11723-propiedad-intelectual",
+      "article": "Art. 1",
+      "anchor": "los programas de computación fuente y objeto",
+      "expected_page": 1
+    },
+    {
+      "id": "q054",
+      "question": "¿Qué puede hacer el autor con su obra?",
+      "document": "ley-11723-propiedad-intelectual",
+      "article": "Art. 2",
+      "anchor": "comprende para su autor la facultad de disponer de ella",
+      "expected_page": 1
+    },
+    {
+      "id": "q055",
+      "question": "¿Hasta cuándo duran los derechos de autor después de que el autor muere?",
+      "document": "ley-11723-propiedad-intelectual",
+      "article": "Art. 5",
+      "anchor": "hasta setenta años contados a partir del 1 de Enero",
+      "expected_page": 2
+    },
+    {
+      "id": "q056",
+      "question": "¿Qué pena corresponde a quien viola derechos de autor?",
+      "document": "ley-11723-propiedad-intelectual",
+      "article": "Art. 71",
+      "anchor": "la pena establecida por el artículo 172 del Código Penal",
+      "expected_page": 14
+    },
+    {
+      "id": "q057",
+      "question": "¿Qué significa el interés superior del niño?",
+      "document": "ley-26061-ninas-ninos-adolescentes",
+      "article": "Art. 3",
+      "anchor": "la máxima satisfacción, integral y simultánea de los derechos",
+      "expected_page": 2
+    },
+    {
+      "id": "q058",
+      "question": "¿Los chicos tienen derecho a no ser maltratados?",
+      "document": "ley-26061-ninas-ninos-adolescentes",
+      "article": "Art. 9",
+      "anchor": "a no ser sometidos a trato violento, discriminatorio",
+      "expected_page": 4
+    },
+    {
+      "id": "q059",
+      "question": "¿Qué tiene que garantizar el Estado en salud para niñas, niños y adolescentes?",
+      "document": "ley-26061-ninas-ninos-adolescentes",
+      "article": "Art. 14",
+      "anchor": "El acceso a servicios de salud, respetando las pautas familiares",
+      "expected_page": 5
+    },
+    {
+      "id": "q060",
+      "question": "¿Los adolescentes pueden opinar en los asuntos que los afectan?",
+      "document": "ley-26061-ninas-ninos-adolescentes",
+      "article": "Art. 24",
+      "anchor": "Participar y expresar libremente su opinión",
+      "expected_page": 7
+    },
+    {
+      "id": "q061",
+      "question": "¿Cuál es el monto del salario mínimo, vital y móvil este año?",
+      "document": null,
+      "article": null,
+      "anchor": null,
+      "expected_page": null
+    },
+    {
+      "id": "q062",
+      "question": "¿Qué alícuota de IVA pagan los servicios digitales prestados desde el exterior?",
+      "document": null,
+      "article": null,
+      "anchor": null,
+      "expected_page": null
+    },
+    {
+      "id": "q063",
+      "question": "¿Cómo se inscribe una sociedad anónima en la Inspección General de Justicia?",
+      "document": null,
+      "article": null,
+      "anchor": null,
+      "expected_page": null
+    },
+    {
+      "id": "q064",
+      "question": "¿Cuál es la velocidad máxima permitida en las autopistas?",
+      "document": null,
+      "article": null,
+      "anchor": null,
+      "expected_page": null
+    },
+    {
+      "id": "q065",
+      "question": "¿Qué documentos necesito para tramitar el pasaporte?",
+      "document": null,
+      "article": null,
+      "anchor": null,
+      "expected_page": null
+    },
+    {
+      "id": "q066",
+      "question": "¿Cuánto cuesta registrar una marca comercial?",
+      "document": null,
+      "article": null,
+      "anchor": null,
+      "expected_page": null
+    },
+    {
+      "id": "q067",
+      "question": "¿A partir de qué edad se puede votar en las elecciones nacionales?",
+      "document": null,
+      "article": null,
+      "anchor": null,
+      "expected_page": null
+    },
+    {
+      "id": "q068",
+      "question": "¿En cuántos años prescriben las deudas de impuestos?",
+      "document": null,
+      "article": null,
+      "anchor": null,
+      "expected_page": null
+    },
+    {
+      "id": "q069",
+      "question": "¿Cómo se calcula el impuesto a las ganancias de un monotributista?",
+      "document": null,
+      "article": null,
+      "anchor": null,
+      "expected_page": null
+    },
+    {
+      "id": "q070",
+      "question": "¿Qué reglas hay para volar drones en zonas urbanas?",
+      "document": null,
+      "article": null,
+      "anchor": null,
+      "expected_page": null
+    },
+    {
+      "id": "q071",
+      "question": "¿Cuántas cuotas sin interés puede ofrecer un comercio con tarjeta de crédito?",
+      "document": null,
+      "article": null,
+      "anchor": null,
+      "expected_page": null
+    }
+  ]
+}

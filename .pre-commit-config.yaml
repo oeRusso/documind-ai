@@ -18,7 +18,8 @@ repos:
     hooks:
       - id: detect-secrets
         args: [--baseline, .secrets.baseline]
-        exclude: (^|/)(uv\.lock|pnpm-lock\.yaml)$
+        # Lockfiles and the corpus manifest are full of public hashes, not secrets.
+        exclude: (^|/)(uv\.lock|pnpm-lock\.yaml|evaluation/corpus/manifest\.json)$
 
   # Local hooks reuse the exact versions locked in backend/uv.lock.
   - repo: local
