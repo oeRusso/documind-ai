@@ -12,6 +12,8 @@ from celery import Celery, Task
 from sqlalchemy import NullPool
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.ai.providers.embeddings import EmbeddingProvider
+from app.ai.providers.factory import build_embedding_provider
 from app.core.config import Settings
 from app.infrastructure.queue.celery_app import PROCESS_VERSION_TASK, PURGE_DOCUMENTS_TASK
 from app.infrastructure.storage.filesystem import FilesystemStorage
@@ -34,7 +36,14 @@ def _documents_for(session: AsyncSession) -> DocumentGateway:
     return DocumentsForIngestion(SqlDocumentRepository(session))
 
 
-async def process(settings: Settings, organization_id: UUID, job_id: UUID) -> str:
+async def process(
+    settings: Settings,
+    organization_id: UUID,
+    job_id: UUID,
+    *,
+    embeddings: EmbeddingProvider | None = None,
+) -> str:
+    """Run one job. `embeddings` overrides the configured provider (tests use a fake one)."""
     engine = create_async_engine(str(settings.database_url), poolclass=NullPool)
     try:
         use_case = ProcessDocumentVersion(
@@ -43,6 +52,7 @@ async def process(settings: Settings, organization_id: UUID, job_id: UUID) -> st
             ),
             FileTextExtractor(),
             FilesystemStorage(settings.storage_path),
+            embeddings=embeddings or build_embedding_provider(settings),
         )
         result = await use_case.execute(organization_id, job_id)
         return result.outcome.value

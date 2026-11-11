@@ -31,6 +31,7 @@ def offline_settings() -> Settings:
         jwt_secret=TEST_JWT_SECRET,
         app_origin=APP_ORIGIN,
         celery_broker_url=None,
+        ollama_base_url=None,
     )
 
 

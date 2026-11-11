@@ -3,6 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     CheckConstraint,
     Computed,
@@ -15,6 +16,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Uuid,
 )
+from sqlalchemy import text as sql_text
 from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -55,7 +57,8 @@ class DocumentChunkModel(TimestampMixin, Base):
     __tablename__ = "document_chunks"
     __table_args__ = (
         UniqueConstraint("version_id", "position", name="uq_document_chunks_version_id_position"),
-        # Full-text search in Spanish ("plazos" finds "plazo"); used by stage 6.
+        # Full-text search in Spanish, accents ignored ("plazos" and "informacion" find "plazo"
+        # and "información"). documind_es = spanish + unaccent (migration 0006).
         Index("ix_document_chunks_tsv", "tsv", postgresql_using="gin"),
     )
 
@@ -77,7 +80,41 @@ class DocumentChunkModel(TimestampMixin, Base):
     tsv: Mapped[str] = mapped_column(
         TSVECTOR,
         Computed(
-            "to_tsvector('spanish'::regconfig, coalesce(section, '') || ' ' || content)",
+            "to_tsvector('documind_es'::regconfig, coalesce(section, '') || ' ' || content)",
             persisted=True,
         ),
     )
+
+
+class ChunkEmbeddingModel(TimestampMixin, Base):
+    """One vector per chunk and per model (changing the model = reindexing, old ones stay)."""
+
+    __tablename__ = "chunk_embeddings"
+    __table_args__ = (
+        UniqueConstraint("chunk_id", "model", name="uq_chunk_embeddings_chunk_id_model"),
+        # One HNSW index per model: the vector column has no fixed size (models differ),
+        # so each index casts it to its model's size. Queries must use the same expression.
+        Index(
+            "ix_chunk_embeddings_bge_m3_hnsw",
+            sql_text("(embedding::vector(1024)) vector_cosine_ops"),
+            postgresql_using="hnsw",
+            postgresql_where=sql_text("model = 'bge-m3'"),
+        ),
+        Index(
+            "ix_chunk_embeddings_paraphrase_multilingual_hnsw",
+            sql_text("(embedding::vector(768)) vector_cosine_ops"),
+            postgresql_using="hnsw",
+            postgresql_where=sql_text("model = 'paraphrase-multilingual'"),
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True)
+    organization_id: Mapped[UUID] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True
+    )
+    document_id: Mapped[UUID] = mapped_column(
+        ForeignKey("documents.id", ondelete="CASCADE"), index=True
+    )
+    chunk_id: Mapped[UUID] = mapped_column(ForeignKey("document_chunks.id", ondelete="CASCADE"))
+    model: Mapped[str] = mapped_column(String(100))
+    embedding: Mapped[list[float]] = mapped_column(Vector())

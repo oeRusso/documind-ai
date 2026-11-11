@@ -3,12 +3,16 @@
 They satisfy the Protocols in each module's `domain` without inheriting from them.
 """
 
+import hashlib
+import math
+import re
 from collections.abc import AsyncIterator, Collection, Sequence
 from dataclasses import replace as dataclass_replace
 from datetime import datetime
 from pathlib import Path
 from uuid import UUID
 
+from app.ai.providers.embeddings import EmbeddingModel
 from app.modules.audit.domain.entities import AuditEvent
 from app.modules.auth.domain.refresh_tokens import RefreshToken
 from app.modules.documents.domain.entities import (
@@ -437,3 +441,40 @@ class FakeJobQueue:
 
     def enqueue(self, organization_id: UUID, job_id: UUID) -> None:
         self.sent.append((organization_id, job_id))
+
+
+class FakeEmbeddingProvider:
+    """Deterministic vectors from the words of the text: texts sharing words are close.
+
+    Good enough to test the plumbing (and that similar texts rank first) without Ollama.
+    """
+
+    DIMENSION = 64
+
+    def __init__(self, *, fail: bool = False) -> None:
+        self.fail = fail
+        self.embedded: list[str] = []
+        self._model = EmbeddingModel("fake", self.DIMENSION)
+
+    @property
+    def model(self) -> EmbeddingModel:
+        return self._model
+
+    def _vector(self, text: str) -> list[float]:
+        vector = [0.0] * self.DIMENSION
+        for word in re.findall(r"\w+", text.lower()):
+            digest = hashlib.sha256(word.encode()).digest()
+            vector[digest[0] % self.DIMENSION] += 1.0
+        norm = math.sqrt(sum(v * v for v in vector)) or 1.0
+        return [v / norm for v in vector]
+
+    async def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
+        if self.fail:
+            raise ConnectionError("embedding service down")
+        self.embedded.extend(texts)
+        return [self._vector(text) for text in texts]
+
+    async def embed_query(self, text: str) -> list[float]:
+        if self.fail:
+            raise ConnectionError("embedding service down")
+        return self._vector(text)

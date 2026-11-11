@@ -2,7 +2,9 @@
 
     claim the job -> check the version still exists -> read every page (heartbeat after each)
     -> OCR the pages that look scanned -> clean the text -> cut into chunks
-    -> in ONE transaction: replace the chunks, mark the job ready, update the document.
+    -> compute their embeddings (stage 6, when a model is configured)
+    -> in ONE transaction: replace the chunks and embeddings, mark the job ready, update the
+       document.
 
 Every step that changes the database is its own short transaction inside the organization
 (`uow_factory(organization_id)` sets the RLS context), so the progress is visible from the API
@@ -19,12 +21,14 @@ from uuid import UUID
 
 import structlog
 
+from app.ai.providers.embeddings import EmbeddingProvider
 from app.modules.documents.domain.entities import DocumentStatus
 from app.modules.extraction.domain.normalization import normalize_pages
 from app.modules.extraction.domain.text import PageText
 from app.modules.ingestion.domain.chunking import Chunk, ChunkingOptions, chunk_blocks
 from app.modules.ingestion.domain.jobs import LEASE, MAX_ATTEMPTS, JobStatus, ProcessingJob
 from app.modules.ingestion.domain.ports import (
+    ChunkVectors,
     DocumentReader,
     LocalFiles,
     ProcessingUnitOfWork,
@@ -35,6 +39,9 @@ from app.modules.ingestion.domain.ports import (
 from app.shared.ids import utc_now
 
 logger = structlog.get_logger("app.ingestion")
+
+# Chunks per call to the embedding model (a heartbeat goes between calls).
+EMBEDDING_BATCH = 32
 
 
 class Outcome(StrEnum):
@@ -67,12 +74,14 @@ class ProcessDocumentVersion:
         extractor: TextExtractor,
         files: LocalFiles,
         *,
+        embeddings: EmbeddingProvider | None = None,
         options: ChunkingOptions | None = None,
         clock: Callable[[], datetime] = utc_now,
     ) -> None:
         self._uow = uow_factory
         self._extractor = extractor
         self._files = files
+        self._embeddings = embeddings
         self._options = options or ChunkingOptions()
         self._clock = clock
 
@@ -113,7 +122,8 @@ class ProcessDocumentVersion:
                 job, JobStatus.CHUNKING, len(pages), len(pages), _ocr_count(pages)
             )
             chunks = chunk_blocks(normalize_pages(pages), self._options)
-            await self._save(job, version, chunks)
+            vectors = await self._embed(job, chunks, len(pages), _ocr_count(pages))
+            await self._save(job, version, chunks, vectors)
         except ExtractionFailedError as exc:
             async with self._uow(organization_id) as uow:
                 await self._fail(uow, job, exc.message, version)
@@ -185,13 +195,44 @@ class ProcessDocumentVersion:
         )
         return pages
 
+    async def _embed(
+        self, job: ProcessingJob, chunks: list[Chunk], pages: int, ocr_pages: int
+    ) -> ChunkVectors | None:
+        """Vectors for every chunk, a batch at a time with a heartbeat in between.
+
+        The section goes in front of the text: "Cláusula quinta > Plazos" helps a chunk that
+        only says "treinta días" to be found by a question about deadlines.
+        """
+        if self._embeddings is None or not chunks:
+            return None
+        texts = [f"{c.section}\n\n{c.content}" if c.section else c.content for c in chunks]
+        vectors: list[list[float]] = []
+        started = time.perf_counter()
+        for start in range(0, len(texts), EMBEDDING_BATCH):
+            await self._heartbeat(job, JobStatus.EMBEDDING, pages, pages, ocr_pages)
+            vectors += await self._embeddings.embed_documents(
+                texts[start : start + EMBEDDING_BATCH]
+            )
+        logger.info(
+            "chunks_embedded",
+            job_id=str(job.id),
+            chunks=len(chunks),
+            model=self._embeddings.model.name,
+            seconds=round(time.perf_counter() - started, 2),
+        )
+        return ChunkVectors(self._embeddings.model.name, vectors)
+
     async def _save(
-        self, job: ProcessingJob, version: VersionToProcess, chunks: list[Chunk]
+        self,
+        job: ProcessingJob,
+        version: VersionToProcess,
+        chunks: list[Chunk],
+        vectors: ChunkVectors | None,
     ) -> None:
-        """One transaction: replace the chunks, close the job, update the document."""
+        """One transaction: replace the chunks (and embeddings), close the job, update the doc."""
         async with self._uow(job.organization_id) as uow:
             await uow.chunks.replace_for_version(
-                job.organization_id, version.document_id, version.version_id, chunks
+                job.organization_id, version.document_id, version.version_id, chunks, vectors
             )
             await uow.jobs.finish(
                 job.organization_id,

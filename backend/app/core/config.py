@@ -68,12 +68,22 @@ class Settings(BaseSettings):
     # Without it the API still works, but documents stay "pending" (nothing processes them).
     celery_broker_url: str | None = None
 
+    # --- Local AI with Ollama (stage 6) ---
+    # Without it, documents are processed without embeddings and search uses words only.
+    ollama_base_url: str | None = None
+    embedding_model: str = "bge-m3"  # one of app/ai/providers/embeddings.py KNOWN_MODELS
+
     @property
     def max_upload_bytes(self) -> int:
         return self.max_upload_mb * 1024 * 1024
 
     @field_validator(
-        "smtp_host", "smtp_username", "smtp_password", "celery_broker_url", mode="before"
+        "smtp_host",
+        "smtp_username",
+        "smtp_password",
+        "celery_broker_url",
+        "ollama_base_url",
+        mode="before",
     )
     @classmethod
     def _empty_is_unset(cls, value: object) -> object:

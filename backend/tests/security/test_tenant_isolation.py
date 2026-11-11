@@ -33,6 +33,7 @@ _UNFILTERED = {
     "document_versions": "SELECT organization_id AS org FROM document_versions",
     "processing_jobs": "SELECT organization_id AS org FROM processing_jobs",
     "document_chunks": "SELECT organization_id AS org FROM document_chunks",
+    "chunk_embeddings": "SELECT organization_id AS org FROM chunk_embeddings",
 }
 
 
@@ -140,6 +141,7 @@ async def test_without_choosing_an_organization_only_own_memberships_are_visible
         "document_versions": [],
         "processing_jobs": [],
         "document_chunks": [],
+        "chunk_embeddings": [],
     }
 
 

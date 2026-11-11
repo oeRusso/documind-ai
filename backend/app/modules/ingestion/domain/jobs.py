@@ -1,6 +1,6 @@
 """Processing jobs: one per document version, with its state and progress. Pure Python.
 
-States: pending -> extracting -> (ocr) -> chunking -> ready, or failed.
+States: pending -> extracting -> (ocr) -> chunking -> (embedding) -> ready, or failed.
 
 How a crash is survived without duplicates (stage 5 criterion):
 - A worker *claims* a job before working on it, and the claim has an expiry (`locked_until`).
@@ -30,6 +30,7 @@ class JobStatus(StrEnum):
     EXTRACTING = "extracting"
     OCR = "ocr"
     CHUNKING = "chunking"
+    EMBEDDING = "embedding"  # stage 6; skipped when no embedding model is configured
     READY = "ready"
     FAILED = "failed"
 
@@ -42,7 +43,7 @@ class JobStatus(StrEnum):
         return self in (JobStatus.READY, JobStatus.FAILED)
 
 
-RUNNING = frozenset({JobStatus.EXTRACTING, JobStatus.OCR, JobStatus.CHUNKING})
+RUNNING = frozenset({JobStatus.EXTRACTING, JobStatus.OCR, JobStatus.CHUNKING, JobStatus.EMBEDDING})
 
 
 @dataclass(frozen=True, slots=True)

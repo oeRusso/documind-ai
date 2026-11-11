@@ -20,11 +20,16 @@ from app.modules.ingestion.application.jobs import GetProcessingStatus, Schedule
 from app.modules.ingestion.application.process_version import Outcome, ProcessDocumentVersion
 from app.modules.ingestion.domain.chunking import Chunk, ChunkingOptions
 from app.modules.ingestion.domain.jobs import LEASE, MAX_ATTEMPTS, RUNNING, JobStatus, ProcessingJob
-from app.modules.ingestion.domain.ports import DocumentRef, StoredChunk, VersionToProcess
+from app.modules.ingestion.domain.ports import (
+    ChunkVectors,
+    DocumentRef,
+    StoredChunk,
+    VersionToProcess,
+)
 from app.modules.organizations.domain.membership import Membership
 from app.modules.organizations.domain.roles import Role
 from app.shared.ids import new_id
-from tests.fakes import FakeJobQueue
+from tests.fakes import FakeEmbeddingProvider, FakeJobQueue
 
 T0 = datetime(2026, 11, 8, 12, 0, tzinfo=UTC)
 ORG = new_id()
@@ -107,11 +112,18 @@ class Chunks:
     def __init__(self) -> None:
         self.items: list[StoredChunk] = []
         self.replacements = 0
+        self.embeddings: ChunkVectors | None = None
 
     async def replace_for_version(
-        self, organization_id: UUID, document_id: UUID, version_id: UUID, chunks: Sequence[Chunk]
+        self,
+        organization_id: UUID,
+        document_id: UUID,
+        version_id: UUID,
+        chunks: Sequence[Chunk],
+        embeddings: ChunkVectors | None = None,
     ) -> None:
         self.replacements += 1
+        self.embeddings = embeddings
         self.items = [c for c in self.items if c.document_id != document_id]
         self.items += [StoredChunk(new_id(), document_id, version_id, chunk) for chunk in chunks]
 
@@ -179,11 +191,12 @@ class World:
     async def local_copy(self, storage_key: str) -> AsyncIterator[Path]:
         yield Path("/nonexistent/fake")
 
-    def use_case(self) -> ProcessDocumentVersion:
+    def use_case(self, embeddings: FakeEmbeddingProvider | None = None) -> ProcessDocumentVersion:
         return ProcessDocumentVersion(
             self.uow,  # type: ignore[arg-type]
             self,
             self,
+            embeddings=embeddings,
             options=ChunkingOptions(max_tokens=40, overlap_tokens=0),
             clock=lambda: self.now,
         )
@@ -348,3 +361,38 @@ async def test_schedule_creates_or_resets_the_job_and_queues_it() -> None:
     [again] = jobs.items.values()
     assert (again.id, again.status, again.error) == (job.id, JobStatus.PENDING, None)
     assert queue.sent == [(ORG, job.id), (ORG, job.id)]
+
+
+async def test_embeddings_are_computed_with_the_section_and_saved_with_the_chunks() -> None:
+    world = World(PAGES)
+    job = world.add_job()
+    embeddings = FakeEmbeddingProvider()
+
+    await world.use_case(embeddings).execute(ORG, job.id)
+
+    assert embeddings.embedded == ["CLÁUSULA PRIMERA\n\nEl objeto.\n\nEl plazo es de 30 días."]
+    assert world.chunks.embeddings is not None
+    assert world.chunks.embeddings.model == "fake"
+    assert len(world.chunks.embeddings.vectors) == len(world.chunks.items) == 1
+
+
+async def test_without_an_embedding_model_chunks_are_saved_without_vectors() -> None:
+    world = World(PAGES)
+    job = world.add_job()
+
+    await world.use_case().execute(ORG, job.id)
+
+    assert world.chunks.embeddings is None
+    assert world.jobs.items[job.id].status is JobStatus.READY
+
+
+async def test_the_embedding_service_failing_releases_the_job_for_a_retry() -> None:
+    world = World(PAGES)
+    job = world.add_job()
+    embeddings = FakeEmbeddingProvider(fail=True)
+
+    with pytest.raises(ConnectionError):
+        await world.use_case(embeddings).execute(ORG, job.id)
+
+    assert world.jobs.items[job.id].status is JobStatus.PENDING
+    assert world.chunks.items == []

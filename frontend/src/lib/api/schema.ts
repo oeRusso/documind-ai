@@ -411,6 +411,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search
+         * @description Busca en los documentos de la organización activa, por significado y por palabras.
+         *
+         *     Cada resultado es un fragmento con su documento, sección y páginas.
+         */
+        get: operations["search_api_v1_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -662,7 +684,7 @@ export interface components {
          * JobStatus
          * @enum {string}
          */
-        JobStatus: "pending" | "extracting" | "ocr" | "chunking" | "ready" | "failed";
+        JobStatus: "pending" | "extracting" | "ocr" | "chunking" | "embedding" | "ready" | "failed";
         /** LoginRequest */
         LoginRequest: {
             /** Email */
@@ -841,6 +863,48 @@ export interface components {
          * @enum {string}
          */
         Role: "owner" | "admin" | "member" | "viewer";
+        /** SearchHitRead */
+        SearchHitRead: {
+            /**
+             * Chunk Id
+             * Format: uuid
+             */
+            chunk_id: string;
+            /** Content */
+            content: string;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** Document Title */
+            document_title: string;
+            /** Page End */
+            page_end: number | null;
+            /** Page Start */
+            page_start: number | null;
+            /** Score */
+            score: number;
+            /** Section */
+            section: string | null;
+            /** Text Rank */
+            text_rank: number | null;
+            /** Vector Rank */
+            vector_rank: number | null;
+        };
+        /**
+         * SearchMode
+         * @enum {string}
+         */
+        SearchMode: "hybrid" | "vector" | "text";
+        /** SearchResponse */
+        SearchResponse: {
+            /** Items */
+            items: components["schemas"]["SearchHitRead"][];
+            mode: components["schemas"]["SearchMode"];
+            /** Notes */
+            notes: string[];
+        };
         /**
          * TokenResponse
          * @description The refresh token is NOT here: it travels in an HttpOnly cookie.
@@ -2332,6 +2396,72 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_api_v1_search_get: {
+        parameters: {
+            query: {
+                /** @description Qué buscar */
+                q: string;
+                mode?: components["schemas"]["SearchMode"];
+                limit?: number;
+                /** @description Limitar a estos documentos (se puede repetir) */
+                document_id?: string[] | null;
+            };
+            header: {
+                /** @description Organización activa */
+                "X-Organization-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

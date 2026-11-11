@@ -12,8 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.infrastructure.database.tenant import SqlTenantContext
 from app.modules.ingestion.domain.chunking import Chunk
 from app.modules.ingestion.domain.jobs import RUNNING, JobStatus, ProcessingJob
-from app.modules.ingestion.domain.ports import DocumentGateway, StoredChunk
-from app.modules.ingestion.infrastructure.models import DocumentChunkModel, ProcessingJobModel
+from app.modules.ingestion.domain.ports import ChunkVectors, DocumentGateway, StoredChunk
+from app.modules.ingestion.infrastructure.models import (
+    ChunkEmbeddingModel,
+    DocumentChunkModel,
+    ProcessingJobModel,
+)
 from app.shared.ids import new_id
 
 
@@ -210,7 +214,12 @@ class SqlChunkRepository:
         self._session = session
 
     async def replace_for_version(
-        self, organization_id: UUID, document_id: UUID, version_id: UUID, chunks: Sequence[Chunk]
+        self,
+        organization_id: UUID,
+        document_id: UUID,
+        version_id: UUID,
+        chunks: Sequence[Chunk],
+        embeddings: ChunkVectors | None = None,
     ) -> None:
         # All of the document's chunks go: this version's (a re-run) and older versions'.
         await self._session.execute(
@@ -219,12 +228,15 @@ class SqlChunkRepository:
                 DocumentChunkModel.document_id == document_id,
             )
         )
+        if embeddings is not None and len(embeddings.vectors) != len(chunks):
+            raise ValueError("one embedding per chunk is required")
+        ids = [new_id() for _ in chunks]
         if chunks:
             await self._session.execute(
                 insert(DocumentChunkModel),
                 [
                     {
-                        "id": new_id(),
+                        "id": chunk_id,
                         "organization_id": organization_id,
                         "document_id": document_id,
                         "version_id": version_id,
@@ -235,7 +247,22 @@ class SqlChunkRepository:
                         "page_end": chunk.page_end,
                         "token_count": chunk.token_count,
                     }
-                    for chunk in chunks
+                    for chunk_id, chunk in zip(ids, chunks, strict=True)
+                ],
+            )
+        if chunks and embeddings is not None:
+            await self._session.execute(
+                insert(ChunkEmbeddingModel),
+                [
+                    {
+                        "id": new_id(),
+                        "organization_id": organization_id,
+                        "document_id": document_id,
+                        "chunk_id": chunk_id,
+                        "model": embeddings.model,
+                        "embedding": vector,
+                    }
+                    for chunk_id, vector in zip(ids, embeddings.vectors, strict=True)
                 ],
             )
 

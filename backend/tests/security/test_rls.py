@@ -33,6 +33,7 @@ TENANT_TABLES = (
     "document_versions",
     "processing_jobs",
     "document_chunks",
+    "chunk_embeddings",
 )
 
 
@@ -113,13 +114,22 @@ async def _seed_organization(
             document_id,
             version_id,
         )
+        chunk_id = new_id()
         await connection.execute(
             "INSERT INTO document_chunks (id, organization_id, document_id, version_id, position, "
             "content, token_count) VALUES ($1, $2, $3, $4, 0, 'El plazo es de 30 días.', 7)",
-            new_id(),
+            chunk_id,
             org_id,
             document_id,
             version_id,
+        )
+        await connection.execute(
+            "INSERT INTO chunk_embeddings (id, organization_id, document_id, chunk_id, model, "
+            "embedding) VALUES ($1, $2, $3, $4, 'fake', '[1,0,0]')",
+            new_id(),
+            org_id,
+            document_id,
+            chunk_id,
         )
     return org_id
 
@@ -146,7 +156,8 @@ async def seed(migrated: None) -> AsyncIterator[Seed]:
     finally:
         await connection.execute(
             "TRUNCATE organizations, memberships, invitations, audit_logs, users, "
-            "documents, document_versions, processing_jobs, document_chunks CASCADE"
+            "documents, document_versions, processing_jobs, document_chunks, chunk_embeddings "
+            "CASCADE"
         )
         await connection.close()
 

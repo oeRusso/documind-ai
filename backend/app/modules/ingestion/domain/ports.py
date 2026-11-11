@@ -75,11 +75,25 @@ class JobRepository(Protocol):
         ...
 
 
+@dataclass(frozen=True, slots=True)
+class ChunkVectors:
+    """The embeddings of a list of chunks (same order), all computed with one model."""
+
+    model: str
+    vectors: list[list[float]]
+
+
 class ChunkRepository(Protocol):
     async def replace_for_version(
-        self, organization_id: UUID, document_id: UUID, version_id: UUID, chunks: Sequence[Chunk]
+        self,
+        organization_id: UUID,
+        document_id: UUID,
+        version_id: UUID,
+        chunks: Sequence[Chunk],
+        embeddings: ChunkVectors | None = None,
     ) -> None:
-        """Delete the version's chunks (and those of older versions) and insert these."""
+        """Delete the document's chunks (this version's and older ones') and insert these,
+        with their embeddings when given (the old embeddings go with the old chunks)."""
         ...
 
     async def list_for_document(

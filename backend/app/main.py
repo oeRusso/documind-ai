@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI
 
+from app.ai.providers.factory import build_embedding_provider
 from app.core.body_limit import MULTIPART_OVERHEAD, body_limit_middleware
 from app.core.config import Settings, get_settings
 from app.core.exceptions import register_exception_handlers
@@ -23,6 +24,7 @@ from app.modules.auth.presentation.router import router as auth_router
 from app.modules.documents.presentation.router import router as documents_router
 from app.modules.ingestion.infrastructure.job_queue import CeleryJobQueue, LoggingJobQueue
 from app.modules.ingestion.presentation.router import router as processing_router
+from app.modules.knowledge.presentation.router import router as search_router
 from app.modules.organizations.presentation.invitations_router import router as invitations_router
 from app.modules.organizations.presentation.members_router import router as members_router
 from app.modules.organizations.presentation.router import router as organizations_router
@@ -48,6 +50,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.mailer = build_mailer(settings)
     app.state.rate_limiter = InMemoryRateLimiter()
     app.state.storage = FilesystemStorage(settings.storage_path)
+    app.state.embeddings = build_embedding_provider(settings)
     app.state.job_queue = (
         CeleryJobQueue(create_celery(settings.celery_broker_url))
         if settings.celery_broker_url
@@ -66,6 +69,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api_v1.include_router(invitations_router)
     api_v1.include_router(documents_router)
     api_v1.include_router(processing_router)
+    api_v1.include_router(search_router)
 
     app.include_router(health_router)
     app.include_router(api_v1)
