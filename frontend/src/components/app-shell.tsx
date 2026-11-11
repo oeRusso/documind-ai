@@ -26,10 +26,7 @@ import { cn } from "@/lib/utils";
 type NavItem = { href: string; label: string; icon: LucideIcon; show: boolean };
 
 /** What the next stages add, shown greyed out so the menu tells where the product is going. */
-const COMING_SOON = [
-  { label: "Búsqueda", icon: Search, stage: "Etapa 6" },
-  { label: "Chat con citas", icon: MessageSquare, stage: "Etapa 7" },
-];
+const COMING_SOON = [{ label: "Chat con citas", icon: MessageSquare, stage: "Etapa 7" }];
 
 function OrganizationSwitcher({ id }: { id: string }) {
   const { organization, organizations, select } = useActiveOrganization();
@@ -87,6 +84,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const items: NavItem[] = [
     { href: "/documents", label: "Documentos", icon: FileText, show: true },
+    { href: "/search", label: "Búsqueda", icon: Search, show: true },
     { href: "/members", label: "Miembros", icon: Users, show: true },
     {
       href: "/invitations",

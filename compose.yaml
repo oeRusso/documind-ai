@@ -28,7 +28,7 @@ x-backend: &backend
     MAX_UPLOAD_PAGES: ${MAX_UPLOAD_PAGES:-500}
     DOCUMENT_PURGE_DAYS: ${DOCUMENT_PURGE_DAYS:-30}
     CELERY_BROKER_URL: redis://valkey:6379/0
-    OLLAMA_BASE_URL: http://ollama:11434
+    OLLAMA_URL: http://ollama:11434
     EMBEDDING_MODEL: ${EMBEDDING_MODEL:-bge-m3}
     # Uploads bigger than 1 MB spill from memory to a temp file: on the volume, not in RAM.
     TMPDIR: /data/tmp

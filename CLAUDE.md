@@ -49,9 +49,12 @@ GitHub Actions. (Cloudflare Access y GHCR quedan sujetos a la regla de servicios
 Existen a partir de la etapa 1 (backend) y la etapa 2 (frontend).
 - Backend (en `backend/`): `uv run pytest`, `uv run ruff check --fix`, `uv run ruff format`, `uv run mypy app`
 - Frontend (en `frontend/`): `pnpm lint`, `pnpm typecheck`, `pnpm test`
-- Entorno: `podman compose up -d --build` (db, API, worker, Valkey, web en http://localhost:3000, Mailpit) y
+- Entorno: `podman compose up -d --build` (db, API, worker, Valkey, Ollama, web en http://localhost:3000, Mailpit) y
   `podman compose exec api python -m app.dev.seed` (usuarios de prueba, ver `docs/probar-la-api.md`).
 - Contrato API → frontend: `uv run python -m app.dev.openapi ../frontend/openapi.json` y `pnpm gen:api`.
+- Modelos de Ollama (en el contenedor): `podman compose exec ollama ollama pull bge-m3`.
+- Evaluación de búsqueda (en `backend/`, usa el Ollama de la PC en 127.0.0.1:11434):
+  `uv run python -m evaluation.eval_retrieval`.
 
 ## Reglas que nunca se rompen
 - Toda tabla de negocio tiene `organization_id` (también las hijas) y toda consulta filtra por él.
@@ -162,7 +165,8 @@ Leerla antes de cualquier tarea de deploy (etapas 0, 3 y 11). Resumen:
   de la etapa 0. Necesita el túnel, el acceso al VPS y la guía `VPS-COMPARTIDO.md` (disco externo).
 - **Etapa 4**: terminada (2026-11-08) en `development`. Ver "Resultado" en `docs/etapas/etapa-04.md`.
 - **Etapa 5**: terminada (2026-11-09) en `development`. Ver "Resultado" en `docs/etapas/etapa-05.md`.
-- **Siguiente: etapa 6** (dataset de evaluación, embeddings y búsqueda híbrida). Necesita que Esteban
-  apruebe descargar el modelo de embeddings para Ollama.
+- **Etapa 6**: terminada (2026-11-11) en `development`. Ver "Resultado" en `docs/etapas/etapa-06.md`.
+- **Siguiente: etapa 7** (RAG con citas y streaming). Antes de descargar un LLM para Ollama, pedirle OK a
+  Esteban con nombre y tamaño del modelo (1 a 3B cuantizado para el VPS).
 Regla general: la etapa actual es la de **número más bajo** que no está marcada como terminada en
 `docs/etapas/`, **salvo las etapas 0 y 3**, que quedan para el final.

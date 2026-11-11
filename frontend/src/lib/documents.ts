@@ -32,6 +32,7 @@ export const PROCESSING_STEPS = [
   { status: "extracting", label: "Leyendo el texto" },
   { status: "ocr", label: "Reconociendo páginas escaneadas" },
   { status: "chunking", label: "Armando fragmentos" },
+  { status: "embedding", label: "Preparando la búsqueda" },
   { status: "ready", label: "Listo" },
 ] as const;
 

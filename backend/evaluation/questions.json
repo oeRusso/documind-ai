@@ -1,5 +1,5 @@
 {
-  "description": "Preguntas de evaluación de la búsqueda (etapa 6). document=null: no tiene respuesta en el corpus. expected_page se calcula buscando el anchor en el PDF (python -m evaluation.dataset --fix).",
+  "description": "Preguntas de evaluación de la búsqueda (etapa 6). document=null: no tiene respuesta en el corpus. expected_page se calcula buscando el anchor en el PDF (python -m evaluation.dataset --fix). kind: natural (pregunta en lenguaje cotidiano) o keywords (términos exactos, como se busca a veces).",
   "questions": [
     {
       "id": "q001",
@@ -7,7 +7,8 @@
       "document": "ley-20744-contrato-de-trabajo",
       "article": "Art. 92 bis",
       "anchor": "se entenderá celebrado a prueba",
-      "expected_page": 18
+      "expected_page": 18,
+      "kind": "natural"
     },
     {
       "id": "q002",
@@ -15,7 +16,8 @@
       "document": "ley-20744-contrato-de-trabajo",
       "article": "Art. 121",
       "anchor": "la doceava parte del total de las remuneraciones",
-      "expected_page": 28
+      "expected_page": 28,
+      "kind": "natural"
     },
     {
       "id": "q003",
@@ -23,7 +25,8 @@
       "document": "ley-20744-contrato-de-trabajo",
       "article": "Art. 150",
       "anchor": "De catorce (14) días corridos cuando la antigüedad",
-      "expected_page": 37
+      "expected_page": 37,
+      "kind": "natural"
     },
     {
       "id": "q004",
@@ -31,7 +34,8 @@
       "document": "ley-20744-contrato-de-trabajo",
       "article": "Art. 158",
       "anchor": "Por matrimonio, diez (10) días corridos",
-      "expected_page": 40
+      "expected_page": 40,
+      "kind": "natural"
     },
     {
       "id": "q005",
@@ -39,7 +43,8 @@
       "document": "ley-20744-contrato-de-trabajo",
       "article": "Art. 177",
       "anchor": "durante los cuarenta y cinco (45) días anteriores al parto",
-      "expected_page": 43
+      "expected_page": 43,
+      "kind": "natural"
     },
     {
       "id": "q006",
@@ -47,7 +52,8 @@
       "document": "ley-20744-contrato-de-trabajo",
       "article": "Art. 196",
       "anchor": "regirá por la ley 11.544",
-      "expected_page": 48
+      "expected_page": 48,
+      "kind": "natural"
     },
     {
       "id": "q007",
@@ -55,7 +61,8 @@
       "document": "ley-20744-contrato-de-trabajo",
       "article": "Art. 231",
       "anchor": "no podrá ser disuelto por voluntad de una de las partes, sin previo aviso",
-      "expected_page": 58
+      "expected_page": 58,
+      "kind": "natural"
     },
     {
       "id": "q008",
@@ -63,7 +70,8 @@
       "document": "ley-20744-contrato-de-trabajo",
       "article": "Art. 245",
       "anchor": "equivalente a un (1) mes de sueldo por cada año",
-      "expected_page": 62
+      "expected_page": 62,
+      "kind": "natural"
     },
     {
       "id": "q009",
@@ -71,7 +79,8 @@
       "document": "ley-24240-defensa-del-consumidor",
       "article": "Art. 3",
       "anchor": "Relación de consumo es el vínculo jurídico entre el proveedor y el consumidor",
-      "expected_page": 2
+      "expected_page": 2,
+      "kind": "natural"
     },
     {
       "id": "q010",
@@ -79,7 +88,8 @@
       "document": "ley-24240-defensa-del-consumidor",
       "article": "Art. 4",
       "anchor": "La información debe ser siempre gratuita para el consumidor",
-      "expected_page": 2
+      "expected_page": 2,
+      "kind": "natural"
     },
     {
       "id": "q011",
@@ -87,7 +97,8 @@
       "document": "ley-24240-defensa-del-consumidor",
       "article": "Art. 10 ter",
       "anchor": "mediante el mismo medio utilizado en la contratación",
-      "expected_page": 5
+      "expected_page": 5,
+      "kind": "natural"
     },
     {
       "id": "q012",
@@ -95,7 +106,8 @@
       "document": "ley-24240-defensa-del-consumidor",
       "article": "Art. 11",
       "anchor": "gozarán de garantía legal por los defectos o vicios de cualquier índole",
-      "expected_page": 5
+      "expected_page": 5,
+      "kind": "natural"
     },
     {
       "id": "q013",
@@ -103,7 +115,8 @@
       "document": "ley-24240-defensa-del-consumidor",
       "article": "Art. 34",
       "anchor": "revocar la aceptación durante el plazo de DIEZ (10) días corridos",
-      "expected_page": 12
+      "expected_page": 12,
+      "kind": "natural"
     },
     {
       "id": "q014",
@@ -111,7 +124,8 @@
       "document": "ley-24240-defensa-del-consumidor",
       "article": "Art. 47",
       "anchor": "quienes la hayan cometido serán pasibles de las siguientes sanciones",
-      "expected_page": 18
+      "expected_page": 18,
+      "kind": "natural"
     },
     {
       "id": "q015",
@@ -119,7 +133,8 @@
       "document": "ley-25326-datos-personales",
       "article": "Art. 2",
       "anchor": "Datos personales que revelan origen racial y étnico",
-      "expected_page": 1
+      "expected_page": 1,
+      "kind": "natural"
     },
     {
       "id": "q016",
@@ -127,7 +142,8 @@
       "document": "ley-25326-datos-personales",
       "article": "Art. 6",
       "anchor": "se deberá informar previamente a sus titulares en forma expresa y clara",
-      "expected_page": 3
+      "expected_page": 3,
+      "kind": "natural"
     },
     {
       "id": "q017",
@@ -135,7 +151,8 @@
       "document": "ley-25326-datos-personales",
       "article": "Art. 14",
       "anchor": "tiene derecho a solicitar y obtener información de sus datos personales",
-      "expected_page": 6
+      "expected_page": 6,
+      "kind": "natural"
     },
     {
       "id": "q018",
@@ -143,7 +160,8 @@
       "document": "ley-25326-datos-personales",
       "article": "Art. 16",
       "anchor": "suprimidos o sometidos a confidencialidad los datos personales",
-      "expected_page": 7
+      "expected_page": 7,
+      "kind": "natural"
     },
     {
       "id": "q019",
@@ -151,7 +169,8 @@
       "document": "ley-25326-datos-personales",
       "article": "Art. 29",
       "anchor": "El órgano de control deberá realizar todas las acciones necesarias",
-      "expected_page": 11
+      "expected_page": 11,
+      "kind": "natural"
     },
     {
       "id": "q020",
@@ -159,7 +178,8 @@
       "document": "ley-25506-firma-digital",
       "article": "Art. 2",
       "anchor": "resultado de aplicar a un documento digital un procedimiento matemático",
-      "expected_page": 1
+      "expected_page": 1,
+      "kind": "natural"
     },
     {
       "id": "q021",
@@ -167,7 +187,8 @@
       "document": "ley-25506-firma-digital",
       "article": "Art. 3",
       "anchor": "esa exigencia también queda satisfecha por una firma digital",
-      "expected_page": 1
+      "expected_page": 1,
+      "kind": "natural"
     },
     {
       "id": "q022",
@@ -175,7 +196,8 @@
       "document": "ley-25506-firma-digital",
       "article": "Art. 5",
       "anchor": "Se entiende por firma electrónica al conjunto de datos electrónicos",
-      "expected_page": 1
+      "expected_page": 1,
+      "kind": "natural"
     },
     {
       "id": "q023",
@@ -183,7 +205,8 @@
       "document": "ley-25506-firma-digital",
       "article": "Art. 7",
       "anchor": "pertenece al titular del certificado digital",
-      "expected_page": 2
+      "expected_page": 2,
+      "kind": "natural"
     },
     {
       "id": "q024",
@@ -191,7 +214,8 @@
       "document": "ley-25506-firma-digital",
       "article": "Art. 9",
       "anchor": "Una firma digital es válida si cumple con los siguientes requisitos",
-      "expected_page": 2
+      "expected_page": 2,
+      "kind": "natural"
     },
     {
       "id": "q025",
@@ -199,7 +223,8 @@
       "document": "ley-24557-riesgos-del-trabajo",
       "article": "Art. 1",
       "anchor": "Reducir la siniestralidad laboral",
-      "expected_page": 1
+      "expected_page": 1,
+      "kind": "natural"
     },
     {
       "id": "q026",
@@ -207,7 +232,8 @@
       "document": "ley-24557-riesgos-del-trabajo",
       "article": "Art. 6",
       "anchor": "en el trayecto entre el domicilio del trabajador y el lugar de trabajo",
-      "expected_page": 4
+      "expected_page": 4,
+      "kind": "natural"
     },
     {
       "id": "q027",
@@ -215,7 +241,8 @@
       "document": "ley-24557-riesgos-del-trabajo",
       "article": "Art. 13",
       "anchor": "percibirá una prestación de pago mensual",
-      "expected_page": 9
+      "expected_page": 9,
+      "kind": "natural"
     },
     {
       "id": "q028",
@@ -223,7 +250,8 @@
       "document": "ley-24557-riesgos-del-trabajo",
       "article": "Art. 26",
       "anchor": "entidades de derecho privado, previamente autorizadas por la SRT",
-      "expected_page": 15
+      "expected_page": 15,
+      "kind": "natural"
     },
     {
       "id": "q029",
@@ -231,7 +259,8 @@
       "document": "ley-19549-procedimientos-administrativos",
       "article": "Art. 1 bis",
       "anchor": "Son principios fundamentales del procedimiento administrativo",
-      "expected_page": 2
+      "expected_page": 2,
+      "kind": "natural"
     },
     {
       "id": "q030",
@@ -239,7 +268,8 @@
       "document": "ley-19549-procedimientos-administrativos",
       "article": "Art. 7",
       "anchor": "Son requisitos esenciales del acto administrativo",
-      "expected_page": 7
+      "expected_page": 7,
+      "kind": "natural"
     },
     {
       "id": "q031",
@@ -247,7 +277,8 @@
       "document": "ley-19549-procedimientos-administrativos",
       "article": "Art. 10",
       "anchor": "se interpretarán como negativa",
-      "expected_page": 9
+      "expected_page": 9,
+      "kind": "natural"
     },
     {
       "id": "q032",
@@ -255,7 +286,8 @@
       "document": "ley-19549-procedimientos-administrativos",
       "article": "Art. 12",
       "anchor": "goza de presunción de legitimidad",
-      "expected_page": 10
+      "expected_page": 10,
+      "kind": "natural"
     },
     {
       "id": "q033",
@@ -263,7 +295,8 @@
       "document": "ley-19549-procedimientos-administrativos",
       "article": "Art. 25",
       "anchor": "ciento ochenta (180) días hábiles judiciales",
-      "expected_page": 15
+      "expected_page": 15,
+      "kind": "natural"
     },
     {
       "id": "q034",
@@ -271,7 +304,8 @@
       "document": "ley-27275-acceso-a-la-informacion",
       "article": "Art. 1",
       "anchor": "Presunción de publicidad",
-      "expected_page": 1
+      "expected_page": 1,
+      "kind": "natural"
     },
     {
       "id": "q035",
@@ -279,7 +313,8 @@
       "document": "ley-27275-acceso-a-la-informacion",
       "article": "Art. 4",
       "anchor": "no pudiendo exigirse al solicitante que motive la solicitud",
-      "expected_page": 3
+      "expected_page": 3,
+      "kind": "natural"
     },
     {
       "id": "q036",
@@ -287,7 +322,8 @@
       "document": "ley-27275-acceso-a-la-informacion",
       "article": "Art. 8",
       "anchor": "sólo podrán exceptuarse de proveer la información",
-      "expected_page": 4
+      "expected_page": 4,
+      "kind": "natural"
     },
     {
       "id": "q037",
@@ -295,7 +331,8 @@
       "document": "ley-27275-acceso-a-la-informacion",
       "article": "Art. 11",
       "anchor": "plazo no mayor de quince (15) días hábiles",
-      "expected_page": 6
+      "expected_page": 6,
+      "kind": "natural"
     },
     {
       "id": "q038",
@@ -303,7 +340,8 @@
       "document": "ley-27275-acceso-a-la-informacion",
       "article": "Art. 19",
       "anchor": "Créase la Agencia de Acceso a la Información Pública",
-      "expected_page": 8
+      "expected_page": 8,
+      "kind": "natural"
     },
     {
       "id": "q039",
@@ -311,7 +349,8 @@
       "document": "ley-27555-teletrabajo",
       "article": "Art. 4",
       "anchor": "La jornada laboral debe ser pactada previamente por escrito",
-      "expected_page": 1
+      "expected_page": 1,
+      "kind": "natural"
     },
     {
       "id": "q040",
@@ -319,7 +358,8 @@
       "document": "ley-27555-teletrabajo",
       "article": "Art. 5",
       "anchor": "derecho a no ser contactada y a desconectarse",
-      "expected_page": 2
+      "expected_page": 2,
+      "kind": "natural"
     },
     {
       "id": "q041",
@@ -327,7 +367,8 @@
       "document": "ley-27555-teletrabajo",
       "article": "Art. 6",
       "anchor": "Tareas de cuidados",
-      "expected_page": 2
+      "expected_page": 2,
+      "kind": "natural"
     },
     {
       "id": "q042",
@@ -335,7 +376,8 @@
       "document": "ley-27555-teletrabajo",
       "article": "Art. 8",
       "anchor": "podrá ser revocado por la misma en cualquier momento",
-      "expected_page": 2
+      "expected_page": 2,
+      "kind": "natural"
     },
     {
       "id": "q043",
@@ -343,7 +385,8 @@
       "document": "ley-27555-teletrabajo",
       "article": "Art. 9",
       "anchor": "El empleador debe proporcionar el equipamiento",
-      "expected_page": 2
+      "expected_page": 2,
+      "kind": "natural"
     },
     {
       "id": "q044",
@@ -351,7 +394,8 @@
       "document": "ley-25675-ambiente",
       "article": "Art. 2",
       "anchor": "La política ambiental nacional deberá cumplir los siguientes objetivos",
-      "expected_page": 1
+      "expected_page": 1,
+      "kind": "natural"
     },
     {
       "id": "q045",
@@ -359,7 +403,8 @@
       "document": "ley-25675-ambiente",
       "article": "Art. 4",
       "anchor": "Principio precautorio",
-      "expected_page": 2
+      "expected_page": 2,
+      "kind": "natural"
     },
     {
       "id": "q046",
@@ -367,7 +412,8 @@
       "document": "ley-25675-ambiente",
       "article": "Art. 11",
       "anchor": "estará sujeta a un procedimiento de evaluación de impacto ambiental",
-      "expected_page": 4
+      "expected_page": 4,
+      "kind": "natural"
     },
     {
       "id": "q047",
@@ -375,7 +421,8 @@
       "document": "ley-25675-ambiente",
       "article": "Art. 22",
       "anchor": "deberá contratar un seguro de cobertura",
-      "expected_page": 6
+      "expected_page": 6,
+      "kind": "natural"
     },
     {
       "id": "q048",
@@ -383,7 +430,8 @@
       "document": "ley-25675-ambiente",
       "article": "Art. 27",
       "anchor": "Se define el daño ambiental como toda alteración relevante",
-      "expected_page": 7
+      "expected_page": 7,
+      "kind": "natural"
     },
     {
       "id": "q049",
@@ -391,7 +439,8 @@
       "document": "ley-26657-salud-mental",
       "article": "Art. 7",
       "anchor": "El Estado reconoce a las personas con padecimiento mental los siguientes derechos",
-      "expected_page": 2
+      "expected_page": 2,
+      "kind": "natural"
     },
     {
       "id": "q050",
@@ -399,7 +448,8 @@
       "document": "ley-26657-salud-mental",
       "article": "Art. 14",
       "anchor": "La internación es considerada como un recurso terapéutico de carácter restrictivo",
-      "expected_page": 4
+      "expected_page": 4,
+      "kind": "natural"
     },
     {
       "id": "q051",
@@ -407,7 +457,8 @@
       "document": "ley-26657-salud-mental",
       "article": "Art. 20",
       "anchor": "riesgo cierto e inminente para sí o para terceros",
-      "expected_page": 6
+      "expected_page": 6,
+      "kind": "natural"
     },
     {
       "id": "q052",
@@ -415,7 +466,8 @@
       "document": "ley-26657-salud-mental",
       "article": "Art. 27",
       "anchor": "la creación de nuevos manicomios",
-      "expected_page": 7
+      "expected_page": 7,
+      "kind": "natural"
     },
     {
       "id": "q053",
@@ -423,7 +475,8 @@
       "document": "ley-11723-propiedad-intelectual",
       "article": "Art. 1",
       "anchor": "los programas de computación fuente y objeto",
-      "expected_page": 1
+      "expected_page": 1,
+      "kind": "natural"
     },
     {
       "id": "q054",
@@ -431,7 +484,8 @@
       "document": "ley-11723-propiedad-intelectual",
       "article": "Art. 2",
       "anchor": "comprende para su autor la facultad de disponer de ella",
-      "expected_page": 1
+      "expected_page": 1,
+      "kind": "natural"
     },
     {
       "id": "q055",
@@ -439,7 +493,8 @@
       "document": "ley-11723-propiedad-intelectual",
       "article": "Art. 5",
       "anchor": "hasta setenta años contados a partir del 1 de Enero",
-      "expected_page": 2
+      "expected_page": 2,
+      "kind": "natural"
     },
     {
       "id": "q056",
@@ -447,7 +502,8 @@
       "document": "ley-11723-propiedad-intelectual",
       "article": "Art. 71",
       "anchor": "la pena establecida por el artículo 172 del Código Penal",
-      "expected_page": 14
+      "expected_page": 14,
+      "kind": "natural"
     },
     {
       "id": "q057",
@@ -455,7 +511,8 @@
       "document": "ley-26061-ninas-ninos-adolescentes",
       "article": "Art. 3",
       "anchor": "la máxima satisfacción, integral y simultánea de los derechos",
-      "expected_page": 2
+      "expected_page": 2,
+      "kind": "natural"
     },
     {
       "id": "q058",
@@ -463,7 +520,8 @@
       "document": "ley-26061-ninas-ninos-adolescentes",
       "article": "Art. 9",
       "anchor": "a no ser sometidos a trato violento, discriminatorio",
-      "expected_page": 4
+      "expected_page": 4,
+      "kind": "natural"
     },
     {
       "id": "q059",
@@ -471,7 +529,8 @@
       "document": "ley-26061-ninas-ninos-adolescentes",
       "article": "Art. 14",
       "anchor": "El acceso a servicios de salud, respetando las pautas familiares",
-      "expected_page": 5
+      "expected_page": 5,
+      "kind": "natural"
     },
     {
       "id": "q060",
@@ -479,7 +538,8 @@
       "document": "ley-26061-ninas-ninos-adolescentes",
       "article": "Art. 24",
       "anchor": "Participar y expresar libremente su opinión",
-      "expected_page": 7
+      "expected_page": 7,
+      "kind": "natural"
     },
     {
       "id": "q061",
@@ -487,7 +547,8 @@
       "document": null,
       "article": null,
       "anchor": null,
-      "expected_page": null
+      "expected_page": null,
+      "kind": "natural"
     },
     {
       "id": "q062",
@@ -495,7 +556,8 @@
       "document": null,
       "article": null,
       "anchor": null,
-      "expected_page": null
+      "expected_page": null,
+      "kind": "natural"
     },
     {
       "id": "q063",
@@ -503,7 +565,8 @@
       "document": null,
       "article": null,
       "anchor": null,
-      "expected_page": null
+      "expected_page": null,
+      "kind": "natural"
     },
     {
       "id": "q064",
@@ -511,7 +574,8 @@
       "document": null,
       "article": null,
       "anchor": null,
-      "expected_page": null
+      "expected_page": null,
+      "kind": "natural"
     },
     {
       "id": "q065",
@@ -519,7 +583,8 @@
       "document": null,
       "article": null,
       "anchor": null,
-      "expected_page": null
+      "expected_page": null,
+      "kind": "natural"
     },
     {
       "id": "q066",
@@ -527,7 +592,8 @@
       "document": null,
       "article": null,
       "anchor": null,
-      "expected_page": null
+      "expected_page": null,
+      "kind": "natural"
     },
     {
       "id": "q067",
@@ -535,7 +601,8 @@
       "document": null,
       "article": null,
       "anchor": null,
-      "expected_page": null
+      "expected_page": null,
+      "kind": "natural"
     },
     {
       "id": "q068",
@@ -543,7 +610,8 @@
       "document": null,
       "article": null,
       "anchor": null,
-      "expected_page": null
+      "expected_page": null,
+      "kind": "natural"
     },
     {
       "id": "q069",
@@ -551,7 +619,8 @@
       "document": null,
       "article": null,
       "anchor": null,
-      "expected_page": null
+      "expected_page": null,
+      "kind": "natural"
     },
     {
       "id": "q070",
@@ -559,7 +628,8 @@
       "document": null,
       "article": null,
       "anchor": null,
-      "expected_page": null
+      "expected_page": null,
+      "kind": "natural"
     },
     {
       "id": "q071",
@@ -567,7 +637,80 @@
       "document": null,
       "article": null,
       "anchor": null,
-      "expected_page": null
+      "expected_page": null,
+      "kind": "natural"
+    },
+    {
+      "id": "q072",
+      "question": "art. 245 LCT indemnización",
+      "document": "ley-20744-contrato-de-trabajo",
+      "article": "Art. 245",
+      "anchor": "equivalente a un (1) mes de sueldo por cada año",
+      "expected_page": 62,
+      "kind": "keywords"
+    },
+    {
+      "id": "q073",
+      "question": "art 92 bis período de prueba",
+      "document": "ley-20744-contrato-de-trabajo",
+      "article": "Art. 92 bis",
+      "anchor": "se entenderá celebrado a prueba",
+      "expected_page": 18,
+      "kind": "keywords"
+    },
+    {
+      "id": "q074",
+      "question": "ley 11.544 jornada",
+      "document": "ley-20744-contrato-de-trabajo",
+      "article": "Art. 196",
+      "anchor": "regirá por la ley 11.544",
+      "expected_page": 48,
+      "kind": "keywords"
+    },
+    {
+      "id": "q075",
+      "question": "ILT prestación mensual",
+      "document": "ley-24557-riesgos-del-trabajo",
+      "article": "Art. 13",
+      "anchor": "percibirá una prestación de pago mensual",
+      "expected_page": 9,
+      "kind": "keywords"
+    },
+    {
+      "id": "q076",
+      "question": "art 10 ter rescisión",
+      "document": "ley-24240-defensa-del-consumidor",
+      "article": "Art. 10 ter",
+      "anchor": "mediante el mismo medio utilizado en la contratación",
+      "expected_page": 5,
+      "kind": "keywords"
+    },
+    {
+      "id": "q077",
+      "question": "artículo 172 Código Penal propiedad intelectual",
+      "document": "ley-11723-propiedad-intelectual",
+      "article": "Art. 71",
+      "anchor": "la pena establecida por el artículo 172 del Código Penal",
+      "expected_page": 14,
+      "kind": "keywords"
+    },
+    {
+      "id": "q078",
+      "question": "180 días hábiles impugnación judicial",
+      "document": "ley-19549-procedimientos-administrativos",
+      "article": "Art. 25",
+      "anchor": "ciento ochenta (180) días hábiles judiciales",
+      "expected_page": 15,
+      "kind": "keywords"
+    },
+    {
+      "id": "q079",
+      "question": "presunción de autoría firma digital",
+      "document": "ley-25506-firma-digital",
+      "article": "Art. 7",
+      "anchor": "pertenece al titular del certificado digital",
+      "expected_page": 2,
+      "kind": "keywords"
     }
   ]
 }

@@ -95,3 +95,9 @@ jobs:
 
       - name: Pytest
         run: uv run pytest -q
+
+      # Stage 6: search quality on the evaluation dataset. CI has no Ollama, so only the words
+      # mode runs here (with a floor); the full comparison with the embedding models is run
+      # locally and committed in docs/evaluation/ (ADR 0008).
+      - name: Retrieval evaluation (text mode)
+        run: uv run python -m evaluation.eval_retrieval --text-only --min-text-recall 0.55

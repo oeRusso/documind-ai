@@ -9,7 +9,7 @@ software libre y planes gratuitos.
 
 ## Estado actual
 
-**Etapas 1, 2, 4 y 5 terminadas** (todo el trabajo nuevo queda en `development` hasta el despliegue):
+**Etapas 1, 2, 4, 5 y 6 terminadas** (todo el trabajo nuevo queda en `development` hasta el despliegue):
 
 - Cuentas, organizaciones, roles e invitaciones, con aislamiento entre organizaciones en dos capas
   (chequeo en el backend + Row Level Security en PostgreSQL) y sesiones con refresh token rotativo.
@@ -17,6 +17,8 @@ software libre y planes gratuitos.
   detección de duplicados, descarga solo por la API y borrado diferido.
 - Procesamiento en segundo plano: texto página por página, OCR de páginas escaneadas (Tesseract) y
   fragmentos por título con su página y sección, visibles en la web.
+- Búsqueda híbrida (por significado con embeddings locales `bge-m3`, y por palabras en español), medida
+  sobre un dataset de 12 leyes argentinas: recall@5 = 0,912 ([informe](docs/evaluation/retrieval-2026-11-11.md)).
 
 Las etapas 0 y 3 (VPS y despliegue) quedan para el final.
 

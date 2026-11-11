@@ -109,6 +109,24 @@ los **Fragmentos**, cada uno con su sección y su página.
 | Reprocesar | Botón **Reprocesar** en el detalle | Vuelve a correr y los fragmentos se reemplazan (no se duplican) |
 | Tiempos | `podman compose logs worker` | Líneas `page_extracted` / `page_ocr` con `ms` por página |
 
+### Búsqueda (etapa 6)
+
+Menú **Búsqueda**. Para tener contenido real, subí alguna ley de `backend/evaluation/corpus/` (por ejemplo
+`ley-20744-contrato-de-trabajo.pdf`) y esperá a que quede «Listo» (el paso "Preparando la búsqueda" calcula
+los embeddings).
+
+| Probá | Resultado esperado |
+|---|---|
+| «¿cuántos días de vacaciones me corresponden si tengo 3 años de antigüedad?» | Primero el art. 150 (pág. 37), "catorce (14) días corridos" |
+| «art. 245 LCT indemnización» | El art. 245 entre los primeros (los términos exactos los encuentra la parte "por palabras") |
+| La misma pregunta en modo **Por palabras** y **Por significado** | Cada resultado muestra su posición en cada ranking |
+| «informacion publica» (sin tildes) | Encuentra "información pública" |
+| Entrá como `eve@globex.test` y buscá lo mismo | Nada: los documentos de Acme no existen para Globex |
+
+Por API: `GET /api/v1/search?q=...&mode=hybrid|vector|text&limit=10` (con `X-Organization-Id`).
+
+Para medir la calidad (en `backend/`): `uv run python -m evaluation.eval_retrieval`.
+
 ## 6. Empezar de cero
 
 ```bash

@@ -70,7 +70,7 @@ class Settings(BaseSettings):
 
     # --- Local AI with Ollama (stage 6) ---
     # Without it, documents are processed without embeddings and search uses words only.
-    ollama_base_url: str | None = None
+    ollama_url: str | None = None
     embedding_model: str = "bge-m3"  # one of app/ai/providers/embeddings.py KNOWN_MODELS
 
     @property
@@ -82,7 +82,7 @@ class Settings(BaseSettings):
         "smtp_username",
         "smtp_password",
         "celery_broker_url",
-        "ollama_base_url",
+        "ollama_url",
         mode="before",
     )
     @classmethod

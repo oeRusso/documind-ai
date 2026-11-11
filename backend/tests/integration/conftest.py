@@ -36,7 +36,7 @@ def db_settings(migrated_database: None, tmp_path_factory: pytest.TempPathFactor
         app_origin=APP_ORIGIN,
         storage_path=tmp_path_factory.mktemp("storage"),
         celery_broker_url=None,  # no queue in tests: jobs are captured (see test_processing_api)
-        ollama_base_url=None,  # no Ollama in tests: FakeEmbeddingProvider (see test_search_api)
+        ollama_url=None,  # no Ollama in tests: FakeEmbeddingProvider (see test_search_api)
     )
 
 

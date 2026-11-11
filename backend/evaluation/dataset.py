@@ -32,6 +32,7 @@ class Question:
     article: str | None
     anchor: str | None
     expected_page: int | None
+    kind: str = "natural"  # "natural" question, or "keywords" (exact terms, article numbers)
 
     @property
     def answerable(self) -> bool:

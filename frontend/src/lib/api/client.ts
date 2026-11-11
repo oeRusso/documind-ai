@@ -20,6 +20,8 @@ export type DocumentDetailRead = Schemas["DocumentDetailRead"];
 export type VersionRead = Schemas["VersionRead"];
 export type ProcessingRead = Schemas["ProcessingRead"];
 export type ChunkRead = Schemas["ChunkRead"];
+export type SearchHitRead = Schemas["SearchHitRead"];
+export type SearchMode = Schemas["SearchMode"];
 
 /** The `params` for endpoints inside an organization. */
 export function inOrganization(organizationId: string) {

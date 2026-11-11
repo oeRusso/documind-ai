@@ -1,6 +1,6 @@
 # Arquitectura del código
 
-Mapa del código **tal como está hoy** (fin de la etapa 5): qué hace cada carpeta y cada archivo, y cómo
+Mapa del código **tal como está hoy** (fin de la etapa 6): qué hace cada carpeta y cada archivo, y cómo
 se comunican las piezas. El *diseño* completo del producto está en `plan-parte-1-arquitectura.md`;
 este documento describe lo que ya existe. Se actualiza al cerrar cada etapa.
 
@@ -18,7 +18,9 @@ flowchart LR
     A -->|"SQL como rol app<br/>+ RLS"| D[("db<br/>PostgreSQL 16")]
     A -->|"SMTP"| M["mailpit<br/>(emails de desarrollo)"]
     A -->|"encola tareas"| V[("valkey<br/>cola")]
-    V --> K["worker<br/>Celery: texto, OCR, fragmentos"]
+    V --> K["worker<br/>Celery: texto, OCR, fragmentos, embeddings"]
+    K -->|"embeddings"| O["ollama<br/>IA local"]
+    A -->|"embedding de la pregunta"| O
     K -->|"SQL como rol app + RLS"| D
 ```
 
@@ -35,6 +37,7 @@ flowchart LR
 | `api` | `infrastructure/containers/backend.Containerfile` | `127.0.0.1:8000` | La API. Arranca cuando `migrate` terminó. |
 | `web` | `infrastructure/containers/frontend.Containerfile` | `127.0.0.1:3000` | La interfaz. |
 | `worker` | `backend.Containerfile` (etapa `worker`, con datos de Tesseract) | — | Procesa documentos de a uno (`mem_limit 1g`) y corre la purga diaria. |
+| `ollama` | `ollama/ollama:0.40.12` | — | IA local: embeddings (`bge-m3`), y el LLM desde la etapa 7. `mem_limit 3g`. |
 | `valkey` | `valkey/valkey:8.1.10-alpine` | — | Cola de tareas (compatible con Redis), 128 MB. |
 | `mailpit` | `axllent/mailpit` | `127.0.0.1:8025` (web), `1025` (SMTP) | Atrapa los emails para verlos sin mandarlos de verdad. |
 
@@ -329,14 +332,42 @@ sequenceDiagram
     API-->>Web: estado y progreso
 ```
 
+#### `modules/knowledge/`: búsqueda (etapa 6, ADR 0008)
+
+| Archivo | Qué hace |
+|---|---|
+| `domain/search.py` | `SearchMode` (híbrida, significado, palabras), `ChunkMatch`, `SearchHit` y el puerto `ChunkSearch`. |
+| `application/search_documents.py` | `SearchDocuments`: corre la búsqueda por significado y/o por palabras (30 candidatos cada una) y las fusiona con RRF. Sin modelo de embeddings, cae a palabras y lo avisa. |
+| `infrastructure/sql_search.py` | `SqlChunkSearch`: por significado con pgvector (índice HNSW del modelo, búsqueda iterativa) y por palabras con `documind_es` (español, sin tildes, palabras unidas con OR). El filtro por organización y documentos va **dentro** de la consulta. Única lectura entre módulos (solo lectura, ADR 0008). |
+| `presentation/router.py` | `GET /api/v1/search?q=&mode=&limit=&document_id=`. |
+
+#### `app/ai/`: IA local, detrás de interfaces
+
+| Archivo | Qué hace |
+|---|---|
+| `providers/embeddings.py` | `EmbeddingProvider` (interfaz) y los modelos conocidos (`bge-m3` 1024, `paraphrase-multilingual` 768). |
+| `providers/ollama.py` | `OllamaEmbeddingProvider`: llama a `/api/embed` de Ollama en tandas y valida la forma de los vectores. |
+| `providers/factory.py` | Arma el proveedor según `OLLAMA_URL` y `EMBEDDING_MODEL` (sin `OLLAMA_URL`: ninguno). |
+| `retrieval/fusion.py` | **Reciprocal Rank Fusion**: combina rankings por posición (`1 / (60 + posición)`). Pieza clave. |
+| `evaluation/metrics.py` | recall@k y MRR. |
+
+#### `backend/evaluation/`: dataset y scripts de evaluación
+
+| Archivo | Qué hace |
+|---|---|
+| `build_corpus.py` | Baja las leyes de Infoleg (con pausa e identificándose) y las pasa a PDF con páginas fijas. `corpus/manifest.json` guarda origen, fecha y SHA-256. |
+| `corpus/*.pdf` | Las 12 leyes. |
+| `questions.json` | 79 preguntas: documento, artículo, frase exacta (`anchor`) y página esperada; 11 sin respuesta. |
+| `dataset.py` | Carga las preguntas y calcula o verifica la página buscando la frase con el lector de la app. |
+| `eval_retrieval.py` | Carga el corpus en una organización temporal de la base de tests, calcula embeddings y mide recall@5, recall@10, MRR y latencia por modo y modelo. Escribe `results/retrieval.json` y el informe en `docs/evaluation/`. |
+
 #### Módulos vacíos (se llenan más adelante)
 
 | Carpeta | Etapa | Para qué |
 |---|---|---|
-| `modules/knowledge/` | 6 | Fragmentos con embeddings y búsqueda híbrida. |
 | `modules/conversations/` | 7–8 | Chat con citas e historial. |
 | `modules/analytics/` | 10 | Métricas de uso. |
-| `ai/` | 6–9 | Todo lo de IA, detrás de interfaces (`LLMProvider`, `EmbeddingProvider`): los módulos nunca hablan con Ollama directo. |
+| `ai/` (resto) | 7–9 | Generación (LLM) y reranking, detrás de interfaces como `EmbeddingProvider`. |
 
 #### `dev/`: solo para desarrollo
 
@@ -353,6 +384,7 @@ sequenceDiagram
 | `migrations/versions/0001_initial_organizations.py` | Tabla `organizations`. |
 | `migrations/versions/0002_identity_tables.py` | `users`, `memberships`, `refresh_tokens`, `audit_logs`, `invitations`. |
 | `migrations/versions/0003_row_level_security.py` | Activa RLS (`ENABLE` + `FORCE`) y crea las políticas y las funciones `current_org_id()` / `current_user_id()`. Da permisos al rol `app`. |
+| `migrations/versions/0006_search.py` | `unaccent` + configuración `documind_es`, `chunk_embeddings` (RLS, un índice HNSW por modelo) y el estado `embedding`. |
 | `migrations/versions/0005_processing.py` | `processing_jobs` y `document_chunks` (con `tsv` en español e índice GIN), con RLS. |
 | `migrations/versions/0004_documents.py` | `documents`, `document_versions` (con RLS) y `document_purge_queue` (sin RLS a propósito, ADR 0006). |
 
@@ -367,6 +399,7 @@ erDiagram
     documents ||--|{ document_versions : "versiones"
     document_versions ||--o| processing_jobs : "se procesa en"
     document_versions ||--o{ document_chunks : "se divide en"
+    document_chunks ||--o{ chunk_embeddings : "un vector por modelo"
     users ||--o{ audit_logs : "actor de"
 ```
 
@@ -433,6 +466,7 @@ flowchart TB
 | `(app)/layout.tsx` | zona privada | Sin sesión → `/login?next=...`. Con sesión → `AppShell`. Los paréntesis agrupan sin agregar nada a la URL. |
 | `(app)/documents/page.tsx` | `/documents` | **Página de inicio**: zona para arrastrar archivos (con barra de progreso) y lista paginada. |
 | `(app)/documents/[id]/page.tsx` | `/documents/<id>` | Detalle: versiones, descargar, subir versión nueva, borrar. |
+| `(app)/search/page.tsx` | `/search` | Búsqueda: modo (híbrida, por significado, por palabras), resultados con documento, sección, páginas y términos resaltados. |
 | `(app)/members/page.tsx` | `/members` | Lista de miembros, cambio de rol y quitar. |
 | `(app)/invitations/page.tsx` | `/invitations` | Invitar, ver y revocar invitaciones. |
 | `(app)/organizations/new/page.tsx` | `/organizations/new` | Crear otra organización. |
@@ -465,6 +499,7 @@ flowchart TB
 | `organizations.tsx` | `useOrganizations()` y `useActiveOrganization()` (lee la organización elegida con `useSyncExternalStore`). |
 | `roles.ts` | Qué botones mostrar según el rol. **La regla real la aplica la API** (`permissions.py`). |
 | `documents.ts` | `uploadDocument` (XMLHttpRequest para tener progreso, renueva la sesión ante un 401), `downloadDocument` (pide el archivo con la sesión y se lo da al navegador), formatos y permisos de documentos. |
+| `search.ts` | Resalta en el resultado las palabras de la búsqueda (sin tildes ni mayúsculas). |
 | `slug.ts`, `invitation-link.ts` | Generar el slug desde el nombre; leer el `#organization=..&token=..` del link. |
 
 #### `src/features/`
@@ -549,7 +584,8 @@ toda la familia (las dos copias dejan de servir).
 | `decisions/NNNN-*.md` | ADR: decisiones técnicas con sus alternativas (UUID v7, RLS, tokens, sin Turnstile). |
 | `probar-la-api.md` | Usuarios de prueba y qué probar a mano. |
 | `arquitectura-del-codigo.md` | Este documento. |
-| `evaluation/`, `operations/` | Vacías: informes de evaluación de la IA (etapa 6+) y runbooks (etapa 11). |
+| `evaluation/` | Informes de evaluación (generados por los scripts de `backend/evaluation/`). |
+| `operations/` | Vacía: runbooks (etapa 11). |
 
 ---
 

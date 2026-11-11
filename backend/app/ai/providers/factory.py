@@ -7,8 +7,6 @@ from app.core.config import Settings
 
 def build_embedding_provider(settings: Settings) -> EmbeddingProvider | None:
     """None when no Ollama is configured: processing skips embeddings, search uses words only."""
-    if not settings.ollama_base_url:
+    if not settings.ollama_url:
         return None
-    return OllamaEmbeddingProvider(
-        settings.ollama_base_url, embedding_model(settings.embedding_model)
-    )
+    return OllamaEmbeddingProvider(settings.ollama_url, embedding_model(settings.embedding_model))
