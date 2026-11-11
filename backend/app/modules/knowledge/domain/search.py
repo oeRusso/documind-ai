@@ -24,6 +24,7 @@ class ChunkMatch:
     content: str
     page_start: int | None
     page_end: int | None
+    position: int  # order of the chunk inside its document version (0, 1, 2...)
     score: float  # vector: cosine similarity (1 = same meaning); text: PostgreSQL rank
 
 

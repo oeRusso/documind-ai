@@ -82,3 +82,10 @@ class TooManyRequestsError(DomainError):
     def __init__(self, retry_after_seconds: int) -> None:
         super().__init__()
         self.retry_after_seconds = retry_after_seconds
+
+
+class ServiceUnavailableError(DomainError):
+    """A dependency the request needs is not configured or is down. HTTP 503."""
+
+    code = "service_unavailable"
+    message = "El servicio no está disponible en este momento"

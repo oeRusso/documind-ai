@@ -13,6 +13,7 @@ from pathlib import Path
 from uuid import UUID
 
 from app.ai.providers.embeddings import EmbeddingModel
+from app.ai.providers.llm import ChatMessage, LLMServiceError
 from app.modules.audit.domain.entities import AuditEvent
 from app.modules.auth.domain.refresh_tokens import RefreshToken
 from app.modules.documents.domain.entities import (
@@ -478,3 +479,29 @@ class FakeEmbeddingProvider:
         if self.fail:
             raise ConnectionError("embedding service down")
         return self._vector(text)
+
+
+class FakeLLMProvider:
+    """Answers with fixed pieces of text, and remembers what it was asked."""
+
+    def __init__(self, pieces: Sequence[str] = ("Respuesta [1].",), *, fail_after: int = -1):
+        self.pieces = list(pieces)
+        self.fail_after = fail_after  # raise LLMServiceError after this many pieces (-1: never)
+        self.calls: list[list[ChatMessage]] = []
+        self.warmed_up = False
+
+    @property
+    def model(self) -> str:
+        return "fake-llm"
+
+    async def stream(
+        self, messages: Sequence[ChatMessage], *, max_tokens: int, temperature: float = 0.0
+    ) -> AsyncIterator[str]:
+        self.calls.append(list(messages))
+        for n, piece in enumerate(self.pieces):
+            if n == self.fail_after:
+                raise LLMServiceError("model crashed")
+            yield piece
+
+    async def warm_up(self) -> None:
+        self.warmed_up = True

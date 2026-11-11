@@ -42,6 +42,9 @@ class SearchResult:
     # The mode really used: without an embedding model, hybrid and vector fall back to words.
     mode: SearchMode
     notes: list[str] = field(default_factory=list)
+    # Meaning similarity (cosine, 0..1) of the closest chunk; None when meaning was not used.
+    # The fused (RRF) score only orders results: this one says how close the best really is.
+    best_similarity: float | None = None
 
 
 class SearchDocuments:
@@ -92,4 +95,5 @@ class SearchDocuments:
                 [[m.chunk_id for m in by_vector], [m.chunk_id for m in by_text]], limit=limit
             )
             hits = [SearchHit(matches[f.item], f.score, f.ranks[0], f.ranks[1]) for f in fused]
-        return SearchResult(hits[:limit], mode, notes)
+        best = max((m.score for m in by_vector), default=None)
+        return SearchResult(hits[:limit], mode, notes, best)

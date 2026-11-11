@@ -21,6 +21,8 @@ class Settings(BaseSettings):
         env_file=_REPO_ENV_FILE,
         env_file_encoding="utf-8",
         extra="ignore",
+        # `RAG_MIN_SCORE=` (empty, as in an old .env) means "use the default", not "".
+        env_ignore_empty=True,
     )
 
     app_name: str = "DocuMind AI"
@@ -72,6 +74,21 @@ class Settings(BaseSettings):
     # Without it, documents are processed without embeddings and search uses words only.
     ollama_url: str | None = None
     embedding_model: str = "bge-m3"  # one of app/ai/providers/embeddings.py KNOWN_MODELS
+
+    # --- Answers with citations (stage 7, ADR 0009) ---
+    # The language model that writes answers. Small (1-3B, quantized): the VPS is shared.
+    llm_model: str = "granite3.3:2b"
+    # How long Ollama keeps the model in RAM after the last answer (loading it takes seconds).
+    llm_keep_alive: str = "30m"
+    # Answers generated at the same time; the rest wait in line (CPU only, shared RAM).
+    llm_max_concurrency: int = Field(default=1, ge=1, le=4)
+    # Below this meaning similarity (cosine, 0..1) of the best chunk: "no encontré evidencia",
+    # without calling the LLM. Chosen with the unanswerable questions of the dataset.
+    rag_min_score: float = Field(default=0.5, ge=0.0, le=1.0)
+    # Size of the context given to the model (small models answer better with short contexts).
+    rag_context_tokens: int = Field(default=1500, ge=200, le=6000)
+    rag_max_answer_tokens: int = Field(default=512, ge=64, le=2048)
+    chat_limit_per_user_per_minute: int = Field(default=10, ge=1)
 
     @property
     def max_upload_bytes(self) -> int:

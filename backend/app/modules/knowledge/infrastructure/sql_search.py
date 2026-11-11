@@ -23,7 +23,7 @@ _HNSW_SETTINGS = (
 
 _COLUMNS = """
     c.id AS chunk_id, c.document_id, d.title AS document_title, c.section, c.content,
-    c.page_start, c.page_end
+    c.page_start, c.page_end, c.position
 """
 
 
@@ -36,6 +36,7 @@ def _match(row: Any) -> ChunkMatch:
         content=row.content,
         page_start=row.page_start,
         page_end=row.page_end,
+        position=row.position,
         score=float(row.score),
     )
 

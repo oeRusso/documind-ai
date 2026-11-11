@@ -19,6 +19,7 @@ from app.shared.errors import (
     ForbiddenError,
     NotFoundError,
     PayloadTooLargeError,
+    ServiceUnavailableError,
     TooManyRequestsError,
     UnauthorizedError,
     UnsupportedMediaTypeError,
@@ -49,6 +50,7 @@ _DOMAIN_STATUS: list[tuple[type[DomainError], int]] = [
     (UnsupportedMediaTypeError, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE),
     (ValidationError, status.HTTP_422_UNPROCESSABLE_CONTENT),
     (TooManyRequestsError, status.HTTP_429_TOO_MANY_REQUESTS),
+    (ServiceUnavailableError, status.HTTP_503_SERVICE_UNAVAILABLE),
 ]
 
 _HTTP_CODES: dict[int, tuple[str, str]] = {
