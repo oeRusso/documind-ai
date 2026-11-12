@@ -7,6 +7,9 @@ const apiUrl = process.env.API_INTERNAL_URL ?? "http://127.0.0.1:8000";
 const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
+  // Next.js gzips what it forwards, and gzip holds a streamed answer (Server-Sent Events) until
+  // the end: the chat would show the whole text at once (stage 7). Compression is Caddy's job.
+  compress: false,
   experimental: {
     // Next.js forwards at most 10 MB of a request body to the rewrite target and silently cuts
     // the rest. Uploads are up to 25 MB (MAX_UPLOAD_MB) plus the multipart envelope.
