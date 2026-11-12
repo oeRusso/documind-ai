@@ -53,3 +53,9 @@ Que cada merge a `main` llegue solo a producción, desde ahora y para siempre.
 
 - Parte 1: §2 (arquitectura), §7 (red, secretos, continuidad), §8 (CI, paso 5).
 - Parte 2: "Servicios gratuitos de terceros".
+
+- **Streaming del chat (descubierto en la etapa 7):** cualquier compresión entre la API y el navegador
+  puede retener una respuesta SSE (`text/event-stream`) hasta el final, y el chat mostraría todo el texto
+  de golpe. Next.js ya tiene `compress: false`. En Caddy, no comprimir `text/event-stream` (o usar
+  `flush_interval -1` en el `reverse_proxy`) y verificar con
+  `curl -N --compressed` que los eventos `token` llegan de a uno.

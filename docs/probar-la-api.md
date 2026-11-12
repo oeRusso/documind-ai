@@ -127,6 +127,28 @@ Por API: `GET /api/v1/search?q=...&mode=hybrid|vector|text&limit=10` (con `X-Org
 
 Para medir la calidad (en `backend/`): `uv run python -m evaluation.eval_retrieval`.
 
+### Preguntar (etapa 7)
+
+Menú **Preguntar**. Usa los mismos documentos que la búsqueda y el modelo `llama3.2:3b`
+(`podman compose exec ollama ollama pull llama3.2:3b` si todavía no está). En CPU, la respuesta empieza a
+aparecer a los 10–20 segundos.
+
+| Probá | Resultado esperado |
+|---|---|
+| «¿Cuánto dura el período de prueba?» (con la ley 20.744 cargada) | Respuesta que se va escribiendo, con una marca [1] que lleva a la fuente (ley 20.744, art. 92 bis) |
+| «¿Quién ganó el mundial de 1986?» | «No encontré evidencia en los documentos…» al instante (no llama al modelo) |
+| Botón **Detener** mientras escribe | Se corta y dice «Detuviste la respuesta» |
+| Dos pestañas preguntando a la vez | La segunda muestra «En espera: sos la próxima pregunta» y después responde |
+| Entrá como `eve@globex.test` y preguntá lo mismo | «No encontré evidencia»: los documentos de Acme no existen para Globex |
+| `podman compose logs api \| grep answer_generated` | Cada respuesta con sus citas (documento, páginas y fragmentos) |
+
+Por API: `POST /api/v1/chat` con `{"question": "..."}` y `X-Organization-Id`. La respuesta es un stream
+de eventos `queued`, `token`, `citations` y `done` (en Swagger se ve todo junto al final; con
+`curl -N` se ve llegar).
+
+Para medir (en `backend/`): `OLLAMA_URL=http://127.0.0.1:11435 uv run python -m evaluation.eval_answers`
+(unos 40 minutos) y `uv run python -m evaluation.load_chat` (5 preguntas a la vez).
+
 ## 6. Empezar de cero
 
 ```bash

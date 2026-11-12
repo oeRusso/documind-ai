@@ -9,7 +9,7 @@ software libre y planes gratuitos.
 
 ## Estado actual
 
-**Etapas 1, 2, 4, 5 y 6 terminadas** (todo el trabajo nuevo queda en `development` hasta el despliegue):
+**Etapas 1, 2, 4, 5, 6 y 7 terminadas** (todo el trabajo nuevo queda en `development` hasta el despliegue):
 
 - Cuentas, organizaciones, roles e invitaciones, con aislamiento entre organizaciones en dos capas
   (chequeo en el backend + Row Level Security en PostgreSQL) y sesiones con refresh token rotativo.
@@ -19,6 +19,10 @@ software libre y planes gratuitos.
   fragmentos por título con su página y sección, visibles en la web.
 - Búsqueda híbrida (por significado con embeddings locales `bge-m3`, y por palabras en español), medida
   sobre un dataset de 12 leyes argentinas: recall@5 = 0,912 ([informe](docs/evaluation/retrieval-2026-11-11.md)).
+- Preguntas con respuesta citada (página **Preguntar**): la respuesta aparece mientras se escribe y cada dato
+  lleva su cita `[n]` al documento y la página. Si los documentos no lo responden, dice «no encontré evidencia»
+  sin inventar. Las citas inventadas se descartan, y las preguntas esperan su turno en una cola
+  ([informe](docs/evaluation/answers-2026-11-12.md), [ADR 0009](docs/decisions/0009-modelo-de-lenguaje-y-respuestas.md)).
 
 Las etapas 0 y 3 (VPS y despliegue) quedan para el final.
 
@@ -26,6 +30,8 @@ Las etapas 0 y 3 (VPS y despliegue) quedan para el final.
 cp .env.example .env                           # completá las contraseñas y JWT_SECRET
 podman compose up -d --build                   # base de datos, API, web y Mailpit
 podman compose exec api python -m app.dev.seed # usuarios de prueba
+podman compose exec ollama ollama pull bge-m3       # embeddings (búsqueda)
+podman compose exec ollama ollama pull llama3.2:3b  # modelo de lenguaje (respuestas)
 ```
 
 - Web: http://localhost:3000 (usá `localhost`, no `127.0.0.1`)
@@ -51,3 +57,10 @@ podman compose exec api python -m app.dev.seed # usuarios de prueba
 ## Licencia
 
 [AGPL-3.0](LICENSE)
+
+## Licencias de los modelos
+
+Las respuestas las genera **Llama 3.2** (`llama3.2:3b`), con la
+[Llama 3.2 Community License](https://www.llama.com/llama3_2/license/). **Built with Llama.**
+Los embeddings usan `bge-m3` (MIT). Los modelos se descargan del registro gratuito de Ollama y corren
+en local: ningún texto sale del servidor.

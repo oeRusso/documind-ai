@@ -332,22 +332,57 @@ sequenceDiagram
     API-->>Web: estado y progreso
 ```
 
-#### `modules/knowledge/`: búsqueda (etapa 6, ADR 0008)
+#### `modules/knowledge/`: búsqueda (etapa 6, ADR 0008) y respuestas con citas (etapa 7, ADR 0009)
 
 | Archivo | Qué hace |
 |---|---|
-| `domain/search.py` | `SearchMode` (híbrida, significado, palabras), `ChunkMatch`, `SearchHit` y el puerto `ChunkSearch`. |
-| `application/search_documents.py` | `SearchDocuments`: corre la búsqueda por significado y/o por palabras (30 candidatos cada una) y las fusiona con RRF. Sin modelo de embeddings, cae a palabras y lo avisa. |
+| `domain/search.py` | `SearchMode` (híbrida, significado, palabras), `ChunkMatch` (con su `position` en el documento), `SearchHit` y el puerto `ChunkSearch`. |
+| `domain/context.py` | `build_context`: elige los mejores fragmentos dentro del presupuesto de tokens (`RAG_CONTEXT_TOKENS`), une los contiguos sin repetir el solapamiento y los numera `[1]`, `[2]`… Pieza clave. |
+| `domain/citations.py` | `MarkerFilter`: revisa cada `[n]` de la respuesta **mientras llega**; deja los que apuntan a un fragmento entregado y borra los inventados (y los informa). Pieza clave. |
+| `domain/answer.py` | Lo que sale de una respuesta, en orden: `Queued`, `Token`, `CitationsReady` (con `Citation`: documento, páginas y extracto) y `Done`. |
+| `application/search_documents.py` | `SearchDocuments`: corre la búsqueda por significado y/o por palabras (30 candidatos cada una) y las fusiona con RRF. Sin modelo de embeddings, cae a palabras y lo avisa. Devuelve también la similitud del fragmento más cercano (para el umbral). |
+| `application/prompt.py` | El prompt: reglas fijas en el mensaje de sistema (con un ejemplo de cita) y los fragmentos como **datos** entre etiquetas `<fragmento>`, con las etiquetas falsas desactivadas. |
+| `application/answer_question.py` | `AnswerQuestion`: `prepare` (permiso, búsqueda, umbral `RAG_MIN_SCORE`, contexto) y `stream` (turno en la cola, generación, filtro de citas, registro en logs). Bajo el umbral responde «no encontré evidencia» **sin llamar al modelo**. |
 | `infrastructure/sql_search.py` | `SqlChunkSearch`: por significado con pgvector (índice HNSW del modelo, búsqueda iterativa) y por palabras con `documind_es` (español, sin tildes, palabras unidas con OR). El filtro por organización y documentos va **dentro** de la consulta. Única lectura entre módulos (solo lectura, ADR 0008). |
 | `presentation/router.py` | `GET /api/v1/search?q=&mode=&limit=&document_id=`. |
+| `presentation/chat_router.py` | `POST /api/v1/chat` por Server-Sent Events: `queued`, `token`, `citations`, `done` (o `error`). Los errores normales (401, 403, 422, 429, 503) salen antes de abrir el stream. Límite por usuario (`CHAT_LIMIT_PER_USER_PER_MINUTE`). |
+
+Una pregunta, de punta a punta:
+
+```mermaid
+sequenceDiagram
+    participant Web
+    participant API as API (chat_router)
+    participant UC as AnswerQuestion
+    participant DB as PostgreSQL
+    participant Q as GenerationQueue
+    participant LLM as Ollama
+    Web->>API: POST /api/v1/chat {question}
+    API->>UC: prepare
+    UC->>DB: búsqueda híbrida (filtrada por organización)
+    alt similitud < RAG_MIN_SCORE
+        UC-->>Web: token "No encontré evidencia…", citations [], done
+    else hay evidencia
+        UC->>Q: pide turno
+        Q-->>Web: queued {position} (si hay que esperar)
+        UC->>LLM: reglas + fragmentos numerados + pregunta
+        loop cada pedazo
+            LLM-->>UC: texto
+            UC-->>Web: token (sin citas inventadas)
+        end
+        UC-->>Web: citations (documento, páginas, extracto), done
+    end
+```
 
 #### `app/ai/`: IA local, detrás de interfaces
 
 | Archivo | Qué hace |
 |---|---|
 | `providers/embeddings.py` | `EmbeddingProvider` (interfaz) y los modelos conocidos (`bge-m3` 1024, `paraphrase-multilingual` 768). |
-| `providers/ollama.py` | `OllamaEmbeddingProvider`: llama a `/api/embed` de Ollama en tandas y valida la forma de los vectores. |
-| `providers/factory.py` | Arma el proveedor según `OLLAMA_URL` y `EMBEDDING_MODEL` (sin `OLLAMA_URL`: ninguno). |
+| `providers/llm.py` | `LLMProvider` (interfaz): mensajes de entrada, texto de salida en pedazos (`stream`) y `warm_up` para cargar el modelo. |
+| `providers/ollama.py` | `OllamaEmbeddingProvider` (`/api/embed`, en tandas, valida la forma de los vectores) y `OllamaLLMProvider` (`/api/chat` en streaming, con `keep_alive` y tamaño de contexto fijo). |
+| `providers/factory.py` | Arma los proveedores según `OLLAMA_URL`, `EMBEDDING_MODEL` y `LLM_MODEL` (sin `OLLAMA_URL`: ninguno). |
+| `concurrency.py` | `GenerationQueue`: como mucho `LLM_MAX_CONCURRENCY` respuestas a la vez; el resto espera en orden y ve su posición. Con la fila llena, 429. En memoria (la API corre en un solo proceso). |
 | `retrieval/fusion.py` | **Reciprocal Rank Fusion**: combina rankings por posición (`1 / (60 + posición)`). Pieza clave. |
 | `evaluation/metrics.py` | recall@k y MRR. |
 
@@ -360,14 +395,16 @@ sequenceDiagram
 | `questions.json` | 79 preguntas: documento, artículo, frase exacta (`anchor`) y página esperada; 11 sin respuesta. |
 | `dataset.py` | Carga las preguntas y calcula o verifica la página buscando la frase con el lector de la app. |
 | `eval_retrieval.py` | Carga el corpus en una organización temporal de la base de tests, calcula embeddings y mide recall@5, recall@10, MRR y latencia por modo y modelo. Escribe `results/retrieval.json` y el informe en `docs/evaluation/`. |
+| `eval_answers.py` | Calibra el umbral `RAG_MIN_SCORE` con las 79 preguntas y compara modelos de lenguaje respondiendo una muestra con `AnswerQuestion`: si responde, si cita la página correcta, si dice «no encontré», velocidad y RAM. Escribe `results/answers.json` (con cada respuesta) y el informe. Usa el Ollama del contenedor (`127.0.0.1:11435`). |
+| `load_chat.py` | Manda varias preguntas a la vez al entorno levantado y muestra la cola, los tiempos y la RAM. |
 
 #### Módulos vacíos (se llenan más adelante)
 
 | Carpeta | Etapa | Para qué |
 |---|---|---|
-| `modules/conversations/` | 7–8 | Chat con citas e historial. |
+| `modules/conversations/` | 8 | Conversaciones, mensajes y citas guardadas (usa `knowledge` por su capa `application`). |
 | `modules/analytics/` | 10 | Métricas de uso. |
-| `ai/` (resto) | 7–9 | Generación (LLM) y reranking, detrás de interfaces como `EmbeddingProvider`. |
+| `ai/` (resto) | 9 | Reranking, solo si mejora la evaluación. |
 
 #### `dev/`: solo para desarrollo
 
@@ -467,6 +504,7 @@ flowchart TB
 | `(app)/documents/page.tsx` | `/documents` | **Página de inicio**: zona para arrastrar archivos (con barra de progreso) y lista paginada. |
 | `(app)/documents/[id]/page.tsx` | `/documents/<id>` | Detalle: versiones, descargar, subir versión nueva, borrar. |
 | `(app)/search/page.tsx` | `/search` | Búsqueda: modo (híbrida, por significado, por palabras), resultados con documento, sección, páginas y términos resaltados. |
+| `(app)/ask/page.tsx` | `/ask` | Preguntar: la respuesta aparece mientras se escribe, con la posición en la cola, las citas como marcas que llevan a la lista de fuentes (documento, páginas, extracto) y un botón para detener. |
 | `(app)/members/page.tsx` | `/members` | Lista de miembros, cambio de rol y quitar. |
 | `(app)/invitations/page.tsx` | `/invitations` | Invitar, ver y revocar invitaciones. |
 | `(app)/organizations/new/page.tsx` | `/organizations/new` | Crear otra organización. |
@@ -500,11 +538,12 @@ flowchart TB
 | `roles.ts` | Qué botones mostrar según el rol. **La regla real la aplica la API** (`permissions.py`). |
 | `documents.ts` | `uploadDocument` (XMLHttpRequest para tener progreso, renueva la sesión ante un 401), `downloadDocument` (pide el archivo con la sesión y se lo da al navegador), formatos y permisos de documentos. |
 | `search.ts` | Resalta en el resultado las palabras de la búsqueda (sin tildes ni mayúsculas). |
+| `chat.ts` | `askQuestion`: manda la pregunta y lee el stream de Server-Sent Events a mano (`EventSource` no permite POST ni el token), con `SseParser` (eventos cortados en cualquier lugar, comentarios de keep-alive). `splitCitations` separa las marcas `[n]` del texto. |
 | `slug.ts`, `invitation-link.ts` | Generar el slug desde el nombre; leer el `#organization=..&token=..` del link. |
 
 #### `src/features/`
 
-Vacía: `chat/` (etapa 7), `analytics/` (etapa 10). Los documentos viven en `app/(app)/documents/`,
+Vacía: `chat/` (etapa 8), `analytics/` (etapa 10). Los documentos viven en `app/(app)/documents/`,
 `components/documents.tsx` y `lib/documents.ts`.
 
 #### Configuración
@@ -600,5 +639,5 @@ flowchart LR
     J --> E["Extraer texto / OCR<br/>extraction (5)"]
     E --> C["Fragmentos<br/>ingestion (5)"]
     C --> V["Embeddings + búsqueda<br/>knowledge + ai (6)"]
-    V --> R["Respuesta con citas<br/>conversations + ai (7)"]
+    V --> R["Respuesta con citas<br/>knowledge + ai (7)"]
 ```

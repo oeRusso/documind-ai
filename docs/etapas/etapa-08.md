@@ -31,6 +31,11 @@ La demo central del portfolio, de punta a punta.
 ## Notas
 
 - **Decisión sobre `citations`** (tomada en la etapa 0): las tres tablas se crean acá, no en la etapa 7 como dice la Parte 1 (§5).
+- **Lo que deja la etapa 7** (ver su "Resultado" y la ADR 0009): `AnswerQuestion` en `knowledge`, con
+  `prepare` y `stream`, el filtro de citas, la cola de generación y `POST /api/v1/chat` sin estado.
+  `conversations` lo usa por la capa `application`: guarda la pregunta, la respuesta y las `Citation`
+  que hoy solo van al evento SSE y a los logs. Las preguntas de seguimiento combinan la pregunta con el
+  último turno antes de `prepare`. La página `/ask` pasa a ser el chat con historial.
 
 ## Referencias
 
