@@ -30,6 +30,14 @@ x-backend: &backend
     CELERY_BROKER_URL: redis://valkey:6379/0
     OLLAMA_URL: http://ollama:11434
     EMBEDDING_MODEL: ${EMBEDDING_MODEL:-bge-m3}
+    # Answers (stage 7, ADR 0009). Pull the model first: podman compose exec ollama ollama pull <model>
+    LLM_MODEL: ${LLM_MODEL:-llama3.2:3b}
+    LLM_KEEP_ALIVE: ${LLM_KEEP_ALIVE:-30m}
+    LLM_MAX_CONCURRENCY: ${LLM_MAX_CONCURRENCY:-1}
+    RAG_MIN_SCORE: ${RAG_MIN_SCORE:-0.5}
+    RAG_CONTEXT_TOKENS: ${RAG_CONTEXT_TOKENS:-1500}
+    RAG_MAX_ANSWER_TOKENS: ${RAG_MAX_ANSWER_TOKENS:-512}
+    CHAT_LIMIT_PER_USER_PER_MINUTE: ${CHAT_LIMIT_PER_USER_PER_MINUTE:-10}
     # Uploads bigger than 1 MB spill from memory to a temp file: on the volume, not in RAM.
     TMPDIR: /data/tmp
   volumes:
@@ -115,12 +123,25 @@ services:
   # Models live in the `ollama` volume: podman compose exec ollama ollama pull bge-m3
   ollama:
     image: docker.io/ollama/ollama:0.40.12
+    # Only for the evaluation scripts run from the PC (OLLAMA_URL=http://127.0.0.1:11435).
+    # 11435 so it does not clash with a system Ollama on 11434. Not in production.
+    ports:
+      - "127.0.0.1:11435:11434"
     volumes:
       - ollama:/root/.ollama
     environment:
-      OLLAMA_KEEP_ALIVE: 10m  # unload models after 10 idle minutes (shared RAM)
+      # Unload a model after 10 idle minutes (shared RAM). The API asks to keep the LLM longer
+      # (LLM_KEEP_ALIVE) and loads it on startup, so the first question does not wait.
+      OLLAMA_KEEP_ALIVE: 10m
+      # One answer at a time per model (matches LLM_MAX_CONCURRENCY=1; more = more RAM).
       OLLAMA_NUM_PARALLEL: "1"
-    mem_limit: 3g
+      # The embedding model and the LLM fit together; never a third one.
+      OLLAMA_MAX_LOADED_MODELS: "2"
+      # llama.cpp keeps old prompts in RAM to reuse them, up to 8 GB by default: it grew until
+      # Ollama was killed for lack of memory (stage 7). Every question brings different chunks,
+      # so that cache barely helps: off. (llama.cpp reads its options from LLAMA_ARG_* vars.)
+      LLAMA_ARG_CACHE_RAM: "0"
+    mem_limit: 4500m  # measured 3.95 GB with bge-m3 + llama3.2:3b (ADR 0009)
     restart: unless-stopped
 
   # Task queue (Redis-compatible, open source). Small and with an append-only file, so queued

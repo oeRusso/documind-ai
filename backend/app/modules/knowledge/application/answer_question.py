@@ -210,8 +210,16 @@ class AnswerQuestion:
             waited_ms=round((started - waited_from) * 1000),
             generation_ms=round((time.perf_counter() - started) * 1000),
             answer_chars=sum(len(a) for a in answer),
+            # Each citation: document, pages and the exact chunks (stage 7 keeps them in the
+            # logs; stage 8 stores them in the `citations` table).
             citations=[
-                {"marker": c.marker, "document_id": str(c.document_id), "pages": c.page_start}
+                {
+                    "marker": c.marker,
+                    "document_id": str(c.document_id),
+                    "page_start": c.page_start,
+                    "page_end": c.page_end,
+                    "chunk_ids": [str(i) for i in by_marker[c.marker].chunk_ids],
+                }
                 for c in citations
             ],
         )

@@ -84,4 +84,6 @@ async def test_warm_up_loads_the_model_without_messages() -> None:
         return httpx.Response(200, json={"done": True})
 
     await provider(httpx.MockTransport(handle)).warm_up()
-    assert seen == [{"model": "tiny:1b", "messages": [], "keep_alive": "5m"}]
+    assert seen == [
+        {"model": "tiny:1b", "messages": [], "keep_alive": "5m", "options": {"num_ctx": 4096}}
+    ]

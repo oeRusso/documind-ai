@@ -136,7 +136,13 @@ class OllamaLLMProvider:
             async with httpx.AsyncClient(timeout=self._timeout, transport=self._transport) as c:
                 response = await c.post(
                     f"{self._base_url}/api/chat",
-                    json={"model": self._model, "messages": [], "keep_alive": self._keep_alive},
+                    json={
+                        "model": self._model,
+                        "messages": [],
+                        "keep_alive": self._keep_alive,
+                        # Same context size as the answers: a different one reloads the model.
+                        "options": {"num_ctx": self._context_window},
+                    },
                 )
                 response.raise_for_status()
         except httpx.HTTPError as exc:

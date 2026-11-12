@@ -77,7 +77,7 @@ class Settings(BaseSettings):
 
     # --- Answers with citations (stage 7, ADR 0009) ---
     # The language model that writes answers. Small (1-3B, quantized): the VPS is shared.
-    llm_model: str = "granite3.3:2b"
+    llm_model: str = "llama3.2:3b"
     # How long Ollama keeps the model in RAM after the last answer (loading it takes seconds).
     llm_keep_alive: str = "30m"
     # Answers generated at the same time; the rest wait in line (CPU only, shared RAM).
