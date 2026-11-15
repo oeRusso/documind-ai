@@ -1,6 +1,6 @@
 # Arquitectura del código
 
-Mapa del código **tal como está hoy** (fin de la etapa 11): qué hace cada carpeta y cada archivo, y cómo
+Mapa del código **tal como está hoy** (fin de la etapa 12): qué hace cada carpeta y cada archivo, y cómo
 se comunican las piezas. El *diseño* completo del producto está en `plan-parte-1-arquitectura.md`;
 este documento describe lo que ya existe. Se actualiza al cerrar cada etapa.
 
@@ -171,6 +171,7 @@ Puntos clave:
 | `secure_tokens.py` | `generate_token()` (256 bits al azar) y `hash_token()` (SHA-256). Se guardan hashes, nunca tokens. |
 | `tenancy.py` | Interfaz `TenantContext`: "fijá el usuario / la organización activa". La implementa `infrastructure/database/tenant.py`. |
 | `mail.py` | Interfaces `Mailer` y `OutgoingMail`, y el tipo `EmailMessage`. |
+| `demo.py` | Ids fijos de la demo pública (organización, cuenta viewer, dueño oculto) y su slug reservado (etapa 12, ADR 0014). |
 | `rate_limit.py` | Interfaz `RateLimiter` y el tipo `RateLimit(limit, window)`. |
 
 #### `infrastructure/`: implementaciones compartidas
@@ -244,6 +245,7 @@ Puntos clave:
 | `infrastructure/sql_repository.py` | Consultas SQL. `count_owners_for_update` bloquea las filas de los owners para que dos pedidos simultáneos no dejen la empresa sin owner. |
 | `presentation/router.py` | `GET/POST /organizations` y `GET /organizations/{id}`. |
 | `presentation/members_router.py` | `GET /members`, `PATCH /members/{id}`, `DELETE /members/{id}`. |
+| `presentation/demo_router.py` | `GET /demo`: la cuenta pública de la demo, si `DEMO_PASSWORD` está configurada (etapa 12). |
 | `presentation/invitations_router.py` | `POST/GET /invitations`, `DELETE /invitations/{id}`, `POST /invitations/accept`. |
 | `presentation/schemas.py` | JSON de entrada y salida (`MemberRead`, `InvitationCreate`, `CreatedInvitationRead`...). |
 | `presentation/dependencies.py` | Arma los casos de uso de este módulo. |
@@ -435,6 +437,15 @@ Cada módulo da sus números con su propia consulta: `conversations/infrastructu
 |---|---|---|
 | `ai/` (resto) | 9 | Reranking, solo si mejora la evaluación. |
 
+#### `jobs/` y `demo_documents/`
+
+| Archivo | Qué hace |
+|---|---|
+| `jobs/purge_documents.py` | Purga diaria de archivos borrados. |
+| `jobs/export_feedback.py` | Respuestas «no útil» en JSON para el dataset (etapa 8). |
+| `jobs/reset_demo.py` | Crea o resetea la demo pública; también corre cada noche en el worker (etapa 12). |
+| `demo_documents/` | Las 4 leyes públicas de la demo. |
+
 #### `dev/`: solo para desarrollo
 
 | Archivo | Qué hace |
@@ -557,6 +568,7 @@ flowchart TB
 | `processing.tsx` | `ProcessingPanel` (pasos del procesamiento, consulta cada 2 s hasta terminar, Reprocesar) y `ChunkList` (fragmentos con sección y páginas). |
 | `documents.tsx` | `DocumentUploader` (arrastrar, cola de subidas, progreso, link al duplicado), íconos y etiquetas de tipo y estado. |
 | `login-form.tsx` | Formulario de login (se reusa en aceptar invitación). |
+| `demo.tsx` | Botón «Probar la demo» del login y aviso de demo dentro de la app (etapa 12). |
 | `honeypot.tsx` | Campo invisible contra bots (ADR 0005). |
 
 #### `src/lib/`

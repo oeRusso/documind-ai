@@ -186,6 +186,9 @@ Leerla antes de cualquier tarea de deploy (etapas 0, 3 y 11). Resumen:
   Monitoreo: `podman compose --profile monitoring up -d`. Canal de alertas al teléfono pendiente de Esteban.
 - **Etapa 11**: terminada en local (2026-11-15). Backups restic, deploy/rollback por etiquetas, Caddy,
   runbook en `docs/operations/` (ADR 0013). Falta repetir simulacros en el VPS.
-- **Siguiente: etapa 12** (portfolio y demo), la parte local.
+- **Etapa 12**: terminada en local (2026-11-15). Demo pública (ADR 0014), README, CHANGELOG y borrador
+  del artículo. Faltan el GIF, el video y el release (sobre `main`).
+- **Siguiente: etapas 0 y 3** (VPS y despliegue), con Esteban: túnel, acceso al VPS, `compose` de
+  producción, y repetir allá los simulacros (inyección, backup, rollback, carga).
 Regla general: la etapa actual es la de **número más bajo** que no está marcada como terminada en
 `docs/etapas/`, **salvo las etapas 0 y 3**, que quedan para el final.

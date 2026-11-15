@@ -36,9 +36,12 @@ async def login_demo(client: httpx.AsyncClient) -> dict[str, str]:
 
 
 async def test_without_a_password_there_is_no_demo(
-    client: httpx.AsyncClient, db_settings: Settings
+    client: httpx.AsyncClient, db_settings: Settings, db_app: FastAPI
 ) -> None:
-    assert await reset_demo(db_settings, send_jobs=False) is None
+    # Explicit: the developer's .env may turn the demo on.
+    settings = db_settings.model_copy(update={"demo_password": None})
+    db_app.state.settings = settings
+    assert await reset_demo(settings, send_jobs=False) is None
     response = await client.get("/api/v1/demo")
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "demo_disabled"

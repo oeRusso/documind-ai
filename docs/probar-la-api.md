@@ -187,6 +187,22 @@ podman compose --profile monitoring up -d   # Prometheus, Grafana y exportadores
 | Como `bob@acme.test` (viewer) | No ve el menú; la API responde 403 |
 | `curl 127.0.0.1:8000/metrics` | Métricas `documind_*` y de los pedidos HTTP |
 
+### Demo pública (etapa 12)
+
+Con `DEMO_PASSWORD` en el `.env` (y `podman compose up -d` para que la API la lea):
+
+```bash
+podman compose exec api python -m app.jobs.reset_demo   # crea la demo y sube 4 leyes
+```
+
+| Probá | Resultado esperado |
+|---|---|
+| http://localhost:3000/login → **Probar la demo sin registrarte** | Entra a «Demo · Leyes argentinas» como lector, con el aviso amarillo arriba |
+| Preguntá «¿Cuántos días de vacaciones me tocan si tengo menos de cinco años?» | Respuesta citada (ley 20.744, art. 150) |
+| Cuatro preguntas en menos de un minuto | La cuarta da «Demasiados intentos» |
+| **Nueva organización** con la cuenta demo | «La cuenta de demostración es de solo lectura» |
+| Volvé a correr `reset_demo` | «0 documentos subidos, N conversaciones borradas» |
+
 ## 6. Empezar de cero
 
 ```bash
