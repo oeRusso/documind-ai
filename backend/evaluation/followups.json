@@ -1,0 +1,27 @@
+{
+  "description": "Preguntas de seguimiento (etapa 8). Cada una se hace después de `previous` (id de questions.json) y busca lo mismo que `target` (id de questions.json: documento y página esperada). Sola, la pregunta no dice de qué tema habla.",
+  "followups": [
+    {"id": "f01", "previous": "q055", "question": "¿Y qué pena hay si alguien los viola?", "target": "q056"},
+    {"id": "f02", "previous": "q020", "question": "¿Y cuándo es válida?", "target": "q024"},
+    {"id": "f03", "previous": "q020", "question": "¿A quién se le atribuye?", "target": "q023"},
+    {"id": "f04", "previous": "q021", "question": "¿Y en qué se diferencia de la electrónica?", "target": "q022"},
+    {"id": "f05", "previous": "q050", "question": "¿Y se puede hacer sin su consentimiento?", "target": "q051"},
+    {"id": "f06", "previous": "q037", "question": "¿Y en qué casos se pueden negar a darla?", "target": "q036"},
+    {"id": "f07", "previous": "q037", "question": "¿Qué organismo lo controla?", "target": "q038"},
+    {"id": "f08", "previous": "q035", "question": "¿Qué principios guían ese derecho?", "target": "q034"},
+    {"id": "f09", "previous": "q030", "question": "¿Se presume que es válido?", "target": "q032"},
+    {"id": "f10", "previous": "q031", "question": "¿Y cuánto tiempo tengo para demandar?", "target": "q033"},
+    {"id": "f11", "previous": "q026", "question": "¿Y qué cobro mientras estoy de baja?", "target": "q027"},
+    {"id": "f12", "previous": "q027", "question": "¿Quién me lo paga?", "target": "q028"},
+    {"id": "f13", "previous": "q039", "question": "¿Me pueden escribir fuera de ese horario?", "target": "q040"},
+    {"id": "f14", "previous": "q042", "question": "¿Y quién paga la computadora?", "target": "q043"},
+    {"id": "f15", "previous": "q046", "question": "¿Y quién tiene que contratar un seguro?", "target": "q047"},
+    {"id": "f16", "previous": "q048", "question": "¿Y cuáles son los objetivos de esa política?", "target": "q044"},
+    {"id": "f17", "previous": "q015", "question": "¿Puedo pedir que los borren?", "target": "q018"},
+    {"id": "f18", "previous": "q017", "question": "¿Y si está mal, puedo hacer que la corrijan?", "target": "q018"},
+    {"id": "f19", "previous": "q057", "question": "¿Pueden opinar en lo que los afecta?", "target": "q060"},
+    {"id": "f20", "previous": "q053", "question": "¿Hasta cuándo dura esa protección después de que muere el autor?", "target": "q055"},
+    {"id": "f21", "previous": "q007", "question": "¿Y cuánto me tienen que pagar?", "target": "q008"},
+    {"id": "f22", "previous": "q009", "question": "¿Me pueden cobrar por informarme?", "target": "q010"}
+  ]
+}

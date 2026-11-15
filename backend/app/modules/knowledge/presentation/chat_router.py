@@ -111,7 +111,8 @@ async def prepare_answer(
     return await use_case.prepare(AnswerQuery(member, body.question, body.document_ids))
 
 
-def _to_sse(event: AnswerEvent) -> ServerSentEvent:
+def answer_event_to_sse(event: AnswerEvent) -> ServerSentEvent:
+    """Also used by POST /conversations/{id}/messages (stage 8)."""
     match event:
         case Queued(position=position):
             return ServerSentEvent(event="queued", data={"position": position})
@@ -140,7 +141,7 @@ async def chat(
     request_id = current_request_id()
     try:
         async for event in use_case.stream(prepared):
-            yield _to_sse(event)
+            yield answer_event_to_sse(event)
     except LLMServiceError as exc:
         logger.error("answer_failed", error=str(exc))
         yield ServerSentEvent(

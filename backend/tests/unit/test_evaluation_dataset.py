@@ -20,3 +20,17 @@ def test_dataset_shape() -> None:
     assert 0.12 <= len(unanswerable) / len(questions) <= 0.20  # about 15 % (stage 6 task)
     assert {q.document for q in answerable} == set(corpus_documents())  # every law is used
     assert len({q.id for q in questions}) == len(questions)
+
+
+def test_every_follow_up_points_to_answerable_questions() -> None:
+    import json
+
+    from evaluation.dataset import load_questions
+    from evaluation.eval_followups import FOLLOWUPS
+
+    questions = {q.id: q for q in load_questions()}
+    followups = json.loads(FOLLOWUPS.read_text())["followups"]
+    assert len({f["id"] for f in followups}) == len(followups)
+    for f in followups:
+        assert questions[f["previous"]].answerable
+        assert questions[f["target"]].answerable

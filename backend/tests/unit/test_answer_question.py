@@ -59,6 +59,7 @@ class FakeChunkSearch:
     def __init__(self, matches: list[ChunkMatch]) -> None:
         self.matches = matches
         self.organizations: list[UUID] = []
+        self.texts: list[str] = []
 
     async def by_vector(
         self,
@@ -82,6 +83,7 @@ class FakeChunkSearch:
         document_ids: Sequence[UUID] | None,
     ) -> list[ChunkMatch]:
         self.organizations.append(organization_id)
+        self.texts.append(query)
         return self.matches[:limit]
 
 
@@ -220,3 +222,24 @@ async def test_the_search_is_always_filtered_by_the_actor_organization() -> None
 )
 def test_is_no_evidence(answer: str, expected: bool) -> None:
     assert is_no_evidence(answer) is expected
+
+
+async def test_a_short_follow_up_searches_with_the_previous_question_too() -> None:
+    search = FakeChunkSearch(GOOD)
+    llm = FakeLLMProvider()
+    answer = AnswerQuestion(
+        SearchDocuments(search, FakeEmbeddingProvider()), llm, GenerationQueue(slots=1), OPTIONS
+    )
+    query = AnswerQuery(member(), "¿Y el del trabajador?", previous_question="¿Preaviso?")
+    prepared = await answer.prepare(query)
+    assert search.texts == ["¿Preaviso? ¿Y el del trabajador?"]
+    # The model answers the current question; the previous one is only context.
+    assert prepared.question == "¿Y el del trabajador?"
+    assert "<pregunta_anterior>\n¿Preaviso?\n</pregunta_anterior>" in prepared.messages[1].content
+
+
+async def test_each_citation_keeps_the_chunks_it_came_from() -> None:
+    events = await run(use_case(GOOD, FakeLLMProvider(["Un mes [1]."])), "¿Preaviso?")
+    [ready] = [e for e in events if isinstance(e, CitationsReady)]
+    [citation] = ready.citations
+    assert citation.chunk_ids == (GOOD[0].chunk_id,)

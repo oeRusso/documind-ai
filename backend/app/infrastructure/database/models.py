@@ -6,6 +6,11 @@ Add one import per module when it gets its first table.
 from app.infrastructure.database.base import Base
 from app.modules.audit.infrastructure.models import AuditLogModel
 from app.modules.auth.infrastructure.models import RefreshTokenModel
+from app.modules.conversations.infrastructure.models import (
+    CitationModel,
+    ConversationModel,
+    MessageModel,
+)
 from app.modules.documents.infrastructure.models import (
     DocumentModel,
     DocumentPurgeModel,
@@ -27,12 +32,15 @@ __all__ = [
     "AuditLogModel",
     "Base",
     "ChunkEmbeddingModel",
+    "CitationModel",
+    "ConversationModel",
     "DocumentChunkModel",
     "DocumentModel",
     "DocumentPurgeModel",
     "DocumentVersionModel",
     "InvitationModel",
     "MembershipModel",
+    "MessageModel",
     "OrganizationModel",
     "ProcessingJobModel",
     "RefreshTokenModel",

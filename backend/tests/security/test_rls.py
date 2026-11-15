@@ -34,6 +34,9 @@ TENANT_TABLES = (
     "processing_jobs",
     "document_chunks",
     "chunk_embeddings",
+    "conversations",
+    "messages",
+    "citations",
 )
 
 
@@ -131,6 +134,31 @@ async def _seed_organization(
             document_id,
             chunk_id,
         )
+        owner = next(iter(members))
+        conversation_id, message_id = new_id(), new_id()
+        await connection.execute(
+            "INSERT INTO conversations (id, organization_id, user_id) VALUES ($1, $2, $3)",
+            conversation_id,
+            org_id,
+            owner,
+        )
+        await connection.execute(
+            "INSERT INTO messages (id, organization_id, conversation_id, role, content, status) "
+            "VALUES ($1, $2, $3, 'assistant', 'Treinta días [1].', 'complete')",
+            message_id,
+            org_id,
+            conversation_id,
+        )
+        await connection.execute(
+            "INSERT INTO citations (id, organization_id, message_id, marker, document_id, "
+            "document_title, excerpt, chunk_ids) "
+            "VALUES ($1, $2, $3, 1, $4, 'Contrato', 'El plazo', ARRAY[$5]::uuid[])",
+            new_id(),
+            org_id,
+            message_id,
+            document_id,
+            chunk_id,
+        )
     return org_id
 
 
@@ -156,8 +184,8 @@ async def seed(migrated: None) -> AsyncIterator[Seed]:
     finally:
         await connection.execute(
             "TRUNCATE organizations, memberships, invitations, audit_logs, users, "
-            "documents, document_versions, processing_jobs, document_chunks, chunk_embeddings "
-            "CASCADE"
+            "documents, document_versions, processing_jobs, document_chunks, chunk_embeddings, "
+            "conversations, messages, citations CASCADE"
         )
         await connection.close()
 

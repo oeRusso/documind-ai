@@ -17,6 +17,7 @@ class Citation:
     page_start: int | None
     page_end: int | None
     excerpt: str  # the beginning of the cited text, to show it next to the answer
+    chunk_ids: tuple[UUID, ...] = ()  # the exact chunks behind [n] (stored with the message)
 
 
 @dataclass(frozen=True, slots=True)

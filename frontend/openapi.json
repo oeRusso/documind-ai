@@ -122,6 +122,181 @@
         "title": "ChunkRead",
         "type": "object"
       },
+      "ConversationCreate": {
+        "properties": {
+          "document_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "maxItems": 50,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Alcance: solo estos documentos. Vacío o null: todos los de la organización",
+            "title": "Document Ids"
+          }
+        },
+        "title": "ConversationCreate",
+        "type": "object"
+      },
+      "ConversationDetailRead": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "document_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Ids"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/MessageRead"
+            },
+            "title": "Messages",
+            "type": "array"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "document_ids",
+          "created_at",
+          "updated_at",
+          "messages"
+        ],
+        "title": "ConversationDetailRead",
+        "type": "object"
+      },
+      "ConversationRead": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "document_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Ids"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "document_ids",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ConversationRead",
+        "type": "object"
+      },
+      "ConversationUpdate": {
+        "properties": {
+          "document_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "maxItems": 50,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Si se manda (aunque sea null), reemplaza el alcance. null: todos",
+            "title": "Document Ids"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "ConversationUpdate",
+        "type": "object"
+      },
       "CreatedInvitationRead": {
         "properties": {
           "created_at": {
@@ -367,6 +542,34 @@
         "title": "ErrorResponse",
         "type": "object"
       },
+      "Feedback": {
+        "enum": [
+          "helpful",
+          "not_helpful"
+        ],
+        "title": "Feedback",
+        "type": "string"
+      },
+      "FeedbackUpdate": {
+        "properties": {
+          "feedback": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Feedback"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`helpful`, `not_helpful` o null para quitarla"
+          }
+        },
+        "required": [
+          "feedback"
+        ],
+        "title": "FeedbackUpdate",
+        "type": "object"
+      },
       "FileKind": {
         "enum": [
           "pdf",
@@ -584,6 +787,103 @@
         "title": "MemberRoleUpdate",
         "type": "object"
       },
+      "MessageCreate": {
+        "properties": {
+          "question": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "title": "MessageCreate",
+        "type": "object"
+      },
+      "MessageRead": {
+        "properties": {
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/SavedCitationRead"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "feedback": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Feedback"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "no_evidence": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "No Evidence"
+          },
+          "role": {
+            "$ref": "#/components/schemas/MessageRole"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MessageStatus"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "content",
+          "status",
+          "no_evidence",
+          "feedback",
+          "citations",
+          "created_at"
+        ],
+        "title": "MessageRead",
+        "type": "object"
+      },
+      "MessageRole": {
+        "enum": [
+          "user",
+          "assistant"
+        ],
+        "title": "MessageRole",
+        "type": "string"
+      },
+      "MessageStatus": {
+        "enum": [
+          "streaming",
+          "complete",
+          "stopped",
+          "failed"
+        ],
+        "title": "MessageStatus",
+        "type": "string"
+      },
       "OrganizationCreate": {
         "properties": {
           "name": {
@@ -678,6 +978,33 @@
           "items"
         ],
         "title": "Page[ChunkRead]",
+        "type": "object"
+      },
+      "Page_ConversationRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ConversationRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[ConversationRead]",
         "type": "object"
       },
       "Page_DocumentRead_": {
@@ -965,6 +1292,66 @@
         ],
         "title": "Role",
         "type": "string"
+      },
+      "SavedCitationRead": {
+        "properties": {
+          "document_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "document_title": {
+            "title": "Document Title",
+            "type": "string"
+          },
+          "excerpt": {
+            "title": "Excerpt",
+            "type": "string"
+          },
+          "marker": {
+            "title": "Marker",
+            "type": "integer"
+          },
+          "page_end": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page End"
+          },
+          "page_start": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Start"
+          }
+        },
+        "required": [
+          "marker",
+          "document_id",
+          "document_title",
+          "page_start",
+          "page_end",
+          "excerpt"
+        ],
+        "title": "SavedCitationRead",
+        "type": "object"
       },
       "SearchHitRead": {
         "properties": {
@@ -1658,6 +2045,719 @@
         "summary": "Chat",
         "tags": [
           "chat"
+        ]
+      }
+    },
+    "/api/v1/conversations": {
+      "get": {
+        "description": "Tus conversaciones en la organización activa, de la más nueva a la más vieja.",
+        "operationId": "list_conversations_api_v1_conversations_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "`next_cursor` de la página anterior",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`next_cursor` de la página anterior",
+              "title": "Cursor"
+            }
+          },
+          {
+            "description": "Organización activa",
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": true,
+            "schema": {
+              "description": "Organización activa",
+              "format": "uuid",
+              "title": "X-Organization-Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_ConversationRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Conversations",
+        "tags": [
+          "conversations"
+        ]
+      },
+      "post": {
+        "description": "Empieza una conversación. Sin `document_ids` pregunta sobre todos los documentos.",
+        "operationId": "start_conversation_api_v1_conversations_post",
+        "parameters": [
+          {
+            "description": "Organización activa",
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": true,
+            "schema": {
+              "description": "Organización activa",
+              "format": "uuid",
+              "title": "X-Organization-Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Conversation",
+        "tags": [
+          "conversations"
+        ]
+      }
+    },
+    "/api/v1/conversations/{conversation_id}": {
+      "delete": {
+        "description": "Borra la conversación con sus mensajes. No se puede deshacer.",
+        "operationId": "delete_conversation_api_v1_conversations__conversation_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organización activa",
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": true,
+            "schema": {
+              "description": "Organización activa",
+              "format": "uuid",
+              "title": "X-Organization-Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Conversation",
+        "tags": [
+          "conversations"
+        ]
+      },
+      "get": {
+        "description": "Una conversación con sus mensajes (el más viejo primero) y las citas de cada respuesta.",
+        "operationId": "get_conversation_api_v1_conversations__conversation_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organización activa",
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": true,
+            "schema": {
+              "description": "Organización activa",
+              "format": "uuid",
+              "title": "X-Organization-Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDetailRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Conversation",
+        "tags": [
+          "conversations"
+        ]
+      },
+      "patch": {
+        "description": "Cambia el título o el alcance (los documentos sobre los que se pregunta).",
+        "operationId": "update_conversation_api_v1_conversations__conversation_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organización activa",
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": true,
+            "schema": {
+              "description": "Organización activa",
+              "format": "uuid",
+              "title": "X-Organization-Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Conversation",
+        "tags": [
+          "conversations"
+        ]
+      }
+    },
+    "/api/v1/conversations/{conversation_id}/messages": {
+      "post": {
+        "description": "Pregunta dentro de la conversación. La pregunta anterior da contexto a la búsqueda.\n\nServer-Sent Events: `message` (ids guardados), `queued`, `token`, `citations`, `done`, o\n`error` si el modelo falla. La pregunta y la respuesta quedan guardadas, también si se corta.",
+        "operationId": "send_message_api_v1_conversations__conversation_id__messages_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organización activa",
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": true,
+            "schema": {
+              "description": "Organización activa",
+              "format": "uuid",
+              "title": "X-Organization-Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "itemSchema": {
+                  "properties": {
+                    "data": {
+                      "type": "string"
+                    },
+                    "event": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "retry": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Send Message",
+        "tags": [
+          "conversations"
+        ]
+      }
+    },
+    "/api/v1/conversations/{conversation_id}/messages/{message_id}/feedback": {
+      "put": {
+        "description": "Marca una respuesta como útil o no útil (null la quita). Las no útiles se revisan para\nsumarlas al dataset de evaluación.",
+        "operationId": "rate_answer_api_v1_conversations__conversation_id__messages__message_id__feedback_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Message Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organización activa",
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": true,
+            "schema": {
+              "description": "Organización activa",
+              "format": "uuid",
+              "title": "X-Organization-Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Rate Answer",
+        "tags": [
+          "conversations"
         ]
       }
     },

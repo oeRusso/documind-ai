@@ -35,6 +35,7 @@ from app.modules.knowledge.domain.answer import (
 )
 from app.modules.knowledge.domain.citations import MarkerFilter
 from app.modules.knowledge.domain.context import ContextSource, build_context
+from app.modules.knowledge.domain.followup import followup_search_text
 from app.modules.knowledge.domain.search import SearchMode
 from app.modules.organizations.domain.membership import Membership
 from app.modules.organizations.domain.permissions import Permission, ensure_permission
@@ -69,6 +70,9 @@ class AnswerQuery:
     actor: Membership
     question: str
     document_ids: Sequence[UUID] | None = None
+    # Follow-up questions (stage 8): the previous question of the conversation. It is added to
+    # the search text and shown to the model as context, so "¿y la multa?" makes sense.
+    previous_question: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,10 +125,11 @@ class AnswerQuestion:
         if self._llm is None:
             raise ChatUnavailableError()
 
+        previous = " ".join((query.previous_question or "").split())[:MAX_QUESTION_CHARS] or None
         result = await self._search.execute(
             SearchQuery(
                 query.actor,
-                question,
+                followup_search_text(question, previous),
                 mode=SearchMode.HYBRID,
                 limit=CANDIDATES,
                 document_ids=query.document_ids,
@@ -145,7 +150,9 @@ class AnswerQuestion:
             organization_id=query.actor.organization_id,
             question=question,
             sources=sources,
-            messages=build_messages(question, sources) if sources else [],
+            messages=build_messages(question, sources, previous_question=previous)
+            if sources
+            else [],
             best_similarity=result.best_similarity,
         )
 
@@ -196,6 +203,7 @@ class AnswerQuestion:
                     page_start=by_marker[n].page_start,
                     page_end=by_marker[n].page_end,
                     excerpt=excerpt(by_marker[n].content),
+                    chunk_ids=tuple(by_marker[n].chunk_ids),
                 )
                 for n in markers.used
             ]

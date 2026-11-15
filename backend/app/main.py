@@ -25,6 +25,7 @@ from app.infrastructure.queue.celery_app import create_celery
 from app.infrastructure.rate_limit import InMemoryRateLimiter
 from app.infrastructure.storage.filesystem import FilesystemStorage
 from app.modules.auth.presentation.router import router as auth_router
+from app.modules.conversations.presentation.router import router as conversations_router
 from app.modules.documents.presentation.router import router as documents_router
 from app.modules.ingestion.infrastructure.job_queue import CeleryJobQueue, LoggingJobQueue
 from app.modules.ingestion.presentation.router import router as processing_router
@@ -93,6 +94,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api_v1.include_router(processing_router)
     api_v1.include_router(search_router)
     api_v1.include_router(chat_router)
+    api_v1.include_router(conversations_router)
 
     app.include_router(health_router)
     app.include_router(api_v1)

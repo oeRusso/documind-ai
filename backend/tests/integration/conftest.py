@@ -13,6 +13,7 @@ from tests.conftest import APP_ORIGIN, TEST_JWT_SECRET
 from tests.db import app_test_url, ensure_database_available, migrator_test_url, reset_schema
 from tests.fakes import FakeOutgoingMail
 from tests.integration.api_helpers import Acme, setup_acme
+from tests.integration.chat_fixtures import contrato, embeddings, llm, queue  # noqa: F401
 
 pytestmark = pytest.mark.integration
 

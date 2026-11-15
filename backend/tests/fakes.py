@@ -16,6 +16,15 @@ from app.ai.providers.embeddings import EmbeddingModel
 from app.ai.providers.llm import ChatMessage, LLMServiceError
 from app.modules.audit.domain.entities import AuditEvent
 from app.modules.auth.domain.refresh_tokens import RefreshToken
+from app.modules.conversations.domain.entities import (
+    Conversation,
+    Feedback,
+    Message,
+    MessageRole,
+    MessageStatus,
+    SavedCitation,
+    Turn,
+)
 from app.modules.documents.domain.entities import (
     Document,
     DocumentStatus,
@@ -505,3 +514,113 @@ class FakeLLMProvider:
 
     async def warm_up(self) -> None:
         self.warmed_up = True
+
+
+class InMemoryConversationRepository:
+    def __init__(self) -> None:
+        self.conversations: dict[UUID, Conversation] = {}
+        self.messages: dict[UUID, Message] = {}
+
+    async def add(self, conversation: Conversation) -> None:
+        self.conversations[conversation.id] = conversation
+
+    async def get(
+        self, organization_id: UUID, user_id: UUID, conversation_id: UUID
+    ) -> Conversation | None:
+        c = self.conversations.get(conversation_id)
+        if c and c.organization_id == organization_id and c.user_id == user_id:
+            return c
+        return None
+
+    async def list_page(
+        self, organization_id: UUID, user_id: UUID, *, limit: int, before_id: UUID | None
+    ) -> list[Conversation]:
+        items = sorted(
+            (
+                c
+                for c in self.conversations.values()
+                if c.organization_id == organization_id
+                and c.user_id == user_id
+                and (before_id is None or c.id < before_id)
+            ),
+            key=lambda c: c.id,
+            reverse=True,
+        )
+        return items[:limit]
+
+    async def update(self, conversation: Conversation) -> None:
+        self.conversations[conversation.id] = conversation
+
+    async def delete(self, organization_id: UUID, conversation_id: UUID) -> None:
+        self.conversations.pop(conversation_id, None)
+        for m in [m for m in self.messages.values() if m.conversation_id == conversation_id]:
+            del self.messages[m.id]
+
+    async def add_messages(self, messages: Sequence[Message]) -> None:
+        for m in messages:
+            self.messages[m.id] = m
+
+    async def list_messages(self, organization_id: UUID, conversation_id: UUID) -> list[Message]:
+        return sorted(
+            (
+                m
+                for m in self.messages.values()
+                if m.conversation_id == conversation_id and m.organization_id == organization_id
+            ),
+            key=lambda m: (m.created_at, m.id),
+        )
+
+    async def last_turn(self, organization_id: UUID, conversation_id: UUID) -> Turn | None:
+        messages = await self.list_messages(organization_id, conversation_id)
+        questions = [m for m in messages if m.role is MessageRole.USER]
+        if not questions:
+            return None
+        last = questions[-1]
+        answers = [m for m in messages if m.role is MessageRole.ASSISTANT and m.id > last.id]
+        return Turn(last.content, answers[0].content if answers else "")
+
+    async def get_message(
+        self, organization_id: UUID, conversation_id: UUID, message_id: UUID
+    ) -> Message | None:
+        m = self.messages.get(message_id)
+        if m and m.organization_id == organization_id and m.conversation_id == conversation_id:
+            return m
+        return None
+
+    async def set_feedback(
+        self, organization_id: UUID, message_id: UUID, feedback: Feedback | None, now: datetime
+    ) -> None:
+        self.messages[message_id] = dataclass_replace(self.messages[message_id], feedback=feedback)
+
+    async def list_rated_not_helpful(
+        self, organization_id: UUID, *, limit: int
+    ) -> list[tuple[Message, Message]]:
+        return []
+
+
+class FakeAnswerRecorder:
+    """Applies the end of an answer to the in-memory repository, and remembers each call."""
+
+    def __init__(self, conversations: InMemoryConversationRepository) -> None:
+        self.conversations = conversations
+        self.finished: list[tuple[UUID, MessageStatus]] = []
+
+    async def finish(
+        self,
+        organization_id: UUID,
+        message_id: UUID,
+        *,
+        content: str,
+        status: MessageStatus,
+        no_evidence: bool | None,
+        citations: Sequence[SavedCitation],
+    ) -> None:
+        self.finished.append((message_id, status))
+        message = self.conversations.messages[message_id]
+        self.conversations.messages[message_id] = dataclass_replace(
+            message,
+            content=content,
+            status=status,
+            no_evidence=no_evidence,
+            citations=tuple(citations),
+        )
