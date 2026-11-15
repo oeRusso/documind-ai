@@ -181,14 +181,16 @@ Leerla antes de cualquier tarea de deploy (etapas 0, 3 y 11). Resumen:
   `rsync`), rate limiting en la app y Caddy (sin reglas de Cloudflare), sin SMTP en producción por ahora.
   El despliegue, el túnel y lo del VPS se hacen juntos al final.
 - **Etapa 9**: terminada (2026-11-15) en `development`. Defensas contra prompt injection (ADR 0011).
-  Reranking y Docling pendientes de autorizar Hugging Face. Ver "Resultado" en `docs/etapas/etapa-09.md`.
+  Reranking y Docling descartados: Esteban no autorizó Hugging Face (2026-11-15). Ver "Resultado" en `docs/etapas/etapa-09.md`.
 - **Etapa 10**: terminada (2026-11-15) en `development`. Métricas, Grafana local, analíticas (ADR 0012).
   Monitoreo: `podman compose --profile monitoring up -d`. Canal de alertas al teléfono pendiente de Esteban.
 - **Etapa 11**: terminada en local (2026-11-15). Backups restic, deploy/rollback por etiquetas, Caddy,
   runbook en `docs/operations/` (ADR 0013). Falta repetir simulacros en el VPS.
 - **Etapa 12**: terminada en local (2026-11-15). Demo pública (ADR 0014), README, CHANGELOG y borrador
   del artículo. Faltan el GIF, el video y el release (sobre `main`).
-- **Siguiente: etapas 0 y 3** (VPS y despliegue), con Esteban: túnel, acceso al VPS, `compose` de
-  producción, y repetir allá los simulacros (inyección, backup, rollback, carga).
+- **Producción preparada (2026-11-15):** `compose.prod.yaml` probado entero en la PC; pasos en
+  `docs/operations/runbook.md` §0. Esteban pidió subirlo lo antes posible.
+- **Siguiente: etapas 0 y 3** (VPS y despliegue), con Esteban: guía `VPS-COMPARTIDO.md`, túnel,
+  acceso al VPS, y repetir allá los simulacros (inyección, backup, rollback, carga).
 Regla general: la etapa actual es la de **número más bajo** que no está marcada como terminada en
 `docs/etapas/`, **salvo las etapas 0 y 3**, que quedan para el final.

@@ -14,6 +14,7 @@ from app.modules.audit.application.record_audit_event import (
 )
 from app.modules.audit.domain.entities import AuditAction
 from app.modules.auth.application.issue_session import IssuedSession, IssueSession
+from app.modules.auth.domain.errors import RegistrationClosedError
 from app.modules.organizations.application.create_organization import (
     CreateOrganization,
     CreateOrganizationCommand,
@@ -62,6 +63,8 @@ class Register:
         record_audit_event: RecordAuditEvent,
         tenant: TenantContext,
         accept_invitation: AcceptInvitation,
+        *,
+        open_registration: bool = True,
     ) -> None:
         self._create_user = create_user
         self._create_organization = create_organization
@@ -69,8 +72,12 @@ class Register:
         self._audit = record_audit_event
         self._tenant = tenant
         self._accept_invitation = accept_invitation
+        self._open = open_registration
 
     async def execute(self, command: RegisterCommand) -> RegisterResult:
+        if not self._open and command.invitation is None:
+            # Closed sign-up (production on a small shared server): invitations still work.
+            raise RegistrationClosedError()
         # Everything runs in one transaction: if any step fails, nothing is kept.
         user = await self._create_user.execute(
             CreateUserCommand(email=command.email, password=command.password)

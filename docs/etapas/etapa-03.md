@@ -53,6 +53,12 @@ Que cada merge a `main` llegue solo a producción, desde ahora y para siempre.
   `deploy.sh` / `rollback.sh` (construir en el VPS, imágenes por commit), backups con restic y el
   runbook. Falta el `compose` de producción (Docker, sin `:Z`, sin puertos publicados, `cloudflared`).
 
+- **Preparado en local (2026-11-15)**, antes del despliegue: `compose.prod.yaml` (Docker, sin
+  puertos, `cloudflared`, límites de memoria, `REGISTRATION_OPEN=false`, IP real desde
+  `CF-Connecting-IP`), `generate-env.sh`, `app.jobs.create_account` y la sección «Primer
+  despliegue» del runbook. Probado entero en la PC como proyecto aparte. Falta: la guía
+  `VPS-COMPARTIDO.md`, el túnel y el acceso al VPS.
+
 ## Referencias
 
 - Parte 1: §2 (arquitectura), §7 (red, secretos, continuidad), §8 (CI, paso 5).

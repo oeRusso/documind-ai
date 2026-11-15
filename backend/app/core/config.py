@@ -93,6 +93,12 @@ class Settings(BaseSettings):
     # Days of the analytics page start at midnight of this zone (stage 10).
     analytics_timezone: str = "America/Argentina/Buenos_Aires"
     chat_limit_per_user_per_minute: int = Field(default=10, ge=1)
+    # false in production: only invited people (and the demo) get in; true for development.
+    registration_open: bool = True
+    # Header with the visitor's real IP, set by the proxy in front (production: Cloudflare's
+    # "CF-Connecting-IP"). Unset = use the TCP peer. Only safe when the API is unreachable except
+    # through that proxy (compose.prod.yaml publishes no API port).
+    client_ip_header: str | None = None
     # Public demo (stage 12): enabled when DEMO_PASSWORD is set. The password is shown on the
     # login page on purpose; the account is read-only and reset every night.
     demo_password: SecretStr | None = None
@@ -112,6 +118,7 @@ class Settings(BaseSettings):
         "celery_broker_url",
         "ollama_url",
         "demo_password",
+        "client_ip_header",
         "worker_metrics_port",
         mode="before",
     )

@@ -57,7 +57,7 @@ teléfono falta elegir canal (ADR 0012).
 
 **Pendientes:**
 
-- Canal de alertas al teléfono (Telegram o SMTP): decisión de Esteban.
+- Canal de alertas al teléfono: Telegram, más adelante (decisión de Esteban, 2026-11-15).
 - En el VPS (etapa 3): rol `monitor` con `pg_monitor` para el exportador, en vez del usuario `postgres`.
 - OpenTelemetry y GlitchTip: no entran (más servicios y RAM para un VPS de 8 GB).
 

@@ -19,8 +19,12 @@ if [[ -z "${COMPOSE:-}" ]]; then
     COMPOSE="docker compose"
   fi
 fi
+# Which compose file: the server writes "-f compose.prod.yaml" in .deploy/compose-files once.
+if [[ -z "${COMPOSE_FILES:-}" && -f "$DEPLOY_DIR/compose-files" ]]; then
+  COMPOSE_FILES="$(cat "$DEPLOY_DIR/compose-files")"
+fi
 # shellcheck disable=SC2206  # word splitting wanted: "docker compose" is two words
-COMPOSE_CMD=($COMPOSE --env-file .env --env-file "$DEPLOY_DIR/image.env" ${COMPOSE_FILES:-})
+COMPOSE_CMD=($COMPOSE ${COMPOSE_FILES:-} --env-file .env --env-file "$DEPLOY_DIR/image.env")
 
 compose() { "${COMPOSE_CMD[@]}" "$@"; }
 log() { printf '[%s] %s\n' "$(date '+%H:%M:%S')" "$*"; }

@@ -33,7 +33,7 @@ Experimentos:
 - **Reranking con cross-encoder** y **Docling**: no se corrieron. Ollama no tiene reranking, y los dos
   necesitan bajar modelos de Hugging Face (y PyTorch): una fuente externa nueva que `CLAUDE.md` pide
   autorizar antes. Además el corpus no tiene tablas, así que Docling no tendría qué mejorar.
-  Quedan pendientes de esa autorización.
+  **Esteban no autorizó Hugging Face (2026-11-15): los dos quedan descartados.**
 
 ## Consecuencias
 

@@ -58,12 +58,11 @@ Convertir "parece que anda" en números, y blindar el sistema contra documentos 
 - **CI:** `.github/workflows/security.yml` con Bandit, pip-audit y Trivy (desde su imagen, sin actions
   de terceros), también cada lunes.
 - **Imágenes:** el backend aplica parches de Debian; la web no lleva npm ni corepack.
-- **Experimentos:** tamaño de fragmentos (descartado). Reranking y Docling **pendientes de autorización**
-  (necesitan Hugging Face).
+- **Experimentos:** tamaño de fragmentos (descartado). Reranking y Docling **descartados**: necesitan
+  Hugging Face y Esteban no lo autorizó (2026-11-15).
 
 **Pendientes:**
 
-- Decidir si se autoriza Hugging Face para probar el cross-encoder (`mmarco-mMiniLMv2`, 118M) y Docling.
 - Correr `eval_injection --base https://documind.esteban-russo.com` en el despliegue.
 - CSP con nonces para `script-src` (hoy no se restringe: Next.js usa scripts inline).
 

@@ -16,6 +16,35 @@ Los tiempos son de la PC de desarrollo (2026-11-15); en el VPS serán algo mayor
 
 ---
 
+## 0. Primer despliegue (una sola vez)
+
+> Pendiente de verificar contra la guía del VPS compartido (`VPS-COMPARTIDO.md`, disco externo):
+> ruta del repo, usuario de deploy y memoria libre. La configuración de producción ya se probó
+> completa en la PC (`compose.prod.yaml`): registro cerrado, IP real desde Cloudflare, demo,
+> procesamiento y respuestas.
+
+| # | Quién | Qué |
+|---|---|---|
+| 1 | Esteban | En Cloudflare Zero Trust → Networks → Tunnels: crear el túnel `documind`, con el hostname público `documind.esteban-russo.com` apuntando a `http://caddy:80`. Copiar el token. |
+| 2 | Esteban | Mergear `development` → `main` (PR) cuando esté todo revisado. |
+| 3 | Esteban | `sudo mkdir -p /srv/documind-backups && sudo chown <usuario-deploy>: /srv/documind-backups` |
+| 4 | Claude / Esteban | `git clone https://github.com/oeRusso/documind-ai.git <ruta>` y `cd <ruta>` (rama `main`). |
+| 5 | Claude | `infrastructure/scripts/generate-env.sh`: crea el `.env` (600) con contraseñas aleatorias que no se muestran, y apunta los scripts a `compose.prod.yaml`. |
+| 6 | Esteban | Pegar el token del paso 1 en `CLOUDFLARE_TUNNEL_TOKEN` del `.env`, y guardar `RESTIC_PASSWORD` en el gestor de contraseñas. |
+| 7 | Claude | `free -h` y `docker stats --no-stream`: tienen que quedar unos 5 GB libres para DocuMind. |
+| 8 | Claude | `infrastructure/scripts/deploy.sh` (construye, migra y levanta; 3–5 min la primera vez). |
+| 9 | Claude | Modelos: `docker compose -f compose.prod.yaml exec ollama ollama pull bge-m3` y `... ollama pull llama3.2:3b`. |
+| 10 | Claude | Demo: `docker compose -f compose.prod.yaml exec api python -m app.jobs.reset_demo`. |
+| 11 | Esteban | Su cuenta: `docker compose -f compose.prod.yaml exec api python -m app.jobs.create_account <email> "<Organización>" <slug>` (pide la contraseña sin mostrarla). |
+| 12 | Esteban | Backup diario en el cron (sección 3). |
+| 13 | Claude | Verificar: https://documind.esteban-russo.com, «Probar la demo», `uv run python -m evaluation.eval_injection --base https://documind.esteban-russo.com --email <cuenta>` y `evaluation.load_chat --base ...` (desde la PC). |
+| 14 | Esteban | Tags sobre `main`: `v0.1.0`, `v0.2.0`, `v0.3.0` y `v1.0.0` (ver `CHANGELOG.md`). |
+
+Para los comandos a mano en el servidor, `docker compose` necesita los mismos archivos que los
+scripts: `docker compose -f compose.prod.yaml --env-file .env --env-file .deploy/image.env <comando>`.
+
+---
+
 ## 1. Deploy
 
 Se construye en el servidor (sin registro de imágenes, ADR 0013). Cada versión queda con la

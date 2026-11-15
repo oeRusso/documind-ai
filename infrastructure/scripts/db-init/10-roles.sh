@@ -44,4 +44,14 @@ ALTER DEFAULT PRIVILEGES FOR ROLE migrator IN SCHEMA public
 SQL
 done
 
+# Optional (production): a role for the Prometheus exporter that can only read statistics.
+if [[ -n "${MONITOR_DB_PASSWORD:-}" ]]; then
+  psql_admin --dbname postgres -v monitor_pw="$MONITOR_DB_PASSWORD" -v main_db="$MAIN_DB" <<'SQL'
+SELECT format('CREATE ROLE monitor LOGIN NOSUPERUSER NOBYPASSRLS PASSWORD %L', :'monitor_pw')
+WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'monitor') \gexec
+GRANT pg_monitor TO monitor;
+GRANT CONNECT ON DATABASE :"main_db" TO monitor;
+SQL
+fi
+
 echo "db-init: roles 'migrator' and 'app' ready on $MAIN_DB and $TEST_DB"

@@ -215,3 +215,14 @@ async def test_too_many_logins_for_one_email_are_refused_without_checking_the_pa
         await world.login.execute(LoginCommand(" ANA@example.com", PASSWORD))  # even the right one
 
     assert world.hasher.verify_calls == verifications  # no Argon2 work for blocked attempts
+
+
+async def test_closed_registration_rejects_new_organizations_and_creates_nothing(
+    world: World,
+) -> None:
+    from app.modules.auth.domain.errors import RegistrationClosedError
+
+    world.register._open = False  # same wiring, sign-up closed (REGISTRATION_OPEN=false)
+    with pytest.raises(RegistrationClosedError):
+        await world.register.execute(register_command())
+    assert await world.users.get_by_email("ana@example.com") is None

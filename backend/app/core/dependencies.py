@@ -24,16 +24,23 @@ SettingsDep = Annotated[Settings, Depends(get_app_settings)]
 def get_client_ip(request: Request) -> str | None:
     """IP of the client, for the audit log and rate limits.
 
-    Stage 3 puts Cloudflare in front: the real IP will come in `CF-Connecting-IP`, and this is
-    the one place to change. Until then, proxy headers are NOT trusted (anyone can forge them).
+    Behind Cloudflare (production) the TCP peer is Caddy, so the real IP comes in the header
+    named by CLIENT_IP_HEADER ("CF-Connecting-IP"). Without that setting, proxy headers are NOT
+    trusted (anyone can forge them) and the peer is used.
     """
-    host = request.client.host if request.client else None
-    if host is None:
-        return None
-    try:
-        return str(ipaddress.ip_address(host))
-    except ValueError:  # e.g. "testclient"
-        return None
+    settings: Settings = request.app.state.settings
+    candidates = []
+    if settings.client_ip_header:
+        candidates.append(request.headers.get(settings.client_ip_header))
+    candidates.append(request.client.host if request.client else None)
+    for value in candidates:
+        if not value:
+            continue
+        try:
+            return str(ipaddress.ip_address(value.strip()))
+        except ValueError:  # e.g. "testclient", or a forged value
+            continue
+    return None
 
 
 ClientIpDep = Annotated[str | None, Depends(get_client_ip)]
