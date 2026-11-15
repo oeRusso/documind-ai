@@ -1,0 +1,83 @@
+name: security
+
+# Stage 9: code and image security. Free tools only, no third-party actions beyond
+# checkout and setup-uv: Trivy runs from its own container image, pinned to a version.
+on:
+  push:
+    branches: [main, development]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "infrastructure/containers/**"
+      - ".github/workflows/security.yml"
+  pull_request:
+  schedule:
+    - cron: "17 6 * * 1"  # Mondays: new CVEs appear even when the code does not change
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TRIVY_IMAGE: docker.io/aquasec/trivy:0.69.3
+
+jobs:
+  python:
+    name: bandit and pip-audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.7"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --locked
+      # Medium and high findings fail; reviewed false positives carry `# nosec <id> (reason)`.
+      - name: Bandit (static analysis)
+        run: uv run bandit -q -r app -ll
+      - name: pip-audit (known vulnerabilities in production dependencies)
+        run: |
+          uv export --frozen --no-dev --no-emit-project --format requirements-txt > /tmp/requirements.txt
+          uv run pip-audit -r /tmp/requirements.txt --require-hashes --disable-pip
+
+  images:
+    name: trivy (container images)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: backend
+            context: backend
+            file: infrastructure/containers/backend.Containerfile
+            target: runtime
+          - name: worker
+            context: backend
+            file: infrastructure/containers/backend.Containerfile
+            target: worker
+          - name: web
+            context: frontend
+            file: infrastructure/containers/frontend.Containerfile
+            target: ""
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build ${{ matrix.name }}
+        run: |
+          docker build --file "${{ matrix.file }}" \
+            ${{ matrix.target && format('--target {0}', matrix.target) || '' }} \
+            --tag "documind-${{ matrix.name }}:scan" "${{ matrix.context }}"
+      # HIGH and CRITICAL with a published fix fail the job: there is something to update.
+      - name: Trivy
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$TRIVY_IMAGE" \
+            image --quiet --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 \
+            "documind-${{ matrix.name }}:scan"

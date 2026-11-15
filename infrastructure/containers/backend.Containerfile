@@ -17,7 +17,9 @@ RUN uv sync --locked --no-dev --no-install-project
 
 FROM ${PYTHON_IMAGE} AS runtime
 # libmagic1: detects the real type of uploaded files (python-magic, stage 4).
+# upgrade: security fixes the base image does not have yet (Trivy found zlib in stage 9).
 RUN apt-get update \
+ && apt-get upgrade --yes \
  && apt-get install --yes --no-install-recommends libmagic1 \
  && rm -rf /var/lib/apt/lists/*
 # /data is the mount point of the documents volume: a new volume copies this owner,

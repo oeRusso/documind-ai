@@ -14,6 +14,10 @@ ENV API_INTERNAL_URL=${API_INTERNAL_URL} \
 RUN pnpm build
 
 FROM docker.io/library/node:24.22.1-alpine3.24
+# The server only needs `node`: npm and corepack (with their own dependencies, where Trivy
+# found vulnerabilities in stage 9) are removed from the final image.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+    /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
