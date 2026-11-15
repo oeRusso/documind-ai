@@ -16,10 +16,11 @@ import { useRef, useState } from "react";
 import { ErrorMessage } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { api, errorMessage, inOrganization, unwrap, type Schemas } from "@/lib/api/client";
-import { askQuestion, splitCitations, type ChatEvent, type Citation } from "@/lib/chat";
+import { askQuestion, type ChatEvent, type Citation } from "@/lib/chat";
 import { pageRange } from "@/lib/documents";
 import { cn } from "@/lib/utils";
 
+import { AnswerMarkdown } from "./answer-markdown";
 import { conversationsKey } from "./conversation-list";
 import { ScopePicker, scopeLabel, useReadyDocuments } from "./scope-picker";
 import { SourcePanel } from "./source-panel";
@@ -361,19 +362,15 @@ function AnswerText({
 }) {
   const byMarker = new Map(citations.map((c) => [c.marker, c]));
   return (
-    <p
-      className={cn("leading-relaxed whitespace-pre-line", noEvidence && "text-muted-foreground italic")}
-      aria-live={writing ? "polite" : undefined}
-    >
-      {splitCitations(text).map((part, i) =>
-        "marker" in part ? (
-          <CitationMark key={i} marker={part.marker} citation={byMarker.get(part.marker)} onOpen={onOpenSource} />
-        ) : (
-          <span key={i}>{part.text}</span>
-        ),
-      )}
-      {writing && <span className="ml-0.5 animate-pulse">▍</span>}
-    </p>
+    <div className={cn(noEvidence && "text-muted-foreground italic")} aria-live={writing ? "polite" : undefined}>
+      <AnswerMarkdown
+        text={text}
+        renderCitation={(marker, key) => (
+          <CitationMark key={key} marker={marker} citation={byMarker.get(marker)} onOpen={onOpenSource} />
+        )}
+        cursor={writing ? <span className="ml-0.5 animate-pulse">▍</span> : undefined}
+      />
+    </div>
   );
 }
 
