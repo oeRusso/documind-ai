@@ -1,6 +1,6 @@
 # Arquitectura del código
 
-Mapa del código **tal como está hoy** (fin de la etapa 10): qué hace cada carpeta y cada archivo, y cómo
+Mapa del código **tal como está hoy** (fin de la etapa 11): qué hace cada carpeta y cada archivo, y cómo
 se comunican las piezas. El *diseño* completo del producto está en `plan-parte-1-arquitectura.md`;
 este documento describe lo que ya existe. Se actualiza al cerrar cada etapa.
 
@@ -652,8 +652,10 @@ toda la familia (las dos copias dejan de servir).
 |---|---|
 | `containers/backend.Containerfile` | Imagen de la API en dos etapas: instala dependencias con uv y copia a la final solo el entorno y el código (Python 3.12 slim, usuario `app` sin root). |
 | `containers/frontend.Containerfile` | Imagen de la web: build de Next.js en una etapa, y en la final solo la salida `standalone` con Node, usuario sin root. |
+| `scripts/deploy.sh`, `rollback.sh` | Deploy construyendo en el servidor con imágenes etiquetadas por commit (`.deploy/image.env`), y vuelta atrás sin construir (etapa 11, ADR 0013). |
+| `scripts/backup.sh`, `restore.sh`, `pull-backups.sh`, `lib.sh` | Backups cifrados con restic (base + documentos, 7 diarios y 4 semanales), restauración, y copia a la PC por `rsync`. |
 | `scripts/db-init/10-roles.sh` | Se ejecuta al crear la base por primera vez: crea los roles `migrator` y `app`, la base de tests y la extensión `vector`. |
-| `proxy/` | Vacía: Caddy (etapa 3). |
+| `proxy/Caddyfile` | Caddy (etapa 11): cabeceras de seguridad, rutas privadas cerradas, `/api` a la API sin retener el streaming y el resto a la web. |
 | `tunnel/` | Vacía: Cloudflare Tunnel (etapa 3). |
 | `monitoring/` | Prometheus (`prometheus.yml`, `rules.yml`) y Grafana (datasource, dashboard «DocuMind» y alertas aprovisionadas) (etapa 10). |
 
@@ -670,7 +672,7 @@ toda la familia (las dos copias dejan de servir).
 | `probar-la-api.md` | Usuarios de prueba y qué probar a mano. |
 | `arquitectura-del-codigo.md` | Este documento. |
 | `evaluation/` | Informes de evaluación (generados por los scripts de `backend/evaluation/`). |
-| `operations/` | Vacía: runbooks (etapa 11). |
+| `operations/runbook.md` | Deploy, rollback, backups, restauración, rotación de secretos y problemas comunes (etapa 11). |
 
 ---
 

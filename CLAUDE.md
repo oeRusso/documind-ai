@@ -184,6 +184,8 @@ Leerla antes de cualquier tarea de deploy (etapas 0, 3 y 11). Resumen:
   Reranking y Docling pendientes de autorizar Hugging Face. Ver "Resultado" en `docs/etapas/etapa-09.md`.
 - **Etapa 10**: terminada (2026-11-15) en `development`. Métricas, Grafana local, analíticas (ADR 0012).
   Monitoreo: `podman compose --profile monitoring up -d`. Canal de alertas al teléfono pendiente de Esteban.
-- **Siguiente: etapa 11** (producción robusta), solo la parte local.
+- **Etapa 11**: terminada en local (2026-11-15). Backups restic, deploy/rollback por etiquetas, Caddy,
+  runbook en `docs/operations/` (ADR 0013). Falta repetir simulacros en el VPS.
+- **Siguiente: etapa 12** (portfolio y demo), la parte local.
 Regla general: la etapa actual es la de **número más bajo** que no está marcada como terminada en
 `docs/etapas/`, **salvo las etapas 0 y 3**, que quedan para el final.

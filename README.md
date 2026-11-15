@@ -9,7 +9,7 @@ software libre y planes gratuitos.
 
 ## Estado actual
 
-**Etapas 1 y 2, y de la 4 a la 10, terminadas** (todo el trabajo nuevo queda en `development` hasta el despliegue):
+**Etapas 1 y 2, y de la 4 a la 11, terminadas** (todo el trabajo nuevo queda en `development` hasta el despliegue):
 
 - Cuentas, organizaciones, roles e invitaciones, con aislamiento entre organizaciones en dos capas
   (chequeo en el backend + Row Level Security en PostgreSQL) y sesiones con refresh token rotativo.
@@ -35,6 +35,10 @@ software libre y planes gratuitos.
 - Observabilidad: métricas de Prometheus (búsqueda, cola, primer token, generación, citas válidas,
   procesamiento), dashboard y alertas en Grafana (`podman compose --profile monitoring up -d`), y una
   página de **Analíticas** para admins ([ADR 0012](docs/decisions/0012-observabilidad-y-analiticas.md)).
+
+- Operación: backups cifrados con restic (restaurados en un entorno limpio), deploy y rollback en
+  segundos por etiquetas de imagen, Caddy con cabeceras de seguridad y un
+  [runbook](docs/operations/runbook.md) ([ADR 0013](docs/decisions/0013-operacion-sin-nube.md)).
 
 Las etapas 0 y 3 (VPS y despliegue) quedan para el final.
 

@@ -49,6 +49,10 @@ Que cada merge a `main` llegue solo a producción, desde ahora y para siempre.
   mismo contador** de intentos de login y registro (rate limit) y el audit log registra la IP equivocada.
 - **Email en producción (de la etapa 2):** no hay servidor SMTP. Sumar uno es un servicio externo: preguntar.
 
+- **Lo que deja la etapa 11** (ADR 0013, hecha en local antes que esta): `Caddyfile` listo,
+  `deploy.sh` / `rollback.sh` (construir en el VPS, imágenes por commit), backups con restic y el
+  runbook. Falta el `compose` de producción (Docker, sin `:Z`, sin puertos publicados, `cloudflared`).
+
 ## Referencias
 
 - Parte 1: §2 (arquitectura), §7 (red, secretos, continuidad), §8 (CI, paso 5).
