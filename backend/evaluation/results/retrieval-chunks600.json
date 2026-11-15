@@ -1,0 +1,117 @@
+[
+  {
+    "name": "text",
+    "mode": "text",
+    "model": null,
+    "recall_at_5": 0.662,
+    "recall_at_10": 0.809,
+    "mrr": 0.455,
+    "latency_ms_p50": 11.7,
+    "latency_ms_p95": 14.0,
+    "top_score_answerable_median": 0.7059,
+    "top_score_unanswerable_median": 0.4737,
+    "misses": [
+      "q002",
+      "q004",
+      "q005",
+      "q010",
+      "q011",
+      "q013",
+      "q014",
+      "q019",
+      "q026",
+      "q027",
+      "q028",
+      "q029",
+      "q035",
+      "q037",
+      "q040",
+      "q042",
+      "q050",
+      "q053",
+      "q055",
+      "q056",
+      "q072",
+      "q076",
+      "q077"
+    ],
+    "by_kind": {
+      "keywords": {
+        "questions": 8,
+        "recall_at_5": 0.625,
+        "mrr": 0.429
+      },
+      "natural": {
+        "questions": 60,
+        "recall_at_5": 0.667,
+        "mrr": 0.459
+      }
+    }
+  },
+  {
+    "name": "vector (bge-m3)",
+    "mode": "vector",
+    "model": "bge-m3",
+    "recall_at_5": 0.897,
+    "recall_at_10": 0.956,
+    "mrr": 0.732,
+    "latency_ms_p50": 42.3,
+    "latency_ms_p95": 44.8,
+    "top_score_answerable_median": 0.6351,
+    "top_score_unanswerable_median": 0.4911,
+    "misses": [
+      "q014",
+      "q016",
+      "q027",
+      "q038",
+      "q054",
+      "q072",
+      "q076"
+    ],
+    "by_kind": {
+      "keywords": {
+        "questions": 8,
+        "recall_at_5": 0.75,
+        "mrr": 0.469
+      },
+      "natural": {
+        "questions": 60,
+        "recall_at_5": 0.917,
+        "mrr": 0.767
+      }
+    }
+  },
+  {
+    "name": "hybrid (bge-m3)",
+    "mode": "hybrid",
+    "model": "bge-m3",
+    "recall_at_5": 0.897,
+    "recall_at_10": 0.912,
+    "mrr": 0.709,
+    "latency_ms_p50": 54.7,
+    "latency_ms_p95": 60.1,
+    "top_score_answerable_median": 0.6139,
+    "top_score_unanswerable_median": 0.4601,
+    "misses": [
+      "q010",
+      "q013",
+      "q014",
+      "q026",
+      "q027",
+      "q056",
+      "q072"
+    ],
+    "by_kind": {
+      "keywords": {
+        "questions": 8,
+        "recall_at_5": 0.875,
+        "mrr": 0.667
+      },
+      "natural": {
+        "questions": 60,
+        "recall_at_5": 0.9,
+        "mrr": 0.715
+      }
+    }
+  }
+]

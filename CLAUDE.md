@@ -180,6 +180,8 @@ Leerla antes de cualquier tarea de deploy (etapas 0, 3 y 11). Resumen:
   `127.0.0.1` + túnel SSH (sin Cloudflare Access), sin UptimeRobot, sin R2 (backups que baja la PC por
   `rsync`), rate limiting en la app y Caddy (sin reglas de Cloudflare), sin SMTP en producción por ahora.
   El despliegue, el túnel y lo del VPS se hacen juntos al final.
-- **Siguiente: etapa 9** (evaluación continua y seguridad de IA).
+- **Etapa 9**: terminada (2026-11-15) en `development`. Defensas contra prompt injection (ADR 0011).
+  Reranking y Docling pendientes de autorizar Hugging Face. Ver "Resultado" en `docs/etapas/etapa-09.md`.
+- **Siguiente: etapa 10** (observabilidad y analíticas).
 Regla general: la etapa actual es la de **número más bajo** que no está marcada como terminada en
 `docs/etapas/`, **salvo las etapas 0 y 3**, que quedan para el final.

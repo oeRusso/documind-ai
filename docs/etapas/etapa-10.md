@@ -35,6 +35,9 @@ Ver qué pasa dentro del sistema y mostrarlo en un dashboard.
 - **Regla de servicios externos** (`CLAUDE.md`): Grafana detrás de Cloudflare Access requiere permiso de Esteban.
   Alternativa sin Cloudflare: Grafana solo en `127.0.0.1` y acceso por túnel SSH.
 
+- **Lo que deja la etapa 9** (ADR 0011): los eventos `hidden_text_dropped`, `unsafe_output_removed` e
+  `invalid_citations_dropped` en los logs son señales de seguridad para el dashboard.
+
 ## Referencias
 
 - Parte 1: §8 (métricas que se miden).
