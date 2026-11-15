@@ -4,6 +4,27 @@
  */
 
 export interface paths {
+    "/api/v1/analytics/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Overview
+         * @description Uso de la organización: preguntas por día, cuántas no tuvieron respuesta (y cuáles, sin
+         *     autor), valoraciones y documentos procesados. Solo owners y admins.
+         */
+        get: operations["get_overview_api_v1_analytics_overview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/login": {
         parameters: {
             query?: never;
@@ -731,6 +752,16 @@ export interface components {
             role: components["schemas"]["Role"];
             status: components["schemas"]["InvitationStatus"];
         };
+        /** DayCountRead */
+        DayCountRead: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Questions */
+            questions: number;
+        };
         /** DocumentDetailRead */
         DocumentDetailRead: {
             /**
@@ -997,6 +1028,44 @@ export interface components {
              */
             updated_at: string;
         };
+        /** OverviewRead */
+        OverviewRead: {
+            /** Answered */
+            answered: number;
+            /** Days */
+            days: number;
+            /** Documents Failed */
+            documents_failed: number;
+            /** Documents Pending */
+            documents_pending: number;
+            /** Documents Ready */
+            documents_ready: number;
+            /** Helpful */
+            helpful: number;
+            /** Interrupted */
+            interrupted: number;
+            /** No Evidence */
+            no_evidence: number;
+            /** Not Helpful */
+            not_helpful: number;
+            /** Ocr Pages */
+            ocr_pages: number;
+            /** Pages */
+            pages: number;
+            /** People */
+            people: number;
+            /** Questions */
+            questions: number;
+            /** Questions By Day */
+            questions_by_day: components["schemas"]["DayCountRead"][];
+            /**
+             * Since
+             * Format: date-time
+             */
+            since: string;
+            /** Unanswered */
+            unanswered: components["schemas"]["UnansweredRead"][];
+        };
         /** Page[ChunkRead] */
         Page_ChunkRead_: {
             /** Items */
@@ -1187,6 +1256,16 @@ export interface components {
              */
             token_type: "bearer";
         };
+        /** UnansweredRead */
+        UnansweredRead: {
+            /**
+             * Asked At
+             * Format: date-time
+             */
+            asked_at: string;
+            /** Question */
+            question: string;
+        };
         /** UserRead */
         UserRead: {
             /** Email */
@@ -1240,6 +1319,68 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    get_overview_api_v1_analytics_overview_get: {
+        parameters: {
+            query?: {
+                /** @description 7, 30 o 90 */
+                days?: number;
+            };
+            header: {
+                /** @description Organización activa */
+                "X-Organization-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OverviewRead"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     login_api_v1_auth_login_post: {
         parameters: {
             query?: never;

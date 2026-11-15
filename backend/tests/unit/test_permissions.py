@@ -26,6 +26,7 @@ EXPECTED: dict[Permission, set[Role]] = {
     Permission.VIEW_DOCUMENTS: {OWN, ADM, MEM, VIE},
     Permission.UPLOAD_DOCUMENTS: {OWN, ADM, MEM},
     Permission.DELETE_ANY_DOCUMENT: {OWN, ADM},
+    Permission.VIEW_ANALYTICS: {OWN, ADM},
 }
 
 

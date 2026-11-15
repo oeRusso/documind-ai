@@ -355,6 +355,25 @@
         "title": "CreatedInvitationRead",
         "type": "object"
       },
+      "DayCountRead": {
+        "properties": {
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "questions": {
+            "title": "Questions",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "questions"
+        ],
+        "title": "DayCountRead",
+        "type": "object"
+      },
       "DocumentDetailRead": {
         "properties": {
           "created_at": {
@@ -953,6 +972,101 @@
         "title": "OrganizationRead",
         "type": "object"
       },
+      "OverviewRead": {
+        "properties": {
+          "answered": {
+            "title": "Answered",
+            "type": "integer"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "documents_failed": {
+            "title": "Documents Failed",
+            "type": "integer"
+          },
+          "documents_pending": {
+            "title": "Documents Pending",
+            "type": "integer"
+          },
+          "documents_ready": {
+            "title": "Documents Ready",
+            "type": "integer"
+          },
+          "helpful": {
+            "title": "Helpful",
+            "type": "integer"
+          },
+          "interrupted": {
+            "title": "Interrupted",
+            "type": "integer"
+          },
+          "no_evidence": {
+            "title": "No Evidence",
+            "type": "integer"
+          },
+          "not_helpful": {
+            "title": "Not Helpful",
+            "type": "integer"
+          },
+          "ocr_pages": {
+            "title": "Ocr Pages",
+            "type": "integer"
+          },
+          "pages": {
+            "title": "Pages",
+            "type": "integer"
+          },
+          "people": {
+            "title": "People",
+            "type": "integer"
+          },
+          "questions": {
+            "title": "Questions",
+            "type": "integer"
+          },
+          "questions_by_day": {
+            "items": {
+              "$ref": "#/components/schemas/DayCountRead"
+            },
+            "title": "Questions By Day",
+            "type": "array"
+          },
+          "since": {
+            "format": "date-time",
+            "title": "Since",
+            "type": "string"
+          },
+          "unanswered": {
+            "items": {
+              "$ref": "#/components/schemas/UnansweredRead"
+            },
+            "title": "Unanswered",
+            "type": "array"
+          }
+        },
+        "required": [
+          "days",
+          "since",
+          "questions_by_day",
+          "questions",
+          "answered",
+          "no_evidence",
+          "interrupted",
+          "helpful",
+          "not_helpful",
+          "people",
+          "documents_ready",
+          "documents_failed",
+          "pages",
+          "ocr_pages",
+          "documents_pending",
+          "unanswered"
+        ],
+        "title": "OverviewRead",
+        "type": "object"
+      },
       "Page_ChunkRead_": {
         "properties": {
           "items": {
@@ -1511,6 +1625,25 @@
         "title": "TokenResponse",
         "type": "object"
       },
+      "UnansweredRead": {
+        "properties": {
+          "asked_at": {
+            "format": "date-time",
+            "title": "Asked At",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question",
+          "asked_at"
+        ],
+        "title": "UnansweredRead",
+        "type": "object"
+      },
       "UserRead": {
         "properties": {
           "email": {
@@ -1647,6 +1780,99 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/analytics/overview": {
+      "get": {
+        "description": "Uso de la organización: preguntas por día, cuántas no tuvieron respuesta (y cuáles, sin\nautor), valoraciones y documentos procesados. Solo owners y admins.",
+        "operationId": "get_overview_api_v1_analytics_overview_get",
+        "parameters": [
+          {
+            "description": "7, 30 o 90",
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "description": "7, 30 o 90",
+              "title": "Days",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Organización activa",
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": true,
+            "schema": {
+              "description": "Organización activa",
+              "format": "uuid",
+              "title": "X-Organization-Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OverviewRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Overview",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
     "/api/v1/auth/login": {
       "post": {
         "operationId": "login_api_v1_auth_login_post",

@@ -20,6 +20,11 @@ export function canManageMembers(actor: Role): boolean {
   return actor === "owner" || actor === "admin";
 }
 
+/** Usage numbers of the organization (stage 10): same roles as managing members. */
+export function canViewAnalytics(actor: Role): boolean {
+  return actor === "owner" || actor === "admin";
+}
+
 /** Can `actor` change the role of, or remove, someone who has `target`? */
 export function canManage(actor: Role, target: Role): boolean {
   return canManageMembers(actor) && (actor === "owner" || RANK[target] < RANK[actor]);

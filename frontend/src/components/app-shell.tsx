@@ -21,13 +21,11 @@ import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { useAuth } from "@/lib/auth";
 import { useActiveOrganization } from "@/lib/organizations";
-import { canManageMembers } from "@/lib/roles";
+import { canManageMembers, canViewAnalytics } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 
 type NavItem = { href: string; label: string; icon: LucideIcon; show: boolean };
 
-/** What the next stages add, shown greyed out so the menu tells where the product is going. */
-const COMING_SOON = [{ label: "Analíticas", icon: BarChart3, stage: "Etapa 10" }];
 
 function OrganizationSwitcher({ id }: { id: string }) {
   const { organization, organizations, select } = useActiveOrganization();
@@ -94,6 +92,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       icon: Mail,
       show: organization ? canManageMembers(organization.role) : false,
     },
+    {
+      href: "/analytics",
+      label: "Analíticas",
+      icon: BarChart3,
+      show: organization ? canViewAnalytics(organization.role) : false,
+    },
     { href: "/organizations/new", label: "Nueva organización", icon: Plus, show: true },
   ];
 
@@ -112,22 +116,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <nav aria-label="Principal" className="grid gap-1">
           <NavLinks items={items} />
         </nav>
-        <div className="grid gap-1">
-          <p className="px-3 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground/70 uppercase">
-            Próximamente
-          </p>
-          {COMING_SOON.map(({ label, icon: Icon, stage }) => (
-            <span
-              key={label}
-              aria-disabled="true"
-              className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted-foreground/60"
-            >
-              <Icon className="size-4" />
-              {label}
-              <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium">{stage}</span>
-            </span>
-          ))}
-        </div>
         <div className="mt-auto flex items-center gap-3 rounded-xl border bg-card p-3">
           {user && <Avatar email={user.email} />}
           <span className="min-w-0 flex-1 truncate text-sm font-medium" title={user?.email}>

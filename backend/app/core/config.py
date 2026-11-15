@@ -69,6 +69,8 @@ class Settings(BaseSettings):
     # --- Processing queue (stage 5): Valkey speaks the Redis protocol, hence redis:// ---
     # Without it the API still works, but documents stay "pending" (nothing processes them).
     celery_broker_url: str | None = None
+    # Port where the worker serves its Prometheus metrics (stage 10). None: not served.
+    worker_metrics_port: int | None = Field(default=None, ge=1024, le=65535)
 
     # --- Local AI with Ollama (stage 6) ---
     # Without it, documents are processed without embeddings and search uses words only.
@@ -88,6 +90,8 @@ class Settings(BaseSettings):
     # Size of the context given to the model (small models answer better with short contexts).
     rag_context_tokens: int = Field(default=1500, ge=200, le=6000)
     rag_max_answer_tokens: int = Field(default=512, ge=64, le=2048)
+    # Days of the analytics page start at midnight of this zone (stage 10).
+    analytics_timezone: str = "America/Argentina/Buenos_Aires"
     chat_limit_per_user_per_minute: int = Field(default=10, ge=1)
 
     @property

@@ -1,0 +1,12 @@
+# Recording rules: the numbers the dashboard and the alerts read (stage 10).
+groups:
+  - name: documind
+    rules:
+      - record: documind:citations_valid_ratio:1h
+        expr: |
+          sum(increase(documind_citations_total{valid="true"}[1h]))
+          / clamp_min(sum(increase(documind_citations_total[1h])), 1)
+      - record: documind:queue_length
+        expr: sum(redis_key_size{key="celery"}) or vector(0)
+      - record: documind:memory_used_ratio
+        expr: 1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes

@@ -1,4 +1,5 @@
 # Local development stack.  Usage:  podman compose up -d --build
+# Monitoring (stage 10, ~400 MB more):  podman compose --profile monitoring up -d
 # Reads passwords from the repo's .env (copy .env.example first).
 # Ports are bound to 127.0.0.1 only: nothing is exposed to the network.
 
@@ -38,6 +39,8 @@ x-backend: &backend
     RAG_CONTEXT_TOKENS: ${RAG_CONTEXT_TOKENS:-1500}
     RAG_MAX_ANSWER_TOKENS: ${RAG_MAX_ANSWER_TOKENS:-512}
     CHAT_LIMIT_PER_USER_PER_MINUTE: ${CHAT_LIMIT_PER_USER_PER_MINUTE:-10}
+    # The worker serves its Prometheus metrics here (stage 10); the API serves them at /metrics.
+    WORKER_METRICS_PORT: "9101"
     # Uploads bigger than 1 MB spill from memory to a temp file: on the volume, not in RAM.
     TMPDIR: /data/tmp
   volumes:
@@ -187,8 +190,84 @@ services:
       - "127.0.0.1:1025:1025"  # SMTP, for trying things from the host
     restart: unless-stopped
 
+  # --- Monitoring (stage 10). Only with --profile monitoring. Nothing is published but Grafana,
+  # on 127.0.0.1 (in production: reached through an SSH tunnel, no Cloudflare Access).
+  prometheus:
+    image: docker.io/prom/prometheus:v3.5.0
+    profiles: [monitoring]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=10d
+      - --storage.tsdb.retention.size=1GB
+    volumes:
+      - ./infrastructure/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro,Z
+      - ./infrastructure/monitoring/prometheus/rules.yml:/etc/prometheus/rules.yml:ro,Z
+      - prometheus:/prometheus
+    mem_limit: 256m
+    restart: unless-stopped
+
+  grafana:
+    image: docker.io/grafana/grafana-oss:12.1.0
+    profiles: [monitoring]
+    ports:
+      - "127.0.0.1:3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set it in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+      # Alerts by email: to Mailpit in development (http://127.0.0.1:8025).
+      GF_SMTP_ENABLED: "true"
+      GF_SMTP_HOST: ${GRAFANA_SMTP_HOST:-mailpit:1025}
+      GF_SMTP_FROM_ADDRESS: ${GRAFANA_SMTP_FROM:-alertas@documind.local}
+      GRAFANA_ALERT_EMAIL: ${GRAFANA_ALERT_EMAIL:-alertas@documind.local}
+    volumes:
+      - ./infrastructure/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro,Z
+      - ./infrastructure/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro,Z
+      - grafana:/var/lib/grafana
+    depends_on: [prometheus]
+    mem_limit: 256m
+    restart: unless-stopped
+
+  node-exporter:
+    image: docker.io/prom/node-exporter:v1.9.1
+    profiles: [monitoring]
+    command: ["--path.rootfs=/host"]
+    volumes:
+      - /:/host:ro,rslave
+    mem_limit: 64m
+    restart: unless-stopped
+
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.17.1
+    profiles: [monitoring]
+    environment:
+      # Development: the postgres user. Production (stage 3/11): a role with only pg_monitor.
+      DATA_SOURCE_NAME: postgresql://postgres:${POSTGRES_PASSWORD:?set it in .env}@db:5432/documind?sslmode=disable
+    depends_on: [db]
+    mem_limit: 64m
+    restart: unless-stopped
+
+  # Length of the Celery queue (the "celery" list in Valkey).
+  valkey-exporter:
+    image: docker.io/oliver006/redis_exporter:v1.67.0
+    profiles: [monitoring]
+    environment:
+      REDIS_ADDR: redis://valkey:6379
+      REDIS_EXPORTER_CHECK_KEYS: db0=celery
+    depends_on: [valkey]
+    mem_limit: 64m
+    restart: unless-stopped
+
 volumes:
   pgdata:
   documents:
   valkey:
   ollama:
+  prometheus:
+  grafana:

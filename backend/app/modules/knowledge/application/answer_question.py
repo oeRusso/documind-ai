@@ -127,6 +127,7 @@ class AnswerQuestion:
             raise ChatUnavailableError()
 
         previous = " ".join((query.previous_question or "").split())[:MAX_QUESTION_CHARS] or None
+        searched_from = time.perf_counter()
         result = await self._search.execute(
             SearchQuery(
                 query.actor,
@@ -139,6 +140,12 @@ class AnswerQuestion:
         enough = bool(result.hits) and (
             # Without embeddings there is no similarity to judge: any word match will do.
             result.best_similarity is None or result.best_similarity >= self._options.min_score
+        )
+        logger.info(
+            "answer_prepared",
+            organization_id=str(query.actor.organization_id),
+            search_ms=round((time.perf_counter() - searched_from) * 1000),
+            hits=len(result.hits),
         )
         sources = (
             build_context(
@@ -181,9 +188,11 @@ class AnswerQuestion:
             guard = OutputGuard()
             markers = MarkerFilter({source.marker for source in prepared.sources})
             answer: list[str] = []
+            first_token: float | None = None
             async for piece in self._llm.stream(
                 prepared.messages, max_tokens=self._options.max_answer_tokens
             ):
+                first_token = first_token or time.perf_counter()
                 shown = markers.feed(guard.feed(piece))
                 if shown:
                     answer.append(shown)
@@ -222,6 +231,7 @@ class AnswerQuestion:
             model=self._llm.model,
             no_evidence=no_evidence,
             waited_ms=round((started - waited_from) * 1000),
+            first_token_ms=round((first_token - started) * 1000) if first_token else None,
             generation_ms=round((time.perf_counter() - started) * 1000),
             answer_chars=sum(len(a) for a in answer),
             # Each citation: document, pages and the exact chunks (stage 7 keeps them in the

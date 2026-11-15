@@ -21,6 +21,7 @@ class Permission(StrEnum):
     VIEW_DOCUMENTS = "documents.view"  # list, read and download
     UPLOAD_DOCUMENTS = "documents.upload"  # upload, add versions, delete your own
     DELETE_ANY_DOCUMENT = "documents.delete_any"
+    VIEW_ANALYTICS = "analytics.view"  # usage numbers of the organization (stage 10)
 
 
 _GRANTS: dict[Role, frozenset[Permission]] = {
@@ -34,6 +35,7 @@ _GRANTS: dict[Role, frozenset[Permission]] = {
             Permission.VIEW_DOCUMENTS,
             Permission.UPLOAD_DOCUMENTS,
             Permission.DELETE_ANY_DOCUMENT,
+            Permission.VIEW_ANALYTICS,
         }
     ),
     Role.MEMBER: frozenset(

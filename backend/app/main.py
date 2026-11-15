@@ -18,12 +18,14 @@ from app.core.config import Settings, get_settings
 from app.core.exceptions import register_exception_handlers
 from app.core.health import router as health_router
 from app.core.logging import configure_logging
+from app.core.metrics import install_api_metrics
 from app.core.request_context import request_context_middleware
 from app.infrastructure.database.session import create_engine, create_session_factory
 from app.infrastructure.mail.smtp import build_mailer
 from app.infrastructure.queue.celery_app import create_celery
 from app.infrastructure.rate_limit import InMemoryRateLimiter
 from app.infrastructure.storage.filesystem import FilesystemStorage
+from app.modules.analytics.presentation.router import router as analytics_router
 from app.modules.auth.presentation.router import router as auth_router
 from app.modules.conversations.presentation.router import router as conversations_router
 from app.modules.documents.presentation.router import router as documents_router
@@ -95,7 +97,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api_v1.include_router(search_router)
     api_v1.include_router(chat_router)
     api_v1.include_router(conversations_router)
+    api_v1.include_router(analytics_router)
 
+    install_api_metrics(app, lambda: app.state.generation_queue.waiting)
     app.include_router(health_router)
     app.include_router(api_v1)
     return app
