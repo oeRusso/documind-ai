@@ -9,7 +9,7 @@ software libre y planes gratuitos.
 
 ## Estado actual
 
-**Etapas 1, 2, 4, 5, 6 y 7 terminadas** (todo el trabajo nuevo queda en `development` hasta el despliegue):
+**Etapas 1, 2, 4, 5, 6, 7 y 8 terminadas** (todo el trabajo nuevo queda en `development` hasta el despliegue):
 
 - Cuentas, organizaciones, roles e invitaciones, con aislamiento entre organizaciones en dos capas
   (chequeo en el backend + Row Level Security en PostgreSQL) y sesiones con refresh token rotativo.
@@ -23,6 +23,9 @@ software libre y planes gratuitos.
   lleva su cita `[n]` al documento y la página. Si los documentos no lo responden, dice «no encontré evidencia»
   sin inventar. Las citas inventadas se descartan, y las preguntas esperan su turno en una cola
   ([informe](docs/evaluation/answers-2026-11-12.md), [ADR 0009](docs/decisions/0009-modelo-de-lenguaje-y-respuestas.md)).
+- Conversaciones con historial (privadas de cada persona), preguntas de seguimiento medidas
+  ([informe](docs/evaluation/followups-2026-11-15.md)), alcance por documentos, botones útil / no útil y
+  un panel que abre la página citada del PDF con el texto resaltado ([ADR 0010](docs/decisions/0010-conversaciones.md)).
 
 Las etapas 0 y 3 (VPS y despliegue) quedan para el final.
 

@@ -172,6 +172,14 @@ Leerla antes de cualquier tarea de deploy (etapas 0, 3 y 11). Resumen:
 - **Etapa 7**: terminada (2026-11-12) en `development`. LLM `llama3.2:3b` (ADR 0009). Ver "Resultado" en
   `docs/etapas/etapa-07.md`. Modelos en el contenedor `ollama`: `bge-m3`, `llama3.2:3b` y `granite3.3:2b`
   (este último solo para comparar).
-- **Siguiente: etapa 8** (conversaciones y experiencia de chat).
+- **Etapa 8**: terminada (2026-11-15) en `development`. Conversaciones privadas, seguimientos (ADR 0010).
+  Ver "Resultado" en `docs/etapas/etapa-08.md`.
+- **Decisión de Esteban (2026-11-15):** terminar todas las etapas restantes **en local** sin frenar a
+  aprobar el plan de cada una (el plan queda escrito en el archivo de la etapa), con las opciones
+  recomendadas y sin servicios externos: deploy construyendo en el VPS (sin GHCR), Grafana en
+  `127.0.0.1` + túnel SSH (sin Cloudflare Access), sin UptimeRobot, sin R2 (backups que baja la PC por
+  `rsync`), rate limiting en la app y Caddy (sin reglas de Cloudflare), sin SMTP en producción por ahora.
+  El despliegue, el túnel y lo del VPS se hacen juntos al final.
+- **Siguiente: etapa 9** (evaluación continua y seguridad de IA).
 Regla general: la etapa actual es la de **número más bajo** que no está marcada como terminada en
 `docs/etapas/`, **salvo las etapas 0 y 3**, que quedan para el final.

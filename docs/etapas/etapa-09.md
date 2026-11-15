@@ -34,6 +34,11 @@ Convertir "parece que anda" en números, y blindar el sistema contra documentos 
 - Dónde va cada cosa: código de métricas en `backend/app/ai/evaluation/`, dataset y scripts en `backend/evaluation/`, informes en `docs/evaluation/`.
 - Al cerrar esta etapa termina la Fase C: tag `v0.3.0`.
 
+- **Lo que deja la etapa 8** (ver su "Resultado" y la ADR 0010): conversaciones guardadas, preguntas de
+  seguimiento (la pregunta anterior entra al prompt como `<pregunta_anterior>`, también defendida contra
+  etiquetas falsas) y respuestas «no útil» exportables con `app.jobs.export_feedback`. La web muestra
+  las respuestas como texto plano (sin HTML): el Markdown seguro es de esta etapa.
+
 ## Referencias
 
 - Parte 1: §7 (filas IA y Dependencias), §8 (tipos de tests, CI y métricas).

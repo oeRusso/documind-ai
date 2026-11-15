@@ -149,6 +149,28 @@ de eventos `queued`, `token`, `citations` y `done` (en Swagger se ve todo junto 
 Para medir (en `backend/`): `OLLAMA_URL=http://127.0.0.1:11435 uv run python -m evaluation.eval_answers`
 (unos 40 minutos) y `uv run python -m evaluation.load_chat` (5 preguntas a la vez).
 
+### Conversaciones (etapa 8)
+
+Menú **Preguntar**: ahora es un chat con historial.
+
+| Probá | Resultado esperado |
+|---|---|
+| Como `bob@acme.test` (viewer): **Nueva conversación** → «¿Cuánto dura el período de prueba?» | Respuesta con [1]; la conversación aparece a la izquierda con la pregunta como título |
+| Después: «¿Y si es por temporada?» | Responde siguiendo el tema (la pregunta anterior da contexto) |
+| Clic en una cita [1] (en el texto o en la lista de fuentes) | Panel a la derecha con el fragmento en amarillo y la página del PDF, con el texto citado resaltado |
+| Flechas del panel | Página anterior / siguiente; Esc cierra |
+| Pulgar abajo en una respuesta | Queda marcado; `podman compose exec api python -m app.jobs.export_feedback <id de Acme>` la lista |
+| Nueva conversación → **Solo algunos** → elegí un documento | Solo busca en ese documento (otra pregunta da «No encontré evidencia») |
+| Detener a mitad de una respuesta y recargar | La respuesta parcial queda guardada con «Detuviste la respuesta» |
+| Entrá como `ana@acme.test` | No ve las conversaciones de bob (son de cada persona) |
+| Como bob, en **Documentos** | No aparece la zona para subir ni el botón de borrar |
+
+Por API: `POST /api/v1/conversations` → `POST /api/v1/conversations/{id}/messages` con
+`{"question": "..."}` (SSE, igual que `/chat` más un primer evento `message`) →
+`GET /api/v1/conversations/{id}` (mensajes con sus citas).
+
+Para medir los seguimientos (en `backend/`): `uv run python -m evaluation.eval_followups`.
+
 ## 6. Empezar de cero
 
 ```bash

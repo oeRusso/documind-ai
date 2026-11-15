@@ -1,6 +1,6 @@
 # Arquitectura del código
 
-Mapa del código **tal como está hoy** (fin de la etapa 6): qué hace cada carpeta y cada archivo, y cómo
+Mapa del código **tal como está hoy** (fin de la etapa 8): qué hace cada carpeta y cada archivo, y cómo
 se comunican las piezas. El *diseño* completo del producto está en `plan-parte-1-arquitectura.md`;
 este documento describe lo que ya existe. Se actualiza al cerrar cada etapa.
 
@@ -339,13 +339,14 @@ sequenceDiagram
 | `domain/search.py` | `SearchMode` (híbrida, significado, palabras), `ChunkMatch` (con su `position` en el documento), `SearchHit` y el puerto `ChunkSearch`. |
 | `domain/context.py` | `build_context`: elige los mejores fragmentos dentro del presupuesto de tokens (`RAG_CONTEXT_TOKENS`), une los contiguos sin repetir el solapamiento y los numera `[1]`, `[2]`… Pieza clave. |
 | `domain/citations.py` | `MarkerFilter`: revisa cada `[n]` de la respuesta **mientras llega**; deja los que apuntan a un fragmento entregado y borra los inventados (y los informa). Pieza clave. |
+| `domain/followup.py` | **Preguntas de seguimiento** (etapa 8): `followup_search_text` suma la pregunta anterior al texto de búsqueda si la nueva tiene hasta 6 palabras (medido con `eval_followups`, ADR 0010). Pieza clave. |
 | `domain/answer.py` | Lo que sale de una respuesta, en orden: `Queued`, `Token`, `CitationsReady` (con `Citation`: documento, páginas y extracto) y `Done`. |
 | `application/search_documents.py` | `SearchDocuments`: corre la búsqueda por significado y/o por palabras (30 candidatos cada una) y las fusiona con RRF. Sin modelo de embeddings, cae a palabras y lo avisa. Devuelve también la similitud del fragmento más cercano (para el umbral). |
 | `application/prompt.py` | El prompt: reglas fijas en el mensaje de sistema (con un ejemplo de cita) y los fragmentos como **datos** entre etiquetas `<fragmento>`, con las etiquetas falsas desactivadas. |
 | `application/answer_question.py` | `AnswerQuestion`: `prepare` (permiso, búsqueda, umbral `RAG_MIN_SCORE`, contexto) y `stream` (turno en la cola, generación, filtro de citas, registro en logs). Bajo el umbral responde «no encontré evidencia» **sin llamar al modelo**. |
 | `infrastructure/sql_search.py` | `SqlChunkSearch`: por significado con pgvector (índice HNSW del modelo, búsqueda iterativa) y por palabras con `documind_es` (español, sin tildes, palabras unidas con OR). El filtro por organización y documentos va **dentro** de la consulta. Única lectura entre módulos (solo lectura, ADR 0008). |
 | `presentation/router.py` | `GET /api/v1/search?q=&mode=&limit=&document_id=`. |
-| `presentation/chat_router.py` | `POST /api/v1/chat` por Server-Sent Events: `queued`, `token`, `citations`, `done` (o `error`). Los errores normales (401, 403, 422, 429, 503) salen antes de abrir el stream. Límite por usuario (`CHAT_LIMIT_PER_USER_PER_MINUTE`). |
+| `presentation/chat_router.py` | `POST /api/v1/chat` por Server-Sent Events (sin guardar nada; el chat con historial es `conversations`): `queued`, `token`, `citations`, `done` (o `error`). Los errores normales (401, 403, 422, 429, 503) salen antes de abrir el stream. Límite por usuario (`CHAT_LIMIT_PER_USER_PER_MINUTE`). |
 
 Una pregunta, de punta a punta:
 
@@ -374,6 +375,21 @@ sequenceDiagram
     end
 ```
 
+#### `modules/conversations/`: historial del chat (etapa 8, ADR 0010)
+
+| Archivo | Qué hace |
+|---|---|
+| `domain/entities.py` | `Conversation` (de una persona en una organización, con su alcance: todos los documentos o algunos), `Message` (pregunta o respuesta, con estado `streaming` → `complete` / `stopped` / `failed` y la valoración), `SavedCitation`, `Turn` y el título a partir de la primera pregunta. |
+| `domain/repository.py` | Interfaces `ConversationRepository` (siempre filtra por organización **y** persona) y `AnswerRecorder` (completa una respuesta en su propia transacción). |
+| `domain/errors.py` | `ConversationNotFoundError` (404, también para la de otro miembro), `FeedbackOnlyForAnswersError` (422)... |
+| `application/manage_conversations.py` | `StartConversation`, `ListConversations`, `GetConversation`, `UpdateConversation` (título y alcance), `DeleteConversation`, `RateAnswer` y `ListNotHelpfulAnswers`. |
+| `application/send_message.py` | `SendMessage`: `prepare` (conversación tuya → turno anterior → `AnswerQuestion.prepare` con alcance y pregunta anterior → guarda la pregunta y la respuesta vacía) y `stream` (los eventos de `knowledge` más un primer `MessageStarted`; al terminar, aunque se corte, guarda lo escrito). |
+| `infrastructure/models.py`, `sql_repository.py` | Tablas `conversations`, `messages`, `citations`. `SqlAnswerRecorder` abre una transacción corta con RLS y se protege de la cancelación (como `ignore_user_abort` de PHP, solo para ese bloque). |
+| `presentation/router.py` | `POST/GET /conversations`, `GET/PATCH/DELETE /conversations/{id}`, `POST /conversations/{id}/messages` (SSE) y `PUT .../messages/{mid}/feedback`. Commitea dentro de `prepare_message`, antes de que arranque el stream. |
+
+Piezas que sumó esta etapa: `jobs/export_feedback.py` (respuestas «no útil» de una organización en JSON,
+para revisarlas y sumarlas al dataset).
+
 #### `app/ai/`: IA local, detrás de interfaces
 
 | Archivo | Qué hace |
@@ -396,13 +412,13 @@ sequenceDiagram
 | `dataset.py` | Carga las preguntas y calcula o verifica la página buscando la frase con el lector de la app. |
 | `eval_retrieval.py` | Carga el corpus en una organización temporal de la base de tests, calcula embeddings y mide recall@5, recall@10, MRR y latencia por modo y modelo. Escribe `results/retrieval.json` y el informe en `docs/evaluation/`. |
 | `eval_answers.py` | Calibra el umbral `RAG_MIN_SCORE` con las 79 preguntas y compara modelos de lenguaje respondiendo una muestra con `AnswerQuestion`: si responde, si cita la página correcta, si dice «no encontré», velocidad y RAM. Escribe `results/answers.json` (con cada respuesta) y el informe. Usa el Ollama del contenedor (`127.0.0.1:11435`). |
+| `followups.json`, `eval_followups.py` | 22 preguntas de seguimiento («¿y cuándo es válida?») y 30 cambios de tema: mide qué texto de búsqueda conviene (etapa 8). |
 | `load_chat.py` | Manda varias preguntas a la vez al entorno levantado y muestra la cola, los tiempos y la RAM. |
 
 #### Módulos vacíos (se llenan más adelante)
 
 | Carpeta | Etapa | Para qué |
 |---|---|---|
-| `modules/conversations/` | 8 | Conversaciones, mensajes y citas guardadas (usa `knowledge` por su capa `application`). |
 | `modules/analytics/` | 10 | Métricas de uso. |
 | `ai/` (resto) | 9 | Reranking, solo si mejora la evaluación. |
 
@@ -423,6 +439,7 @@ sequenceDiagram
 | `migrations/versions/0003_row_level_security.py` | Activa RLS (`ENABLE` + `FORCE`) y crea las políticas y las funciones `current_org_id()` / `current_user_id()`. Da permisos al rol `app`. |
 | `migrations/versions/0006_search.py` | `unaccent` + configuración `documind_es`, `chunk_embeddings` (RLS, un índice HNSW por modelo) y el estado `embedding`. |
 | `migrations/versions/0005_processing.py` | `processing_jobs` y `document_chunks` (con `tsv` en español e índice GIN), con RLS. |
+| `migrations/versions/0007_conversations.py` | `conversations`, `messages` y `citations`, con RLS. |
 | `migrations/versions/0004_documents.py` | `documents`, `document_versions` (con RLS) y `document_purge_queue` (sin RLS a propósito, ADR 0006). |
 
 ```mermaid
@@ -438,6 +455,10 @@ erDiagram
     document_versions ||--o{ document_chunks : "se divide en"
     document_chunks ||--o{ chunk_embeddings : "un vector por modelo"
     users ||--o{ audit_logs : "actor de"
+    users ||--o{ conversations : "pregunta en"
+    conversations ||--o{ messages : "pregunta y respuesta"
+    messages ||--o{ citations : "cita"
+    documents |o--o{ citations : "citado en"
 ```
 
 **Quién ve qué (RLS):** con `app.current_org = X`, `memberships`, `invitations` y `audit_logs` solo
@@ -504,7 +525,7 @@ flowchart TB
 | `(app)/documents/page.tsx` | `/documents` | **Página de inicio**: zona para arrastrar archivos (con barra de progreso) y lista paginada. |
 | `(app)/documents/[id]/page.tsx` | `/documents/<id>` | Detalle: versiones, descargar, subir versión nueva, borrar. |
 | `(app)/search/page.tsx` | `/search` | Búsqueda: modo (híbrida, por significado, por palabras), resultados con documento, sección, páginas y términos resaltados. |
-| `(app)/ask/page.tsx` | `/ask` | Preguntar: la respuesta aparece mientras se escribe, con la posición en la cola, las citas como marcas que llevan a la lista de fuentes (documento, páginas, extracto) y un botón para detener. |
+| `(app)/ask/page.tsx` | `/ask?c=<id>` | Preguntar: historial de conversaciones a la izquierda y el chat (`features/chat/`). |
 | `(app)/members/page.tsx` | `/members` | Lista de miembros, cambio de rol y quitar. |
 | `(app)/invitations/page.tsx` | `/invitations` | Invitar, ver y revocar invitaciones. |
 | `(app)/organizations/new/page.tsx` | `/organizations/new` | Crear otra organización. |
@@ -538,12 +559,21 @@ flowchart TB
 | `roles.ts` | Qué botones mostrar según el rol. **La regla real la aplica la API** (`permissions.py`). |
 | `documents.ts` | `uploadDocument` (XMLHttpRequest para tener progreso, renueva la sesión ante un 401), `downloadDocument` (pide el archivo con la sesión y se lo da al navegador), formatos y permisos de documentos. |
 | `search.ts` | Resalta en el resultado las palabras de la búsqueda (sin tildes ni mayúsculas). |
-| `chat.ts` | `askQuestion`: manda la pregunta y lee el stream de Server-Sent Events a mano (`EventSource` no permite POST ni el token), con `SseParser` (eventos cortados en cualquier lugar, comentarios de keep-alive). `splitCitations` separa las marcas `[n]` del texto. |
+| `highlight.ts` | Qué partes de la página resaltar: las que están en el extracto citado (sin tildes ni mayúsculas, salteando pedazos muy cortos). |
+| `chat.ts` | `askQuestion` (con `conversationId`, pregunta dentro de la conversación): manda la pregunta y lee el stream de Server-Sent Events a mano (`EventSource` no permite POST ni el token), con `SseParser` (eventos cortados en cualquier lugar, comentarios de keep-alive). `splitCitations` separa las marcas `[n]` del texto. |
 | `slug.ts`, `invitation-link.ts` | Generar el slug desde el nombre; leer el `#organization=..&token=..` del link. |
 
 #### `src/features/`
 
-Vacía: `chat/` (etapa 8), `analytics/` (etapa 10). Los documentos viven en `app/(app)/documents/`,
+| Archivo | Qué hace |
+|---|---|
+| `chat/chat.tsx` | El chat: mensajes guardados, la respuesta en vivo (eventos SSE), Detener, alcance de la conversación nueva, borrar, fuentes y botones útil / no útil. |
+| `chat/conversation-list.tsx` | Historial de conversaciones (paginado). |
+| `chat/scope-picker.tsx` | Todos los documentos o una selección; `scopeLabel` para el encabezado. |
+| `chat/source-panel.tsx` | Panel de la cita: documento, páginas, fragmento resaltado y, si es PDF, la página. |
+| `chat/pdf-page.tsx` | Una página del PDF con pdf.js (se carga solo al abrir una cita; el worker lo sirve la propia app) y el texto citado resaltado en la capa de texto. |
+
+`analytics/` queda vacía hasta la etapa 10. Los documentos viven en `app/(app)/documents/`,
 `components/documents.tsx` y `lib/documents.ts`.
 
 #### Configuración
