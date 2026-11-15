@@ -1,5 +1,6 @@
 /**
- * Ask a question and read the answer as it is written (POST /api/v1/chat, Server-Sent Events).
+ * Ask a question and read the answer as it is written (Server-Sent Events): inside a
+ * conversation (POST /api/v1/conversations/{id}/messages, stage 8) or alone (POST /api/v1/chat).
  *
  * The browser's EventSource only does GET and cannot send the Authorization header, so the
  * stream is read by hand: fetch, then the response body piece by piece. Each SSE event is a
@@ -13,7 +14,7 @@ import { session } from "@/lib/api/session";
 
 export type Citation = {
   marker: number;
-  document_id: string;
+  document_id: string | null; // null: the document was deleted later (the history keeps the rest)
   document_title: string;
   page_start: number | null;
   page_end: number | null;
@@ -21,13 +22,14 @@ export type Citation = {
 };
 
 export type ChatEvent =
+  | { event: "message"; data: { conversation_id: string; question_id: string; answer_id: string } }
   | { event: "queued"; data: { position: number } }
   | { event: "token"; data: { text: string } }
   | { event: "citations"; data: { citations: Citation[] } }
   | { event: "done"; data: { no_evidence: boolean } }
   | { event: "error"; data: { code: string; message: string; request_id?: string } };
 
-const KNOWN = new Set(["queued", "token", "citations", "done", "error"]);
+const KNOWN = new Set(["message", "queued", "token", "citations", "done", "error"]);
 
 /** Turns pieces of an SSE stream (cut anywhere) into whole events. */
 export class SseParser {
@@ -49,7 +51,7 @@ export class SseParser {
 }
 
 function parseBlock(block: string): ChatEvent | null {
-  let name = "message";
+  let name = "";
   const data: string[] = [];
   for (const line of block.split("\n")) {
     if (line === "" || line.startsWith(":")) continue; // keep-alive comment
@@ -71,16 +73,21 @@ const authFetch = createAuthFetch(session);
 
 /**
  * Sends the question and calls `onEvent` for each event, in order. Resolves when the stream
- * ends. Throws ApiError if the API refuses the question (422, 429, 503...) before answering.
+ * ends. Throws ApiError if the API refuses the question (404, 422, 429, 503...) before answering.
+ * With `conversationId` the question and the answer are saved in that conversation.
  */
 export async function askQuestion(
   organizationId: string,
   question: string,
   onEvent: (event: ChatEvent) => void,
   signal?: AbortSignal,
+  conversationId?: string,
 ): Promise<void> {
+  const path = conversationId
+    ? `/api/v1/conversations/${encodeURIComponent(conversationId)}/messages`
+    : "/api/v1/chat";
   const response = await authFetch(
-    new Request(`${window.location.origin}/api/v1/chat`, {
+    new Request(`${window.location.origin}${path}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

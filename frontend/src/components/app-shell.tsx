@@ -1,9 +1,9 @@
 "use client";
 
 import {
+  BarChart3,
   Building2,
   FileText,
-  History,
   LogOut,
   Mail,
   MessageSquare,
@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 type NavItem = { href: string; label: string; icon: LucideIcon; show: boolean };
 
 /** What the next stages add, shown greyed out so the menu tells where the product is going. */
-const COMING_SOON = [{ label: "Conversaciones", icon: History, stage: "Etapa 8" }];
+const COMING_SOON = [{ label: "Analíticas", icon: BarChart3, stage: "Etapa 10" }];
 
 function OrganizationSwitcher({ id }: { id: string }) {
   const { organization, organizations, select } = useActiveOrganization();

@@ -140,13 +140,12 @@ export async function uploadDocument({
   throw apiError(result.status, result.body);
 }
 
-/** Download through the API (with the session) and hand the file to the browser. */
-export async function downloadDocument(
+/** The file's bytes, through the API (with the session). Also used by the PDF viewer. */
+export async function fetchDocumentFile(
   organizationId: string,
   documentId: string,
-  filename: string,
   version?: number,
-): Promise<void> {
+): Promise<Blob> {
   const { data, error, response } = await api.GET("/api/v1/documents/{document_id}/download", {
     params: {
       ...inOrganization(organizationId),
@@ -158,6 +157,17 @@ export async function downloadDocument(
   if (error !== undefined || !response.ok || !(data instanceof Blob)) {
     throw apiError(response.status, error);
   }
+  return data;
+}
+
+/** Download through the API (with the session) and hand the file to the browser. */
+export async function downloadDocument(
+  organizationId: string,
+  documentId: string,
+  filename: string,
+  version?: number,
+): Promise<void> {
+  const data = await fetchDocumentFile(organizationId, documentId, version);
   const url = URL.createObjectURL(data);
   try {
     const link = document.createElement("a");
