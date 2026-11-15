@@ -5,12 +5,22 @@
 
 name: documind
 
+# Stage 11: every service keeps at most 3 log files of 10 MB (no disk filled by logs).
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 x-backend: &backend
   build:
     context: ./backend
     dockerfile: ../infrastructure/containers/backend.Containerfile
     target: runtime
-  image: localhost/documind-backend:dev
+  # IMAGE_TAG: the git commit in production (scripts/deploy.sh), so the previous images stay
+  # around and a rollback is just starting them again (docs/operations/runbook.md).
+  image: localhost/documind-backend:${IMAGE_TAG:-dev}
+  logging: *logging
   environment:
     APP_ENV: development
     LOG_FORMAT: ${LOG_FORMAT:-json}
@@ -50,6 +60,8 @@ x-backend: &backend
     - /tmp
   security_opt:
     - no-new-privileges:true
+  mem_limit: 768m
+  cpus: 1.5
 
 services:
   db:
@@ -61,7 +73,10 @@ services:
       APP_DB_PASSWORD: ${APP_DB_PASSWORD:?set it in .env}
       MIGRATOR_DB_PASSWORD: ${MIGRATOR_DB_PASSWORD:?set it in .env}
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
+    logging: *logging
+    mem_limit: 1g
+    shm_size: 256m
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./infrastructure/scripts/db-init:/docker-entrypoint-initdb.d:ro,Z
@@ -84,7 +99,13 @@ services:
   api:
     <<: *backend
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -102,7 +123,7 @@ services:
       context: ./backend
       dockerfile: ../infrastructure/containers/backend.Containerfile
       target: worker
-    image: localhost/documind-worker:dev
+    image: localhost/documind-worker:${IMAGE_TAG:-dev}
     command:
       - celery
       - -A
@@ -118,6 +139,13 @@ services:
         condition: service_completed_successfully
       valkey:
         condition: service_healthy
+    # Healthy while the process that runs the tasks answers on its metrics port.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9101/metrics', timeout=3)"]
+      interval: 60s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
     mem_limit: 1g
     cpus: 1.0
     restart: unless-stopped
@@ -129,7 +157,14 @@ services:
     # Only for the evaluation scripts run from the PC (OLLAMA_URL=http://127.0.0.1:11435).
     # 11435 so it does not clash with a system Ollama on 11434. Not in production.
     ports:
-      - "127.0.0.1:11435:11434"
+      - "127.0.0.1:${OLLAMA_PORT:-11435}:11434"
+    logging: *logging
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 60s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
     volumes:
       - ollama:/root/.ollama
     environment:
@@ -160,6 +195,7 @@ services:
       timeout: 3s
       retries: 20
     mem_limit: 128m
+    logging: *logging
     restart: unless-stopped
 
   # Web app. Open http://localhost:3000 (use "localhost": it is the APP_ORIGIN the API trusts).
@@ -169,9 +205,18 @@ services:
       dockerfile: ../infrastructure/containers/frontend.Containerfile
       args:
         API_INTERNAL_URL: http://api:8000
-    image: localhost/documind-web:dev
+    image: localhost/documind-web:${IMAGE_TAG:-dev}
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
+    logging: *logging
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/login').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    mem_limit: 384m
+    cpus: 1.0
     depends_on:
       api:
         condition: service_started
@@ -186,8 +231,10 @@ services:
   mailpit:
     image: docker.io/axllent/mailpit:v1.32.0
     ports:
-      - "127.0.0.1:8025:8025"  # web UI
-      - "127.0.0.1:1025:1025"  # SMTP, for trying things from the host
+      - "127.0.0.1:${MAILPIT_PORT:-8025}:8025"  # web UI
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025"  # SMTP, for trying things from the host
+    logging: *logging
+    mem_limit: 64m
     restart: unless-stopped
 
   # --- Monitoring (stage 10). Only with --profile monitoring. Nothing is published but Grafana,
@@ -204,6 +251,7 @@ services:
       - ./infrastructure/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro,Z
       - ./infrastructure/monitoring/prometheus/rules.yml:/etc/prometheus/rules.yml:ro,Z
       - prometheus:/prometheus
+    logging: *logging
     mem_limit: 256m
     restart: unless-stopped
 
@@ -211,7 +259,8 @@ services:
     image: docker.io/grafana/grafana-oss:12.1.0
     profiles: [monitoring]
     ports:
-      - "127.0.0.1:3001:3000"
+      - "127.0.0.1:${GRAFANA_PORT:-3001}:3000"
+    logging: *logging
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set it in .env}
@@ -264,6 +313,39 @@ services:
     mem_limit: 64m
     restart: unless-stopped
 
+  # --- Backups (stage 11). Run by scripts/backup.sh, never left running.
+  # Encrypted with RESTIC_PASSWORD; the repository lives in BACKUP_DIR and the PC pulls a copy
+  # (scripts/pull-backups.sh): off the server without any cloud.
+  backup:
+    image: docker.io/restic/restic:0.18.0
+    profiles: [backup]
+    environment:
+      RESTIC_REPOSITORY: /repo
+      RESTIC_PASSWORD: ${RESTIC_PASSWORD:?set it in .env}
+      RESTIC_CACHE_DIR: /tmp/restic-cache
+    volumes:
+      - ${BACKUP_DIR:-./backups/repo}:/repo:Z
+      - ${BACKUP_STAGING:-./backups/staging}:/source/postgres:Z
+      - documents:/source/documents
+    logging: *logging
+    mem_limit: 512m
+    restart: "no"
+
+  # --- Reverse proxy (stage 11; in production it is what the tunnel reaches, stage 3).
+  # Locally: podman compose --profile proxy up -d  ->  http://127.0.0.1:8080
+  caddy:
+    image: docker.io/library/caddy:2.10.0-alpine
+    profiles: [proxy]
+    ports:
+      - "127.0.0.1:${PROXY_PORT:-8080}:80"
+    volumes:
+      - ./infrastructure/proxy/Caddyfile:/etc/caddy/Caddyfile:ro,Z
+      - caddy:/data
+    depends_on: [web, api]
+    logging: *logging
+    mem_limit: 128m
+    restart: unless-stopped
+
 volumes:
   pgdata:
   documents:
@@ -271,3 +353,4 @@ volumes:
   ollama:
   prometheus:
   grafana:
+  caddy:

@@ -1,0 +1,59 @@
+# Caddy (stage 11): the only door in. In production the Cloudflare tunnel reaches it (stage 3);
+# Cloudflare ends HTTPS, so Caddy listens on plain :80 inside the private network.
+{
+	admin off
+	auto_https off
+	servers {
+		# cloudflared runs in the same compose network: trust its X-Forwarded-* headers.
+		trusted_proxies static private_ranges
+	}
+}
+
+:80 {
+	request_body {
+		max_size 30MB
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		Cross-Origin-Opener-Policy "same-origin"
+		-Server
+		-X-Powered-By
+	}
+
+	# Compress what is worth it, but never text/event-stream: gzip would hold the streamed
+	# answer until the end (stage 7 found the same problem in Next.js).
+	encode {
+		gzip
+		zstd
+		match {
+			header Content-Type text/html*
+			header Content-Type text/css*
+			header Content-Type text/plain*
+			header Content-Type application/json*
+			header Content-Type application/javascript*
+			header Content-Type image/svg+xml*
+		}
+	}
+
+	# Metrics and the API docs are only for the private network.
+	@private path /metrics /metrics/* /docs /redoc /openapi.json
+	respond @private 404
+
+	handle /api/* {
+		reverse_proxy api:8000 {
+			# Send each piece of a streamed answer as soon as it arrives.
+			flush_interval -1
+		}
+	}
+	handle /health {
+		reverse_proxy api:8000
+	}
+	handle {
+		reverse_proxy web:3000
+	}
+}
