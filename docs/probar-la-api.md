@@ -171,6 +171,22 @@ Por API: `POST /api/v1/conversations` → `POST /api/v1/conversations/{id}/messa
 
 Para medir los seguimientos (en `backend/`): `uv run python -m evaluation.eval_followups`.
 
+### Monitoreo y analíticas (etapa 10)
+
+```bash
+podman compose --profile monitoring up -d   # Prometheus, Grafana y exportadores (~400 MB)
+```
+
+| Probá | Resultado esperado |
+|---|---|
+| http://127.0.0.1:3001, usuario `admin` (contraseña: `GRAFANA_ADMIN_PASSWORD` en tu `.env`) | Dashboard **DocuMind** con respuestas, procesamiento, API y servidor | <!-- pragma: allowlist secret -->
+| Hacé una pregunta y mirá «¿Dónde se va el tiempo de una respuesta?» | Búsqueda, cola, primer token y generación por separado |
+| Grafana → Alerting → Contact points → `documind` → Test | El email llega a Mailpit (http://127.0.0.1:8025) |
+| `podman compose stop api` y esperá 2 minutos | Alerta «La API no responde» en Mailpit (después `podman compose start api`) |
+| Como `ana@acme.test`: menú **Analíticas** | Preguntas por día, sin respuesta (sin autor), valoraciones y documentos procesados |
+| Como `bob@acme.test` (viewer) | No ve el menú; la API responde 403 |
+| `curl 127.0.0.1:8000/metrics` | Métricas `documind_*` y de los pedidos HTTP |
+
 ## 6. Empezar de cero
 
 ```bash

@@ -182,6 +182,8 @@ Leerla antes de cualquier tarea de deploy (etapas 0, 3 y 11). Resumen:
   El despliegue, el túnel y lo del VPS se hacen juntos al final.
 - **Etapa 9**: terminada (2026-11-15) en `development`. Defensas contra prompt injection (ADR 0011).
   Reranking y Docling pendientes de autorizar Hugging Face. Ver "Resultado" en `docs/etapas/etapa-09.md`.
-- **Siguiente: etapa 10** (observabilidad y analíticas).
+- **Etapa 10**: terminada (2026-11-15) en `development`. Métricas, Grafana local, analíticas (ADR 0012).
+  Monitoreo: `podman compose --profile monitoring up -d`. Canal de alertas al teléfono pendiente de Esteban.
+- **Siguiente: etapa 11** (producción robusta), solo la parte local.
 Regla general: la etapa actual es la de **número más bajo** que no está marcada como terminada en
 `docs/etapas/`, **salvo las etapas 0 y 3**, que quedan para el final.

@@ -1,6 +1,6 @@
 # Arquitectura del código
 
-Mapa del código **tal como está hoy** (fin de la etapa 8): qué hace cada carpeta y cada archivo, y cómo
+Mapa del código **tal como está hoy** (fin de la etapa 10): qué hace cada carpeta y cada archivo, y cómo
 se comunican las piezas. El *diseño* completo del producto está en `plan-parte-1-arquitectura.md`;
 este documento describe lo que ya existe. Se actualiza al cerrar cada etapa.
 
@@ -159,6 +159,7 @@ Puntos clave:
 | `health.py` | `GET /health` (el proceso vive) y `GET /ready` (además, la base responde). |
 | `pagination.py` | Paginación por cursor: `?limit=&cursor=` → `{items, next_cursor}`. |
 | `mail.py` | `BackgroundMail`: encola emails para mandarlos **después** de responder (el pedido no espera al SMTP). `OutgoingMailDep`. |
+| `metrics.py` | **Métricas de Prometheus** (etapa 10): un procesador de structlog convierte eventos de log conocidos (`page_extracted`, `answer_generated`...) en métricas; `/metrics` en la API y un puerto propio en el worker. |
 | `rate_limits.py` | Los límites de intentos (login por IP y por email, registro por IP, aceptar invitación por usuario) como dependencias de FastAPI. |
 
 #### `shared/`: piezas chicas que usan todos
@@ -289,7 +290,7 @@ Piezas compartidas que sumó esta etapa:
 | `domain/text.py` | `TextBlock` (párrafo o título, con su página) y `PageText` (una página, si necesita OCR). |
 | `domain/normalization.py` | Limpieza: Unicode (ligaduras), palabras cortadas al final de línea, saltos de línea, espacios, y **encabezados y pies repetidos** en la mayoría de las páginas. |
 | `domain/headings.py` | Reconoce títulos en texto plano: Markdown (`#`), "CLÁUSULA…", "Artículo 5", "3.2 Alcance", líneas cortas en mayúsculas. |
-| `infrastructure/readers.py` | `FileTextExtractor`: abre PDF (PyMuPDF; títulos por tamaño de letra; OCR con Tesseract para páginas escaneadas), DOCX (python-docx; estilos "Título N" y tablas), TXT y Markdown. Lee de a una página. |
+| `infrastructure/readers.py` | `FileTextExtractor` (desde la etapa 9 descarta el texto invisible de los PDF: blanco, transparente o < 1 pt, `is_hidden_span`): abre PDF (PyMuPDF; títulos por tamaño de letra; OCR con Tesseract para páginas escaneadas), DOCX (python-docx; estilos "Título N" y tablas), TXT y Markdown. Lee de a una página. |
 
 #### `modules/ingestion/`: trabajos, fragmentos y el pipeline (etapa 5, ADR 0007)
 
@@ -340,6 +341,7 @@ sequenceDiagram
 | `domain/context.py` | `build_context`: elige los mejores fragmentos dentro del presupuesto de tokens (`RAG_CONTEXT_TOKENS`), une los contiguos sin repetir el solapamiento y los numera `[1]`, `[2]`… Pieza clave. |
 | `domain/citations.py` | `MarkerFilter`: revisa cada `[n]` de la respuesta **mientras llega**; deja los que apuntan a un fragmento entregado y borra los inventados (y los informa). Pieza clave. |
 | `domain/followup.py` | **Preguntas de seguimiento** (etapa 8): `followup_search_text` suma la pregunta anterior al texto de búsqueda si la nueva tiene hasta 6 palabras (medido con `eval_followups`, ADR 0010). Pieza clave. |
+| `domain/output_guard.py` | **Filtro de salida** (etapa 9): saca HTML e imágenes Markdown del texto mientras llega, antes del filtro de citas. Pieza clave. |
 | `domain/answer.py` | Lo que sale de una respuesta, en orden: `Queued`, `Token`, `CitationsReady` (con `Citation`: documento, páginas y extracto) y `Done`. |
 | `application/search_documents.py` | `SearchDocuments`: corre la búsqueda por significado y/o por palabras (30 candidatos cada una) y las fusiona con RRF. Sin modelo de embeddings, cae a palabras y lo avisa. Devuelve también la similitud del fragmento más cercano (para el umbral). |
 | `application/prompt.py` | El prompt: reglas fijas en el mensaje de sistema (con un ejemplo de cita) y los fragmentos como **datos** entre etiquetas `<fragmento>`, con las etiquetas falsas desactivadas. |
@@ -390,6 +392,17 @@ sequenceDiagram
 Piezas que sumó esta etapa: `jobs/export_feedback.py` (respuestas «no útil» de una organización en JSON,
 para revisarlas y sumarlas al dataset).
 
+#### `modules/analytics/`: números de uso para admins (etapa 10, ADR 0012)
+
+| Archivo | Qué hace |
+|---|---|
+| `domain/overview.py` | `Overview`: preguntas por día (con ceros), respondidas, sin evidencia, valoraciones, personas, documentos procesados y preguntas sin respuesta sin autor. |
+| `application/get_overview.py` | `GetOverview`: permiso `VIEW_ANALYTICS` (owner, admin) y junta lo que dan `conversations.application.usage.GetQuestionUsage` e `ingestion.application.usage.GetProcessingUsage`. |
+| `presentation/router.py` | `GET /api/v1/analytics/overview?days=7\|30\|90`. |
+
+Cada módulo da sus números con su propia consulta: `conversations/infrastructure/sql_stats.py` y
+`ingestion/infrastructure/sql_stats.py` (interfaces en `domain/stats.py` de cada uno).
+
 #### `app/ai/`: IA local, detrás de interfaces
 
 | Archivo | Qué hace |
@@ -413,13 +426,13 @@ para revisarlas y sumarlas al dataset).
 | `eval_retrieval.py` | Carga el corpus en una organización temporal de la base de tests, calcula embeddings y mide recall@5, recall@10, MRR y latencia por modo y modelo. Escribe `results/retrieval.json` y el informe en `docs/evaluation/`. |
 | `eval_answers.py` | Calibra el umbral `RAG_MIN_SCORE` con las 79 preguntas y compara modelos de lenguaje respondiendo una muestra con `AnswerQuestion`: si responde, si cita la página correcta, si dice «no encontré», velocidad y RAM. Escribe `results/answers.json` (con cada respuesta) y el informe. Usa el Ollama del contenedor (`127.0.0.1:11435`). |
 | `followups.json`, `eval_followups.py` | 22 preguntas de seguimiento («¿y cuándo es válida?») y 30 cambios de tema: mide qué texto de búsqueda conviene (etapa 8). |
+| `injection.py`, `eval_injection.py` | 8 documentos con prompt injection y la evaluación con el modelo real por HTTP (local o desplegado) (etapa 9). |
 | `load_chat.py` | Manda varias preguntas a la vez al entorno levantado y muestra la cola, los tiempos y la RAM. |
 
 #### Módulos vacíos (se llenan más adelante)
 
 | Carpeta | Etapa | Para qué |
 |---|---|---|
-| `modules/analytics/` | 10 | Métricas de uso. |
 | `ai/` (resto) | 9 | Reranking, solo si mejora la evaluación. |
 
 #### `dev/`: solo para desarrollo
@@ -526,6 +539,7 @@ flowchart TB
 | `(app)/documents/[id]/page.tsx` | `/documents/<id>` | Detalle: versiones, descargar, subir versión nueva, borrar. |
 | `(app)/search/page.tsx` | `/search` | Búsqueda: modo (híbrida, por significado, por palabras), resultados con documento, sección, páginas y términos resaltados. |
 | `(app)/ask/page.tsx` | `/ask?c=<id>` | Preguntar: historial de conversaciones a la izquierda y el chat (`features/chat/`). |
+| `(app)/analytics/page.tsx` | `/analytics` | Analíticas (owner y admin): totales, preguntas por día, sin respuesta y documentos. |
 | `(app)/members/page.tsx` | `/members` | Lista de miembros, cambio de rol y quitar. |
 | `(app)/invitations/page.tsx` | `/invitations` | Invitar, ver y revocar invitaciones. |
 | `(app)/organizations/new/page.tsx` | `/organizations/new` | Crear otra organización. |
@@ -559,6 +573,7 @@ flowchart TB
 | `roles.ts` | Qué botones mostrar según el rol. **La regla real la aplica la API** (`permissions.py`). |
 | `documents.ts` | `uploadDocument` (XMLHttpRequest para tener progreso, renueva la sesión ante un 401), `downloadDocument` (pide el archivo con la sesión y se lo da al navegador), formatos y permisos de documentos. |
 | `search.ts` | Resalta en el resultado las palabras de la búsqueda (sin tildes ni mayúsculas). |
+| `markdown.ts` | Parser de Markdown seguro (etapa 9): devuelve bloques y piezas, nunca HTML. |
 | `highlight.ts` | Qué partes de la página resaltar: las que están en el extracto citado (sin tildes ni mayúsculas, salteando pedazos muy cortos). |
 | `chat.ts` | `askQuestion` (con `conversationId`, pregunta dentro de la conversación): manda la pregunta y lee el stream de Server-Sent Events a mano (`EventSource` no permite POST ni el token), con `SseParser` (eventos cortados en cualquier lugar, comentarios de keep-alive). `splitCitations` separa las marcas `[n]` del texto. |
 | `slug.ts`, `invitation-link.ts` | Generar el slug desde el nombre; leer el `#organization=..&token=..` del link. |
@@ -573,7 +588,8 @@ flowchart TB
 | `chat/source-panel.tsx` | Panel de la cita: documento, páginas, fragmento resaltado y, si es PDF, la página. |
 | `chat/pdf-page.tsx` | Una página del PDF con pdf.js (se carga solo al abrir una cita; el worker lo sirve la propia app) y el texto citado resaltado en la capa de texto. |
 
-`analytics/` queda vacía hasta la etapa 10. Los documentos viven en `app/(app)/documents/`,
+| `chat/answer-markdown.tsx` | Dibuja el Markdown seguro de una respuesta (etapa 9): nunca HTML, links como texto, imágenes omitidas. |
+| `analytics/questions-chart.tsx` | Gráfico de barras de preguntas por día (SVG propio, tooltip y tabla accesible). | Los documentos viven en `app/(app)/documents/`,
 `components/documents.tsx` y `lib/documents.ts`.
 
 #### Configuración
@@ -639,7 +655,7 @@ toda la familia (las dos copias dejan de servir).
 | `scripts/db-init/10-roles.sh` | Se ejecuta al crear la base por primera vez: crea los roles `migrator` y `app`, la base de tests y la extensión `vector`. |
 | `proxy/` | Vacía: Caddy (etapa 3). |
 | `tunnel/` | Vacía: Cloudflare Tunnel (etapa 3). |
-| `monitoring/` | Vacía: Prometheus y Grafana (etapa 10). |
+| `monitoring/` | Prometheus (`prometheus.yml`, `rules.yml`) y Grafana (datasource, dashboard «DocuMind» y alertas aprovisionadas) (etapa 10). |
 
 ---
 

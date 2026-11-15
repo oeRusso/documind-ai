@@ -9,7 +9,7 @@ software libre y planes gratuitos.
 
 ## Estado actual
 
-**Etapas 1, 2, 4, 5, 6, 7, 8 y 9 terminadas** (todo el trabajo nuevo queda en `development` hasta el despliegue):
+**Etapas 1 y 2, y de la 4 a la 10, terminadas** (todo el trabajo nuevo queda en `development` hasta el despliegue):
 
 - Cuentas, organizaciones, roles e invitaciones, con aislamiento entre organizaciones en dos capas
   (chequeo en el backend + Row Level Security en PostgreSQL) y sesiones con refresh token rotativo.
@@ -31,6 +31,10 @@ software libre y planes gratuitos.
   oculto de los PDF descartado, filtro de salida y Markdown seguro en la web
   ([informe](docs/evaluation/injection-2026-11-15.md), [ADR 0011](docs/decisions/0011-seguridad-de-ia.md)).
   Bandit, pip-audit y Trivy en CI. Todas las evaluaciones: [docs/evaluation/](docs/evaluation/README.md).
+
+- Observabilidad: métricas de Prometheus (búsqueda, cola, primer token, generación, citas válidas,
+  procesamiento), dashboard y alertas en Grafana (`podman compose --profile monitoring up -d`), y una
+  página de **Analíticas** para admins ([ADR 0012](docs/decisions/0012-observabilidad-y-analiticas.md)).
 
 Las etapas 0 y 3 (VPS y despliegue) quedan para el final.
 

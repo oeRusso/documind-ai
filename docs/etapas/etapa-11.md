@@ -33,6 +33,9 @@ Que el sistema sobreviva a un error tuyo, a un disco lleno o a la pérdida del V
 - **Regla de servicios externos** (`CLAUDE.md`): R2 y las reglas de rate limiting de Cloudflare requieren permiso
   de Esteban. Hay que definir otro destino de backups fuera del VPS o pedir autorización.
 
+- **Lo que deja la etapa 10** (ADR 0012): Prometheus y Grafana en el perfil `monitoring`, con alertas
+  por email. Los límites de memoria de los servicios de monitoreo ya están; faltan los del resto.
+
 ## Referencias
 
 - Parte 1: §7 (fila Continuidad).
