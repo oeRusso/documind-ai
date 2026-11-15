@@ -3,6 +3,7 @@
 from uuid import uuid4
 
 from app.modules.knowledge.application.prompt import (
+    DATA_REMINDER,
     DEFUSED_BRACKET,
     NO_EVIDENCE_ANSWER,
     SYSTEM_PROMPT,
@@ -52,6 +53,7 @@ def test_each_chunk_is_numbered_and_delimited_and_the_question_goes_last() -> No
         "Otro texto.\n"
         "</fragmento>\n"
         "</fragmentos>\n\n"
+        f"{DATA_REMINDER}\n\n"  # repeated after the data, right before the question
         "<pregunta>\n¿Cuántos días de preaviso?\n</pregunta>"
     )
 

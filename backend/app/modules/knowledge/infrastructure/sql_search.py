@@ -72,7 +72,7 @@ class SqlChunkSearch:
                   AND d.organization_id = :org AND d.deleted_at IS NULL {documents}
                 ORDER BY {distance}
                 LIMIT :limit
-            """),  # noqa: S608 (only fixed SQL and ints are interpolated)
+            """),  # noqa: S608  # nosec B608 (only fixed SQL and ints are interpolated)
             {
                 "org": organization_id,
                 "model": model,
@@ -110,7 +110,7 @@ class SqlChunkSearch:
                   AND d.deleted_at IS NULL AND c.tsv @@ q.query {documents}
                 ORDER BY score DESC, c.position
                 LIMIT :limit
-            """),  # noqa: S608 (only fixed SQL is interpolated)
+            """),  # noqa: S608  # nosec B608 (only fixed SQL is interpolated)
             {
                 "org": organization_id,
                 "query": query,

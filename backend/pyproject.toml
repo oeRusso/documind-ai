@@ -26,8 +26,10 @@ dependencies = [
 [dependency-groups]
 dev = [
     "asyncpg-stubs>=0.32.0",
+    "bandit>=1.9.4",
     "httpx>=0.28.1",
     "mypy>=2.4.1",
+    "pip-audit>=2.10.1",
     "pre-commit>=4.7.0",
     "pytest>=9.2.0",
     "pytest-asyncio>=1.4.1.post1",

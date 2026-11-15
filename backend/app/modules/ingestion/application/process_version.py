@@ -165,6 +165,9 @@ class ProcessDocumentVersion:
                         chars=page.char_count,
                         needs_ocr=page.needs_ocr,
                     )
+                    if page.hidden_chars:
+                        # Possible prompt injection: text a person cannot see (stage 9).
+                        log.warning("hidden_text_dropped", page=index + 1, chars=page.hidden_chars)
                     await self._heartbeat(job, JobStatus.EXTRACTING, total, index + 1, 0)
 
                 scanned = [i for i, page in enumerate(pages) if page.needs_ocr]

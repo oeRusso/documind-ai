@@ -29,6 +29,9 @@ class PageText:
     # True when the page has (almost) no text but has images: probably scanned, needs OCR.
     needs_ocr: bool = False
     ocr: bool = False  # this text came from OCR
+    # Characters left out because a reader could not see them (stage 9, prompt injection):
+    # white, transparent or microscopic text in a PDF.
+    hidden_chars: int = 0
 
     @property
     def char_count(self) -> int:

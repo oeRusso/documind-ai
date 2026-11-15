@@ -36,6 +36,7 @@ from app.modules.knowledge.domain.answer import (
 from app.modules.knowledge.domain.citations import MarkerFilter
 from app.modules.knowledge.domain.context import ContextSource, build_context
 from app.modules.knowledge.domain.followup import followup_search_text
+from app.modules.knowledge.domain.output_guard import OutputGuard
 from app.modules.knowledge.domain.search import SearchMode
 from app.modules.organizations.domain.membership import Membership
 from app.modules.organizations.domain.permissions import Permission, ensure_permission
@@ -176,16 +177,18 @@ class AnswerQuestion:
                     yield Queued(position)
             started = time.perf_counter()
 
+            # Two filters in a row: HTML / images out (stage 9), then citations checked.
+            guard = OutputGuard()
             markers = MarkerFilter({source.marker for source in prepared.sources})
             answer: list[str] = []
             async for piece in self._llm.stream(
                 prepared.messages, max_tokens=self._options.max_answer_tokens
             ):
-                shown = markers.feed(piece)
+                shown = markers.feed(guard.feed(piece))
                 if shown:
                     answer.append(shown)
                     yield Token(shown)
-            rest = markers.finish()
+            rest = markers.feed(guard.finish()) + markers.finish()
             if rest:
                 answer.append(rest)
                 yield Token(rest)
@@ -210,6 +213,9 @@ class AnswerQuestion:
         )
         if markers.invalid:
             log.warning("invalid_citations_dropped", markers=markers.invalid)
+        if guard.removed:
+            # Possible prompt injection: the model tried to output HTML or an image (stage 9).
+            log.warning("unsafe_output_removed", removed=[r[:120] for r in guard.removed])
         log.info(
             "answer_generated",
             called_llm=True,

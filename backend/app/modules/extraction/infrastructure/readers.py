@@ -3,6 +3,8 @@
 - PDF: PyMuPDF, block by block, with headings guessed from the font size (bigger than the body
   text) or from the wording ("CLÁUSULA PRIMERA"). A page with almost no text but with images
   is probably a scan: `needs_ocr`, and `ocr_page` reads it with Tesseract (Spanish + English).
+  Text a person cannot see is left out (stage 9): white, transparent / invisible, or smaller
+  than 1 point. It is the classic way to hide instructions for an AI inside a document.
 - DOCX: python-docx, paragraphs and tables in order; "Heading N" / "Título N" styles are
   headings. Word files have no fixed pages: everything is one page with number None.
 - TXT and Markdown: blank lines separate paragraphs; "#" lines (Markdown) or legal-style lines
@@ -35,6 +37,19 @@ OCR_LANGUAGES = "spa+eng"
 OCR_DPI = 300
 _HEADING_SIZE_RATIO = 1.18
 _HEADING_STYLE = re.compile(r"(heading|t[ií]tulo)\s*(\d)?", re.IGNORECASE)
+_MIN_VISIBLE_SIZE = 1.0  # points
+_NEAR_WHITE = 0xF0  # every RGB channel at least this: white on (assumed) white paper
+
+
+def is_hidden_span(span: dict[str, Any]) -> bool:
+    """Would a person reading the page miss this text? (White text on a dark box would be
+    dropped too: a rare layout, and losing it is safer than feeding hidden orders to the model.)"""
+    if int(span.get("alpha", 255)) == 0:  # transparent, or render mode "invisible"
+        return True
+    if float(span.get("size", 0)) < _MIN_VISIBLE_SIZE:
+        return True
+    color = int(span.get("color", 0))
+    return all(((color >> shift) & 0xFF) >= _NEAR_WHITE for shift in (16, 8, 0))
 
 
 class PdfReader:
@@ -50,17 +65,20 @@ class PdfReader:
 
     def read_page(self, index: int) -> PageText:
         page = self._document[index]
-        blocks = _pdf_blocks(page.get_text("dict", sort=True), index + 1)
+        blocks, hidden = _pdf_blocks(page.get_text("dict", sort=True), index + 1, drop_hidden=True)
         visible = sum(len(block.text.strip()) for block in blocks)
         scanned = visible < MIN_TEXT_CHARS and bool(page.get_images(full=False))
-        return PageText(number=index + 1, blocks=blocks, needs_ocr=scanned)
+        return PageText(number=index + 1, blocks=blocks, needs_ocr=scanned, hidden_chars=hidden)
 
     def ocr_page(self, index: int) -> PageText:
         page = self._document[index]
         textpage = page.get_textpage_ocr(
             language=OCR_LANGUAGES, dpi=OCR_DPI, full=True, tessdata=_tessdata()
         )
-        blocks = _pdf_blocks(page.get_text("dict", sort=True, textpage=textpage), index + 1)
+        # The OCR layer is invisible text by design: it must not be filtered out.
+        blocks, _ = _pdf_blocks(
+            page.get_text("dict", sort=True, textpage=textpage), index + 1, drop_hidden=False
+        )
         return PageText(number=index + 1, blocks=blocks, ocr=True)
 
 
@@ -68,9 +86,13 @@ def _tessdata() -> str | None:
     return os.environ.get("TESSDATA_PREFIX") or None
 
 
-def _pdf_blocks(content: dict[str, Any], page_number: int) -> list[TextBlock]:
+def _pdf_blocks(
+    content: dict[str, Any], page_number: int, *, drop_hidden: bool
+) -> tuple[list[TextBlock], int]:
+    """The page's blocks, and how many hidden characters were left out."""
     raw: list[tuple[str, float]] = []  # (text, biggest font size in the block)
     sizes: list[float] = []
+    hidden = 0
     for block in content.get("blocks", []):
         if block.get("type") != 0:  # 1 = image
             continue
@@ -78,6 +100,9 @@ def _pdf_blocks(content: dict[str, Any], page_number: int) -> list[TextBlock]:
         biggest = 0.0
         for line in block.get("lines", []):
             spans = line.get("spans", [])
+            if drop_hidden:
+                hidden += sum(len(s.get("text", "").strip()) for s in spans if is_hidden_span(s))
+                spans = [s for s in spans if not is_hidden_span(s)]
             text = "".join(span.get("text", "") for span in spans)
             if text.strip():
                 lines.append(text)
@@ -97,7 +122,7 @@ def _pdf_blocks(content: dict[str, Any], page_number: int) -> list[TextBlock]:
         elif "\n" not in text:
             level = plain_heading_level(one_line)
         blocks.append(TextBlock(text=text, page=page_number, heading_level=level))
-    return blocks
+    return blocks, hidden
 
 
 class DocxReader:

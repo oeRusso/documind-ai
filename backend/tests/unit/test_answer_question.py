@@ -243,3 +243,11 @@ async def test_each_citation_keeps_the_chunks_it_came_from() -> None:
     [ready] = [e for e in events if isinstance(e, CitationsReady)]
     [citation] = ready.citations
     assert citation.chunk_ids == (GOOD[0].chunk_id,)
+
+
+async def test_html_and_images_from_the_model_never_reach_the_client() -> None:
+    llm = FakeLLMProvider(
+        ['Un mes [1]. <img src="https://evil.example/x"', "> ![a](https://e.x/y)"]
+    )
+    events = await run(use_case(GOOD, llm), "¿Preaviso?")
+    assert text_of(events).strip() == "Un mes [1]."

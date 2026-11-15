@@ -3,6 +3,7 @@
     uv run python -m evaluation.eval_retrieval                       # all modes and models
     uv run python -m evaluation.eval_retrieval --models bge-m3       # one model
     uv run python -m evaluation.eval_retrieval --text-only           # no Ollama needed (CI)
+    uv run python -m evaluation.eval_retrieval --models bge-m3 --chunk-tokens 300  # experiment
 
 What it does, with the app's own code end to end:
 1. Creates a temporary organization in the TEST database (<database>_test), never the real one.
@@ -42,7 +43,7 @@ from app.modules.documents.domain.entities import Document, DocumentVersion, Fil
 from app.modules.documents.infrastructure.sql_repository import SqlDocumentRepository
 from app.modules.extraction.domain.normalization import normalize_pages
 from app.modules.extraction.infrastructure.readers import FileTextExtractor
-from app.modules.ingestion.domain.chunking import Chunk, chunk_blocks
+from app.modules.ingestion.domain.chunking import Chunk, ChunkingOptions, chunk_blocks
 from app.modules.ingestion.domain.ports import ChunkVectors
 from app.modules.ingestion.infrastructure.models import ChunkEmbeddingModel, DocumentChunkModel
 from app.modules.ingestion.infrastructure.sql_repository import SqlChunkRepository
@@ -107,10 +108,20 @@ async def delete_organization(migrator: AsyncEngine, organization_id: UUID) -> N
         )
 
 
+# Chunk size of this run (stage 9 experiment). None: the app's default (ChunkingOptions).
+CHUNK_TOKENS: int | None = None
+
+
+def chunking_options() -> ChunkingOptions:
+    if CHUNK_TOKENS is None:
+        return ChunkingOptions()
+    return ChunkingOptions(max_tokens=CHUNK_TOKENS, overlap_tokens=min(40, CHUNK_TOKENS // 4))
+
+
 def read_chunks(slug: str) -> list[Chunk]:
     with FileTextExtractor().open(CORPUS / f"{slug}.pdf", FileKind.PDF) as reader:
         pages = [reader.read_page(i) for i in range(reader.page_count)]
-    return chunk_blocks(normalize_pages(pages))
+    return chunk_blocks(normalize_pages(pages), chunking_options())
 
 
 def embedding_text(chunk: Chunk) -> str:
@@ -302,7 +313,8 @@ def write_report(results: list[ModeResult], corpus: Corpus, questions: list[Ques
     answerable = sum(1 for q in questions if q.answerable)
     chunks = sum(len(c) for c in corpus.chunks.values())
     lines = [
-        f"# Evaluación de búsqueda — {today}",
+        f"# Evaluación de búsqueda — {today}"
+        + (f" (fragmentos de {CHUNK_TOKENS} tokens)" if CHUNK_TOKENS else ""),
         "",
         "Generado por `uv run python -m evaluation.eval_retrieval` (etapa 6). No editar a mano.",
         "",
@@ -354,7 +366,8 @@ def write_report(results: list[ModeResult], corpus: Corpus, questions: list[Ques
     for r in results:
         lines.append(f"- **{r.name}**: {', '.join(r.misses) or 'ninguna'}")
     REPORTS.mkdir(parents=True, exist_ok=True)
-    path = REPORTS / f"retrieval-{today}.md"
+    suffix = f"-chunks{CHUNK_TOKENS}" if CHUNK_TOKENS else ""
+    path = REPORTS / f"retrieval-{today}{suffix}.md"
     path.write_text("\n".join(lines) + "\n")
     return path
 
@@ -393,8 +406,13 @@ async def evaluate(models: list[str], text_only: bool) -> list[ModeResult]:
                 f"p95={r.latency_ms_p95:.0f}ms  {kinds}"
             )
         if not text_only:  # the committed results are always a full run
-            RESULTS.parent.mkdir(parents=True, exist_ok=True)
-            RESULTS.write_text(
+            results_path = (
+                RESULTS.with_name(f"retrieval-chunks{CHUNK_TOKENS}.json")
+                if CHUNK_TOKENS
+                else RESULTS
+            )
+            results_path.parent.mkdir(parents=True, exist_ok=True)
+            results_path.write_text(
                 json.dumps([asdict(r) for r in results], ensure_ascii=False, indent=2) + "\n"
             )
             print("Informe:", write_report(results, corpus, questions))
@@ -412,7 +430,12 @@ def main() -> None:
     parser.add_argument(
         "--min-text-recall", type=float, default=0.0, help="fail if text recall@5 is lower (CI)"
     )
+    parser.add_argument(
+        "--chunk-tokens", type=int, default=None, help="chunk size to try (default: the app's)"
+    )
     args = parser.parse_args()
+    global CHUNK_TOKENS
+    CHUNK_TOKENS = args.chunk_tokens
     results = asyncio.run(evaluate(args.models, args.text_only))
     if results[0].recall_at_5 < args.min_text_recall:
         raise SystemExit(f"text recall@5 {results[0].recall_at_5} < {args.min_text_recall}")
