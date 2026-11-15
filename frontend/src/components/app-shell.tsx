@@ -16,6 +16,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 import { Logo } from "@/components/brand";
+import { DEMO_SLUG, DemoNotice } from "@/components/demo";
 import { Avatar, RoleBadge } from "@/components/people";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -147,6 +148,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="mb-6 lg:hidden">
             <OrganizationSwitcher id="organization-mobile" />
           </div>
+          {organization?.slug === DEMO_SLUG && <DemoNotice />}
           {children}
         </main>
       </div>

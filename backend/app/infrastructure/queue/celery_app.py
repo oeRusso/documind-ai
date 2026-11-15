@@ -9,9 +9,11 @@ Settings chosen for "never lose nor duplicate work" (stage 5) on a small shared 
 """
 
 from celery import Celery
+from celery.schedules import crontab
 
 PROCESS_VERSION_TASK = "ingestion.process_version"
 PURGE_DOCUMENTS_TASK = "documents.purge_deleted"
+RESET_DEMO_TASK = "demo.reset"  # stage 12: does nothing unless DEMO_PASSWORD is set
 DOCUMENTS_QUEUE = "documents"
 
 # Hard limit per task and how long Valkey waits before handing out an unconfirmed task again.
@@ -37,7 +39,11 @@ def create_celery(broker_url: str) -> Celery:
             "purge-deleted-documents": {
                 "task": PURGE_DOCUMENTS_TASK,
                 "schedule": 24 * 60 * 60,  # once a day
-            }
+            },
+            "reset-public-demo": {
+                "task": RESET_DEMO_TASK,
+                "schedule": crontab(hour=6, minute=30),  # 3:30 in Argentina (UTC-3)
+            },
         },
     )
     return app

@@ -49,6 +49,9 @@ x-backend: &backend
     RAG_CONTEXT_TOKENS: ${RAG_CONTEXT_TOKENS:-1500}
     RAG_MAX_ANSWER_TOKENS: ${RAG_MAX_ANSWER_TOKENS:-512}
     CHAT_LIMIT_PER_USER_PER_MINUTE: ${CHAT_LIMIT_PER_USER_PER_MINUTE:-10}
+    # Public demo (stage 12): empty = off. The reset runs every night in the worker and by hand:
+    # podman compose exec api python -m app.jobs.reset_demo
+    DEMO_PASSWORD: ${DEMO_PASSWORD:-}
     # The worker serves its Prometheus metrics here (stage 10); the API serves them at /metrics.
     WORKER_METRICS_PORT: "9101"
     # Uploads bigger than 1 MB spill from memory to a temp file: on the volume, not in RAM.
@@ -302,13 +305,13 @@ services:
     mem_limit: 64m
     restart: unless-stopped
 
-  # Length of the Celery queue (the "celery" list in Valkey).
+  # Length of the Celery queue (the "documents" list in Valkey).
   valkey-exporter:
     image: docker.io/oliver006/redis_exporter:v1.67.0
     profiles: [monitoring]
     environment:
       REDIS_ADDR: redis://valkey:6379
-      REDIS_EXPORTER_CHECK_KEYS: db0=celery
+      REDIS_EXPORTER_CHECK_KEYS: db0=documents
     depends_on: [valkey]
     mem_limit: 64m
     restart: unless-stopped

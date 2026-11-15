@@ -57,6 +57,13 @@ class SqlUserRepository:
         )
         return [_to_entity(model) for model in result.scalars()]
 
+    async def set_password_hash(self, user_id: UUID, password_hash: str) -> None:
+        """Only for the demo reset job (a changed DEMO_PASSWORD); users change nothing else."""
+        model = await self._session.get(UserModel, user_id)
+        if model is not None:
+            model.password_hash = password_hash
+            await self._session.flush()
+
     async def get_by_email(self, email: str) -> User | None:
         result = await self._session.execute(select(UserModel).where(UserModel.email == email))
         model = result.scalar_one_or_none()

@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field
 
 from app.ai.concurrency import GenerationQueue
 from app.ai.providers.llm import LLMServiceError
-from app.core.dependencies import SessionDep, SettingsDep
+from app.core.dependencies import ClientIpDep, SessionDep, SettingsDep
 from app.core.exceptions import ErrorResponse
 from app.core.rate_limits import RateLimiterDep
 from app.core.request_context import current_request_id
@@ -44,6 +44,7 @@ from app.modules.knowledge.domain.answer import (
     Token,
 )
 from app.modules.knowledge.infrastructure.sql_search import SqlChunkSearch
+from app.shared.demo import DEMO_ORGANIZATION_ID
 from app.shared.rate_limit import RateLimit
 
 logger = structlog.get_logger("app.knowledge")
@@ -96,8 +97,21 @@ AnswerQuestionDep = Annotated[AnswerQuestion, Depends(provide_answer_question)]
 
 
 async def limit_chat_by_user(
-    member: CurrentMemberDep, limiter: RateLimiterDep, settings: SettingsDep
+    member: CurrentMemberDep, limiter: RateLimiterDep, settings: SettingsDep, ip: ClientIpDep
 ) -> None:
+    if member.organization_id == DEMO_ORGANIZATION_ID:
+        # The public demo: one shared account, so the limits go by IP, plus a daily total that
+        # protects the server's CPU (stage 12).
+        who = ip or "unknown"
+        minute, day = timedelta(minutes=1), timedelta(days=1)
+        await limiter.hit("chat:demo:all", RateLimit(settings.demo_chat_limit_per_day, day))
+        await limiter.hit(
+            f"chat:demo:ip:{who}", RateLimit(settings.demo_chat_limit_per_ip_per_minute, minute)
+        )
+        await limiter.hit(
+            f"chat:demo:ip-day:{who}", RateLimit(settings.demo_chat_limit_per_ip_per_day, day)
+        )
+        return
     rule = RateLimit(settings.chat_limit_per_user_per_minute, timedelta(minutes=1))
     await limiter.hit(f"chat:user:{member.user_id}", rule)
 

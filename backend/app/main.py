@@ -33,6 +33,7 @@ from app.modules.ingestion.infrastructure.job_queue import CeleryJobQueue, Loggi
 from app.modules.ingestion.presentation.router import router as processing_router
 from app.modules.knowledge.presentation.chat_router import router as chat_router
 from app.modules.knowledge.presentation.router import router as search_router
+from app.modules.organizations.presentation.demo_router import router as demo_router
 from app.modules.organizations.presentation.invitations_router import router as invitations_router
 from app.modules.organizations.presentation.members_router import router as members_router
 from app.modules.organizations.presentation.router import router as organizations_router
@@ -98,6 +99,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api_v1.include_router(chat_router)
     api_v1.include_router(conversations_router)
     api_v1.include_router(analytics_router)
+    api_v1.include_router(demo_router)
 
     install_api_metrics(app, lambda: app.state.generation_queue.waiting)
     app.include_router(health_router)

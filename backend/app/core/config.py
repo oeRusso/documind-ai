@@ -93,6 +93,13 @@ class Settings(BaseSettings):
     # Days of the analytics page start at midnight of this zone (stage 10).
     analytics_timezone: str = "America/Argentina/Buenos_Aires"
     chat_limit_per_user_per_minute: int = Field(default=10, ge=1)
+    # Public demo (stage 12): enabled when DEMO_PASSWORD is set. The password is shown on the
+    # login page on purpose; the account is read-only and reset every night.
+    demo_password: SecretStr | None = None
+    # Stricter limits for the demo, per IP (every visitor shares the same account) and in total.
+    demo_chat_limit_per_ip_per_minute: int = Field(default=3, ge=1)
+    demo_chat_limit_per_ip_per_day: int = Field(default=20, ge=1)
+    demo_chat_limit_per_day: int = Field(default=200, ge=1)
 
     @property
     def max_upload_bytes(self) -> int:
@@ -104,6 +111,8 @@ class Settings(BaseSettings):
         "smtp_password",
         "celery_broker_url",
         "ollama_url",
+        "demo_password",
+        "worker_metrics_port",
         mode="before",
     )
     @classmethod

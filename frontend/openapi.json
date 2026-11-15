@@ -374,6 +374,24 @@
         "title": "DayCountRead",
         "type": "object"
       },
+      "DemoAccountRead": {
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "DemoAccountRead",
+        "type": "object"
+      },
       "DocumentDetailRead": {
         "properties": {
           "created_at": {
@@ -2984,6 +3002,38 @@
         "summary": "Rate Answer",
         "tags": [
           "conversations"
+        ]
+      }
+    },
+    "/api/v1/demo": {
+      "get": {
+        "description": "La cuenta de la demo pública (solo lectura, compartida, se borra cada noche).",
+        "operationId": "demo_account_api_v1_demo_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoAccountRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Demo Account",
+        "tags": [
+          "demo"
         ]
       }
     },

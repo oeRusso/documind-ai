@@ -21,6 +21,11 @@ class PermissionDeniedError(ForbiddenError):
     message = "Tu rol en esta organización no permite esta acción"
 
 
+class DemoReadOnlyError(ForbiddenError):
+    code = "demo_read_only"
+    message = "La cuenta de demostración es de solo lectura"
+
+
 class LastOwnerError(ConflictError):
     code = "last_owner"
     message = "La organización tiene que conservar al menos un owner"

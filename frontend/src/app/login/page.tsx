@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
+import { DemoLoginButton } from "@/components/demo";
 import { PublicPage } from "@/components/form";
 import { LoginForm } from "@/components/login-form";
 import { safeNextPath } from "@/lib/auth";
@@ -11,7 +12,12 @@ import { safeNextPath } from "@/lib/auth";
 function Login() {
   const router = useRouter();
   const next = safeNextPath(useSearchParams().get("next"));
-  return <LoginForm onLoggedIn={() => router.replace(next)} />;
+  return (
+    <div className="grid gap-6">
+      <LoginForm onLoggedIn={() => router.replace(next)} />
+      <DemoLoginButton onLoggedIn={() => router.replace("/ask")} />
+    </div>
+  );
 }
 
 export default function LoginPage() {

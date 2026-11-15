@@ -142,3 +142,21 @@ async def test_list_my_organizations(setup: Setup) -> None:
         await ListMyOrganizations(setup.organizations, setup.memberships).execute(UUID(int=999))
         == []
     )
+
+
+async def test_the_demo_account_cannot_create_organizations(setup: Setup) -> None:
+    from app.modules.organizations.domain.errors import DemoReadOnlyError
+    from app.shared.demo import DEMO_USER_ID
+
+    with pytest.raises(DemoReadOnlyError):
+        await setup.create.execute(
+            CreateOrganizationCommand(name="Mía", slug="mia", owner_id=DEMO_USER_ID)
+        )
+
+
+async def test_the_demo_slug_is_reserved(setup: Setup) -> None:
+    from app.modules.organizations.domain.errors import OrganizationSlugTakenError
+    from app.shared.demo import DEMO_SLUG
+
+    with pytest.raises(OrganizationSlugTakenError):
+        await setup.create.execute(command(slug=DEMO_SLUG))

@@ -11,12 +11,14 @@ from app.modules.audit.application.record_audit_event import (
 )
 from app.modules.audit.domain.entities import AuditAction
 from app.modules.organizations.domain.entities import Organization
+from app.modules.organizations.domain.errors import DemoReadOnlyError, OrganizationSlugTakenError
 from app.modules.organizations.domain.membership import Membership
 from app.modules.organizations.domain.repository import (
     MembershipRepository,
     OrganizationRepository,
 )
 from app.modules.organizations.domain.roles import Role
+from app.shared.demo import DEMO_ORGANIZATION_ID, DEMO_SLUG, DEMO_USER_ID
 from app.shared.ids import new_id, utc_now
 from app.shared.tenancy import TenantContext
 
@@ -48,10 +50,16 @@ class CreateOrganization:
         self._clock = clock
 
     async def execute(self, command: CreateOrganizationCommand) -> Organization:
+        if command.owner_id == DEMO_USER_ID:
+            # The public demo account must not get an organization of its own (and with it,
+            # uploads): it is shared by strangers (stage 12).
+            raise DemoReadOnlyError()
         now = self._clock()
         organization = Organization.create(
             id=self._id_factory(), name=command.name, slug=command.slug, now=now
         )
+        if organization.slug == DEMO_SLUG and organization.id != DEMO_ORGANIZATION_ID:
+            raise OrganizationSlugTakenError()  # reserved for the public demo
         # From here on the transaction acts inside the new organization: RLS only accepts
         # rows of the active organization (ADR 0003). A duplicate slug is caught by the
         # UNIQUE constraint, which sees every organization (RLS would hide them from a SELECT).

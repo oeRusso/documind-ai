@@ -138,6 +138,13 @@ class SqlConversationRepository:
             )
         )
 
+    async def delete_all(self, organization_id: UUID) -> int:
+        """Only for the demo reset job: every conversation of the organization goes."""
+        result = await self._session.execute(
+            delete(ConversationModel).where(ConversationModel.organization_id == organization_id)
+        )
+        return int(getattr(result, "rowcount", 0) or 0)
+
     async def add_messages(self, messages: Sequence[Message]) -> None:
         for m in messages:
             self._session.add(

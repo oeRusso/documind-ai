@@ -15,9 +15,14 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.ai.providers.embeddings import EmbeddingProvider
 from app.ai.providers.factory import build_embedding_provider
 from app.core.config import Settings
-from app.infrastructure.queue.celery_app import PROCESS_VERSION_TASK, PURGE_DOCUMENTS_TASK
+from app.infrastructure.queue.celery_app import (
+    PROCESS_VERSION_TASK,
+    PURGE_DOCUMENTS_TASK,
+    RESET_DEMO_TASK,
+)
 from app.infrastructure.storage.filesystem import FilesystemStorage
 from app.jobs.purge_documents import purge_all
+from app.jobs.reset_demo import reset_demo
 from app.modules.documents.application.ingestion_gateway import DocumentsForIngestion
 from app.modules.documents.infrastructure.sql_repository import SqlDocumentRepository
 from app.modules.extraction.infrastructure.readers import FileTextExtractor
@@ -75,3 +80,8 @@ def register_tasks(celery: Celery, settings: Settings) -> None:
     @celery.task(name=PURGE_DOCUMENTS_TASK)
     def purge_deleted_documents() -> int:
         return asyncio.run(purge_all())
+
+    @celery.task(name=RESET_DEMO_TASK)
+    def reset_public_demo() -> int:
+        report = asyncio.run(reset_demo(settings))
+        return len(report.uploaded) if report else 0
