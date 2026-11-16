@@ -31,22 +31,32 @@ function OrganizationSwitcher({ id }: { id: string }) {
   const { organization, organizations, select } = useActiveOrganization();
   return (
     <div className="grid gap-2 rounded-xl border bg-card p-3">
-      <label htmlFor={id} className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+      <label
+        htmlFor={organizations.length > 1 ? id : undefined}
+        className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
+      >
         <Building2 className="size-3.5" />
         Organización
       </label>
-      <NativeSelect
-        id={id}
-        className="w-full font-medium"
-        value={organization?.id ?? ""}
-        onChange={(event) => select(event.target.value)}
-      >
-        {organizations.map((o) => (
-          <option key={o.id} value={o.id}>
-            {o.name}
-          </option>
-        ))}
-      </NativeSelect>
+      {organizations.length > 1 ? (
+        <NativeSelect
+          id={id}
+          className="w-full font-medium"
+          value={organization?.id ?? ""}
+          onChange={(event) => select(event.target.value)}
+        >
+          {organizations.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.name}
+            </option>
+          ))}
+        </NativeSelect>
+      ) : (
+        // Only one: a select with a single option is a control that does nothing.
+        <p id={id} className="truncate text-sm font-medium" title={organization?.name}>
+          {organization?.name}
+        </p>
+      )}
       {organization && <RoleBadge role={organization.role} />}
     </div>
   );
