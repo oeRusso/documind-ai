@@ -14,6 +14,17 @@ export function conversationsKey(organizationId: string) {
   return ["conversations", organizationId];
 }
 
+/** "14:10" today, "16 nov" this year, "16 nov 2025" before. */
+export function shortWhen(iso: string, now = new Date()): string {
+  const date = new Date(iso);
+  if (date.toDateString() === now.toDateString()) {
+    return date.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  }
+  const month = date.toLocaleDateString("es-AR", { month: "short" }).replace(".", "");
+  const year = date.getFullYear() === now.getFullYear() ? "" : ` ${date.getFullYear()}`;
+  return `${date.getDate()} ${month}${year}`;
+}
+
 export function ConversationList({
   organizationId,
   activeId,
@@ -34,8 +45,9 @@ export function ConversationList({
   });
   const items = conversations.data?.pages.flatMap((page) => page.items) ?? [];
 
+  // minmax(0,1fr): without it the longest title widens the column and pushes the chat aside.
   return (
-    <nav aria-label="Conversaciones" className="grid content-start gap-2">
+    <nav aria-label="Conversaciones" className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-2">
       <Button asChild variant={activeId ? "outline" : "default"} className="justify-start">
         <Link href="/ask">
           <MessageSquarePlus />
@@ -47,19 +59,22 @@ export function ConversationList({
           Historial
         </p>
       )}
-      <ul className="grid gap-0.5">
+      <ul className="grid grid-cols-[minmax(0,1fr)] gap-0.5">
         {items.map((conversation) => (
           <li key={conversation.id}>
             <Link
               href={`/ask?c=${conversation.id}`}
               aria-current={conversation.id === activeId ? "page" : undefined}
               className={cn(
-                "block truncate rounded-lg px-3 py-2 text-sm hover:bg-muted",
-                conversation.id === activeId && "bg-muted font-medium",
+                "grid rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted",
+                conversation.id === activeId && "bg-muted",
               )}
               title={conversation.title ?? "Sin preguntas todavía"}
             >
-              {conversation.title ?? <span className="text-muted-foreground italic">Sin preguntas</span>}
+              <span className={cn("truncate", conversation.id === activeId && "font-medium")}>
+                {conversation.title ?? <span className="text-muted-foreground italic">Sin preguntas</span>}
+              </span>
+              <span className="text-xs text-muted-foreground">{shortWhen(conversation.updated_at)}</span>
             </Link>
           </li>
         ))}
