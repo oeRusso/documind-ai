@@ -92,6 +92,7 @@ def provide_register(session: SessionDep, settings: SettingsDep) -> Register:
         _audit(session),
         tenant,
         provide_accept_invitation(session),
+        open_registration=settings.registration_open,
     )
 
 

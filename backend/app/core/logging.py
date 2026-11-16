@@ -7,6 +7,8 @@ import sys
 import structlog
 from structlog.typing import Processor
 
+from app.core.metrics import metrics_from_logs
+
 
 def configure_logging(level: str = "INFO", fmt: str = "json") -> None:
     shared_processors: list[Processor] = [
@@ -15,6 +17,8 @@ def configure_logging(level: str = "INFO", fmt: str = "json") -> None:
         structlog.stdlib.add_log_level,
         structlog.stdlib.add_logger_name,
         structlog.processors.TimeStamper(fmt="iso", utc=True),
+        # Stage 10: known events (page_extracted, answer_generated...) also feed Prometheus.
+        metrics_from_logs,
     ]
 
     structlog.configure(

@@ -1,0 +1,101 @@
+{
+  "source": "Infoleg (Ministerio de Justicia de la Nación), textos oficiales de acceso libre",
+  "documents": [
+    {
+      "slug": "ley-20744-contrato-de-trabajo",
+      "file": "ley-20744-contrato-de-trabajo.pdf",
+      "source_url": "http://servicios.infoleg.gob.ar/infolegInternet/anexos/25000-29999/25552/texact.htm",
+      "retrieved_at": "2026-11-10",
+      "source_sha256": "6c7f515edca5ee27e10103d1ad47e111fb89ffd45488d8e81410954ddd417561",
+      "pages": 76
+    },
+    {
+      "slug": "ley-24240-defensa-del-consumidor",
+      "file": "ley-24240-defensa-del-consumidor.pdf",
+      "source_url": "http://servicios.infoleg.gob.ar/infolegInternet/anexos/0-4999/638/texact.htm",
+      "retrieved_at": "2026-11-10",
+      "source_sha256": "17a2b25d85cca2a7ec363d3c17391aa07cd6d25174338e0b8b9ec239fba9d7b7",
+      "pages": 26
+    },
+    {
+      "slug": "ley-25326-datos-personales",
+      "file": "ley-25326-datos-personales.pdf",
+      "source_url": "http://servicios.infoleg.gob.ar/infolegInternet/anexos/60000-64999/64790/texact.htm",
+      "retrieved_at": "2026-11-10",
+      "source_sha256": "61548a0fba22550e19a4189c101876238501cb6a9b5821cea5e36478708a3b61",
+      "pages": 17
+    },
+    {
+      "slug": "ley-25506-firma-digital",
+      "file": "ley-25506-firma-digital.pdf",
+      "source_url": "http://servicios.infoleg.gob.ar/infolegInternet/anexos/70000-74999/70749/texact.htm",
+      "retrieved_at": "2026-11-10",
+      "source_sha256": "28632cef2e9780ba638356f794bbc112b99eceed7c9d5a96be166586c8c93292",
+      "pages": 15
+    },
+    {
+      "slug": "ley-24557-riesgos-del-trabajo",
+      "file": "ley-24557-riesgos-del-trabajo.pdf",
+      "source_url": "http://servicios.infoleg.gob.ar/infolegInternet/anexos/25000-29999/27971/texact.htm",
+      "retrieved_at": "2026-11-10",
+      "source_sha256": "b8b582f781a83934f8fda2fed628b99662f9e48076e8a654f4e11151223fb044",
+      "pages": 40
+    },
+    {
+      "slug": "ley-19549-procedimientos-administrativos",
+      "file": "ley-19549-procedimientos-administrativos.pdf",
+      "source_url": "http://servicios.infoleg.gob.ar/infolegInternet/anexos/20000-24999/22363/texact.htm",
+      "retrieved_at": "2026-11-10",
+      "source_sha256": "7122c15dfc24d3a5db758c093c67c1b22babdf9765fa124dec7e2015634b36f2",
+      "pages": 19
+    },
+    {
+      "slug": "ley-27275-acceso-a-la-informacion",
+      "file": "ley-27275-acceso-a-la-informacion.pdf",
+      "source_url": "http://servicios.infoleg.gob.ar/infolegInternet/anexos/265000-269999/265949/norma.htm",
+      "retrieved_at": "2026-11-10",
+      "source_sha256": "e60eb5ebd5459aee8e067867e109e649b051cfe2cf53ab6d89492d0359a9e776",
+      "pages": 16
+    },
+    {
+      "slug": "ley-27555-teletrabajo",
+      "file": "ley-27555-teletrabajo.pdf",
+      "source_url": "http://servicios.infoleg.gob.ar/infolegInternet/anexos/340000-344999/341093/norma.htm",
+      "retrieved_at": "2026-11-10",
+      "source_sha256": "2c89828c1ac83974219f88ae8ddda1036b54daef8c20ae37d8a410312888a75a",
+      "pages": 5
+    },
+    {
+      "slug": "ley-25675-ambiente",
+      "file": "ley-25675-ambiente.pdf",
+      "source_url": "http://servicios.infoleg.gob.ar/infolegInternet/anexos/75000-79999/79980/norma.htm",
+      "retrieved_at": "2026-11-10",
+      "source_sha256": "1ad27e95393d85e5d96e671c5ba213843ab7f78468f089b3eca085d2d84894d1",
+      "pages": 15
+    },
+    {
+      "slug": "ley-26657-salud-mental",
+      "file": "ley-26657-salud-mental.pdf",
+      "source_url": "http://servicios.infoleg.gob.ar/infolegInternet/anexos/175000-179999/175977/norma.htm",
+      "retrieved_at": "2026-11-10",
+      "source_sha256": "abf36c3040f7ef0e6786d70b6ebdbc4498949de7620101ba75ce1566b6bfd2c9",
+      "pages": 11
+    },
+    {
+      "slug": "ley-11723-propiedad-intelectual",
+      "file": "ley-11723-propiedad-intelectual.pdf",
+      "source_url": "http://servicios.infoleg.gob.ar/infolegInternet/anexos/40000-44999/42755/texact.htm",
+      "retrieved_at": "2026-11-10",
+      "source_sha256": "8575ab839d7f4b0f07a1afd3ff4dfa2e33c6177bc91792e6bca8c3908ff57bd0",
+      "pages": 20
+    },
+    {
+      "slug": "ley-26061-ninas-ninos-adolescentes",
+      "file": "ley-26061-ninas-ninos-adolescentes.pdf",
+      "source_url": "http://servicios.infoleg.gob.ar/infolegInternet/anexos/110000-114999/110778/norma.htm",
+      "retrieved_at": "2026-11-10",
+      "source_sha256": "d71ce62d63cf4476695795b146b134740c0aed262352fee34cce13075687946c",
+      "pages": 22
+    }
+  ]
+}

@@ -13,6 +13,7 @@ from tests.conftest import APP_ORIGIN, TEST_JWT_SECRET
 from tests.db import app_test_url, ensure_database_available, migrator_test_url, reset_schema
 from tests.fakes import FakeOutgoingMail
 from tests.integration.api_helpers import Acme, setup_acme
+from tests.integration.chat_fixtures import contrato, embeddings, llm, queue  # noqa: F401
 
 pytestmark = pytest.mark.integration
 
@@ -25,7 +26,7 @@ def migrated_database() -> Iterator[None]:
 
 
 @pytest.fixture(scope="session")
-def db_settings(migrated_database: None) -> Settings:
+def db_settings(migrated_database: None, tmp_path_factory: pytest.TempPathFactory) -> Settings:
     # The API connects with the restricted `app` role, exactly like in production.
     return Settings(
         app_env="test",
@@ -34,6 +35,9 @@ def db_settings(migrated_database: None) -> Settings:
         database_migration_url=migrator_test_url(),
         jwt_secret=TEST_JWT_SECRET,
         app_origin=APP_ORIGIN,
+        storage_path=tmp_path_factory.mktemp("storage"),
+        celery_broker_url=None,  # no queue in tests: jobs are captured (see test_processing_api)
+        ollama_url=None,  # no Ollama in tests: FakeEmbeddingProvider (see test_search_api)
     )
 
 

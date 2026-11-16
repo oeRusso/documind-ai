@@ -38,7 +38,7 @@ export default function RegisterPage() {
         }),
       );
       await startSession(tokens.access_token);
-      router.replace("/members");
+      router.replace("/documents");
     } catch (exception) {
       setError(errorMessage(exception));
     } finally {

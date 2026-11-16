@@ -1,0 +1,338 @@
+# Production stack (stage 3), for the shared VPS with Docker + Compose v2. Standalone file:
+#
+#   echo "-f compose.prod.yaml" > .deploy/compose-files    # once: the scripts read it
+#   infrastructure/scripts/deploy.sh
+#
+# Differences with compose.yaml (development):
+# - No port is published to the internet. Traffic comes in through the `cloudflared` container
+#   (Cloudflare Tunnel "documind" -> http://caddy:80). Only Grafana listens, on 127.0.0.1, and
+#   only with --profile monitoring (reach it with an SSH tunnel).
+# - Docker, not Podman: no ":Z" on the volumes.
+# - No Mailpit and no SMTP: invitations show their link in the web (LoggingMailer).
+# - Sign-up closed (REGISTRATION_OPEN=false): people enter by invitation or through the demo.
+# - Real visitor IP from Cloudflare (CF-Connecting-IP), HTTPS ended by Cloudflare.
+# - Memory limits for a shared 8 GB server: check `free -h` and `docker stats --no-stream`.
+# Secrets: .env (chmod 600), see .env.production.example.
+
+name: documind
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-backend: &backend
+  build:
+    context: ./backend
+    dockerfile: ../infrastructure/containers/backend.Containerfile
+    target: runtime
+  image: localhost/documind-backend:${IMAGE_TAG:?run infrastructure/scripts/deploy.sh}
+  logging: *logging
+  environment:
+    APP_ENV: production
+    LOG_FORMAT: json
+    DATABASE_URL: postgresql+asyncpg://app:${APP_DB_PASSWORD:?set it in .env}@db:5432/documind
+    DATABASE_MIGRATION_URL: postgresql+asyncpg://migrator:${MIGRATOR_DB_PASSWORD:?set it in .env}@db:5432/documind
+    JWT_SECRET: ${JWT_SECRET:?set it in .env}
+    APP_ORIGIN: ${APP_ORIGIN:-https://documind.esteban-russo.com}
+    REGISTRATION_OPEN: ${REGISTRATION_OPEN:-false}
+    CLIENT_IP_HEADER: CF-Connecting-IP
+    MAIL_FROM: ${MAIL_FROM:-DocuMind AI <no-reply@documind.esteban-russo.com>}
+    STORAGE_PATH: /data/documents
+    MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-25}
+    MAX_UPLOAD_PAGES: ${MAX_UPLOAD_PAGES:-500}
+    DOCUMENT_PURGE_DAYS: ${DOCUMENT_PURGE_DAYS:-30}
+    CELERY_BROKER_URL: redis://valkey:6379/0
+    OLLAMA_URL: http://ollama:11434
+    EMBEDDING_MODEL: bge-m3
+    LLM_MODEL: ${LLM_MODEL:-llama3.2:3b}
+    LLM_KEEP_ALIVE: ${LLM_KEEP_ALIVE:-30m}
+    LLM_MAX_CONCURRENCY: "1"
+    RAG_MIN_SCORE: ${RAG_MIN_SCORE:-0.5}
+    RAG_CONTEXT_TOKENS: ${RAG_CONTEXT_TOKENS:-1500}
+    RAG_MAX_ANSWER_TOKENS: ${RAG_MAX_ANSWER_TOKENS:-512}
+    CHAT_LIMIT_PER_USER_PER_MINUTE: ${CHAT_LIMIT_PER_USER_PER_MINUTE:-6}
+    DEMO_PASSWORD: ${DEMO_PASSWORD:-}
+    WORKER_METRICS_PORT: "9101"
+    TMPDIR: /data/tmp
+  volumes:
+    - documents:/data
+  read_only: true
+  tmpfs:
+    - /tmp
+  security_opt:
+    - no-new-privileges:true
+  mem_limit: 640m
+  cpus: 1.5
+  restart: unless-stopped
+
+services:
+  db:
+    image: docker.io/pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set it in .env}
+      POSTGRES_DB: documind
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?set it in .env}
+      MIGRATOR_DB_PASSWORD: ${MIGRATOR_DB_PASSWORD:?set it in .env}
+      MONITOR_DB_PASSWORD: ${MONITOR_DB_PASSWORD:-}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infrastructure/scripts/db-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d documind"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+    logging: *logging
+    mem_limit: 768m
+    shm_size: 256m
+    restart: unless-stopped
+
+  migrate:
+    <<: *backend
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    <<: *backend
+    # One process (the generation queue and the rate limits live in memory). --proxy-headers:
+    # trust X-Forwarded-Proto from Caddy (HTTPS ends at Cloudflare); the API is not reachable
+    # from anywhere else.
+    command:
+      - uvicorn
+      - app.main:create_app
+      - --factory
+      - --host=0.0.0.0
+      - --port=8000
+      - --proxy-headers
+      - --forwarded-allow-ips=*
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+  worker:
+    <<: *backend
+    build:
+      context: ./backend
+      dockerfile: ../infrastructure/containers/backend.Containerfile
+      target: worker
+    image: localhost/documind-worker:${IMAGE_TAG:?run infrastructure/scripts/deploy.sh}
+    command:
+      - celery
+      - -A
+      - app.worker
+      - worker
+      - --beat
+      - --schedule=/data/tmp/celerybeat-schedule
+      - --concurrency=1
+      - --max-tasks-per-child=50
+      - --loglevel=INFO
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9101/metrics', timeout=3)"]
+      interval: 60s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
+    mem_limit: 900m
+    cpus: 1.0
+
+  ollama:
+    image: docker.io/ollama/ollama:0.40.12
+    volumes:
+      - ollama:/root/.ollama
+    environment:
+      OLLAMA_KEEP_ALIVE: 10m
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "2"
+      LLAMA_ARG_CACHE_RAM: "0"  # see compose.yaml: the prompt cache grew until OOM (stage 7)
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 60s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    logging: *logging
+    mem_limit: 4500m  # 3.95 GB measured with bge-m3 + llama3.2:3b (ADR 0009)
+    cpus: 3.0
+    restart: unless-stopped
+
+  valkey:
+    image: docker.io/valkey/valkey:8.1.10-alpine
+    command: ["valkey-server", "--appendonly", "yes", "--maxmemory", "64mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - valkey:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+    logging: *logging
+    mem_limit: 128m
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: ../infrastructure/containers/frontend.Containerfile
+      args:
+        API_INTERNAL_URL: http://api:8000
+    image: localhost/documind-web:${IMAGE_TAG:?run infrastructure/scripts/deploy.sh}
+    depends_on:
+      api:
+        condition: service_started
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/login').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    logging: *logging
+    mem_limit: 320m
+    cpus: 1.0
+    restart: unless-stopped
+
+  caddy:
+    image: docker.io/library/caddy:2.10.0-alpine
+    volumes:
+      - ./infrastructure/proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy:/data
+    depends_on: [web, api]
+    logging: *logging
+    mem_limit: 128m
+    restart: unless-stopped
+
+  # The only way in: an outbound connection to Cloudflare. The tunnel "documind" (created by
+  # Esteban in Cloudflare) routes documind.esteban-russo.com to http://caddy:80.
+  cloudflared:
+    image: docker.io/cloudflare/cloudflared:2025.11.1
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set it in .env}
+    depends_on: [caddy]
+    logging: *logging
+    mem_limit: 128m
+    restart: unless-stopped
+
+  # --- Backups: run by infrastructure/scripts/backup.sh (cron), never left running.
+  backup:
+    image: docker.io/restic/restic:0.18.0
+    profiles: [backup]
+    environment:
+      RESTIC_REPOSITORY: /repo
+      RESTIC_PASSWORD: ${RESTIC_PASSWORD:?set it in .env}
+      RESTIC_CACHE_DIR: /tmp/restic-cache
+    volumes:
+      - ${BACKUP_DIR:-/srv/documind-backups/repo}:/repo
+      - ${BACKUP_STAGING:-/srv/documind-backups/staging}:/source/postgres
+      - documents:/source/documents
+    logging: *logging
+    mem_limit: 512m
+    restart: "no"
+
+  # --- Monitoring (stage 10): docker compose -f compose.prod.yaml --profile monitoring up -d
+  # ~400 MB more: turn it off if the model needs the RAM.
+  prometheus:
+    image: docker.io/prom/prometheus:v3.5.0
+    profiles: [monitoring]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=10d
+      - --storage.tsdb.retention.size=1GB
+    volumes:
+      - ./infrastructure/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infrastructure/monitoring/prometheus/rules.yml:/etc/prometheus/rules.yml:ro
+      - prometheus:/prometheus
+    logging: *logging
+    mem_limit: 256m
+    restart: unless-stopped
+
+  grafana:
+    image: docker.io/grafana/grafana-oss:12.1.0
+    profiles: [monitoring]
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3001}:3000"  # ssh -L 3001:127.0.0.1:3001 <vps>
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set it in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+      # No SMTP in production yet: the alerts show in Grafana (Telegram later).
+      GF_SMTP_ENABLED: "false"
+      GRAFANA_ALERT_EMAIL: ${GRAFANA_ALERT_EMAIL:-alertas@documind.local}
+    volumes:
+      - ./infrastructure/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infrastructure/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana:/var/lib/grafana
+    depends_on: [prometheus]
+    logging: *logging
+    mem_limit: 256m
+    restart: unless-stopped
+
+  node-exporter:
+    image: docker.io/prom/node-exporter:v1.9.1
+    profiles: [monitoring]
+    command: ["--path.rootfs=/host"]
+    volumes:
+      - /:/host:ro,rslave
+    logging: *logging
+    mem_limit: 64m
+    restart: unless-stopped
+
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.17.1
+    profiles: [monitoring]
+    environment:
+      # Role "monitor" (pg_monitor only), created by db-init when MONITOR_DB_PASSWORD is set.
+      DATA_SOURCE_NAME: postgresql://monitor:${MONITOR_DB_PASSWORD:?set it in .env}@db:5432/documind?sslmode=disable
+    depends_on: [db]
+    logging: *logging
+    mem_limit: 64m
+    restart: unless-stopped
+
+  valkey-exporter:
+    image: docker.io/oliver006/redis_exporter:v1.67.0
+    profiles: [monitoring]
+    environment:
+      REDIS_ADDR: redis://valkey:6379
+      REDIS_EXPORTER_CHECK_KEYS: db0=documents
+    depends_on: [valkey]
+    logging: *logging
+    mem_limit: 64m
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  documents:
+  valkey:
+  ollama:
+  caddy:
+  prometheus:
+  grafana:

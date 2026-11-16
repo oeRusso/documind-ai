@@ -1,0 +1,123 @@
+[
+  {
+    "name": "none",
+    "followups_recall_at_5": 0.455,
+    "followups_mrr": 0.33,
+    "topic_change_recall_at_5": 0.9,
+    "topic_change_mrr": 0.708,
+    "followup_misses": [
+      "f03",
+      "f06",
+      "f07",
+      "f08",
+      "f09",
+      "f10",
+      "f11",
+      "f12",
+      "f14",
+      "f15",
+      "f21",
+      "f22"
+    ]
+  },
+  {
+    "name": "always",
+    "followups_recall_at_5": 0.682,
+    "followups_mrr": 0.512,
+    "topic_change_recall_at_5": 0.467,
+    "topic_change_mrr": 0.32,
+    "followup_misses": [
+      "f01",
+      "f05",
+      "f06",
+      "f07",
+      "f10",
+      "f11",
+      "f12"
+    ]
+  },
+  {
+    "name": "short (≤4 palabras)",
+    "followups_recall_at_5": 0.455,
+    "followups_mrr": 0.368,
+    "topic_change_recall_at_5": 0.9,
+    "topic_change_mrr": 0.708,
+    "followup_misses": [
+      "f03",
+      "f06",
+      "f07",
+      "f08",
+      "f09",
+      "f10",
+      "f11",
+      "f12",
+      "f14",
+      "f15",
+      "f21",
+      "f22"
+    ]
+  },
+  {
+    "name": "short (≤6 palabras)",
+    "followups_recall_at_5": 0.727,
+    "followups_mrr": 0.547,
+    "topic_change_recall_at_5": 0.867,
+    "topic_change_mrr": 0.668,
+    "followup_misses": [
+      "f06",
+      "f07",
+      "f10",
+      "f11",
+      "f12",
+      "f15"
+    ]
+  },
+  {
+    "name": "short (≤8 palabras)",
+    "followups_recall_at_5": 0.682,
+    "followups_mrr": 0.493,
+    "topic_change_recall_at_5": 0.75,
+    "topic_change_mrr": 0.553,
+    "followup_misses": [
+      "f01",
+      "f05",
+      "f06",
+      "f07",
+      "f10",
+      "f11",
+      "f12"
+    ]
+  },
+  {
+    "name": "short (≤10 palabras)",
+    "followups_recall_at_5": 0.682,
+    "followups_mrr": 0.524,
+    "topic_change_recall_at_5": 0.633,
+    "topic_change_mrr": 0.449,
+    "followup_misses": [
+      "f01",
+      "f05",
+      "f06",
+      "f07",
+      "f10",
+      "f11",
+      "f12"
+    ]
+  },
+  {
+    "name": "short (≤12 palabras)",
+    "followups_recall_at_5": 0.682,
+    "followups_mrr": 0.512,
+    "topic_change_recall_at_5": 0.5,
+    "topic_change_mrr": 0.345,
+    "followup_misses": [
+      "f01",
+      "f05",
+      "f06",
+      "f07",
+      "f10",
+      "f11",
+      "f12"
+    ]
+  }
+]

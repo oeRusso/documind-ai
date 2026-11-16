@@ -94,3 +94,9 @@
     @apply tracking-tight;
   }
 }
+
+/* Stage 8: the text of a citation, highlighted on the PDF page (features/chat/pdf-page.tsx). */
+.textLayer .cited-text {
+  background-color: rgb(250 204 21 / 0.45);
+  border-radius: 2px;
+}

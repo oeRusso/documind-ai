@@ -21,6 +21,11 @@ class AuditAction(StrEnum):
     INVITATION_CREATED = "invitation.created"
     INVITATION_REVOKED = "invitation.revoked"
     INVITATION_ACCEPTED = "invitation.accepted"
+    DOCUMENT_UPLOADED = "document.uploaded"
+    DOCUMENT_VERSION_UPLOADED = "document.version_uploaded"
+    DOCUMENT_DOWNLOADED = "document.downloaded"
+    DOCUMENT_DELETED = "document.deleted"
+    DOCUMENT_PURGED = "document.purged"
 
 
 @dataclass(frozen=True, slots=True)

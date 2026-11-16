@@ -1,14 +1,26 @@
 # Local development stack.  Usage:  podman compose up -d --build
+# Monitoring (stage 10, ~400 MB more):  podman compose --profile monitoring up -d
 # Reads passwords from the repo's .env (copy .env.example first).
 # Ports are bound to 127.0.0.1 only: nothing is exposed to the network.
 
 name: documind
 
+# Stage 11: every service keeps at most 3 log files of 10 MB (no disk filled by logs).
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 x-backend: &backend
   build:
     context: ./backend
     dockerfile: ../infrastructure/containers/backend.Containerfile
-  image: localhost/documind-backend:dev
+    target: runtime
+  # IMAGE_TAG: the git commit in production (scripts/deploy.sh), so the previous images stay
+  # around and a rollback is just starting them again (docs/operations/runbook.md).
+  image: localhost/documind-backend:${IMAGE_TAG:-dev}
+  logging: *logging
   environment:
     APP_ENV: development
     LOG_FORMAT: ${LOG_FORMAT:-json}
@@ -22,11 +34,37 @@ x-backend: &backend
     SMTP_HOST: ${SMTP_HOST:-mailpit}
     SMTP_PORT: ${SMTP_PORT:-1025}
     MAIL_FROM: ${MAIL_FROM:-DocuMind AI <no-reply@documind.local>}
+    STORAGE_PATH: /data/documents
+    MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-25}
+    MAX_UPLOAD_PAGES: ${MAX_UPLOAD_PAGES:-500}
+    DOCUMENT_PURGE_DAYS: ${DOCUMENT_PURGE_DAYS:-30}
+    CELERY_BROKER_URL: redis://valkey:6379/0
+    OLLAMA_URL: http://ollama:11434
+    EMBEDDING_MODEL: ${EMBEDDING_MODEL:-bge-m3}
+    # Answers (stage 7, ADR 0009). Pull the model first: podman compose exec ollama ollama pull <model>
+    LLM_MODEL: ${LLM_MODEL:-llama3.2:3b}
+    LLM_KEEP_ALIVE: ${LLM_KEEP_ALIVE:-30m}
+    LLM_MAX_CONCURRENCY: ${LLM_MAX_CONCURRENCY:-1}
+    RAG_MIN_SCORE: ${RAG_MIN_SCORE:-0.5}
+    RAG_CONTEXT_TOKENS: ${RAG_CONTEXT_TOKENS:-1500}
+    RAG_MAX_ANSWER_TOKENS: ${RAG_MAX_ANSWER_TOKENS:-512}
+    CHAT_LIMIT_PER_USER_PER_MINUTE: ${CHAT_LIMIT_PER_USER_PER_MINUTE:-10}
+    # Public demo (stage 12): empty = off. The reset runs every night in the worker and by hand:
+    # podman compose exec api python -m app.jobs.reset_demo
+    DEMO_PASSWORD: ${DEMO_PASSWORD:-}
+    # The worker serves its Prometheus metrics here (stage 10); the API serves them at /metrics.
+    WORKER_METRICS_PORT: "9101"
+    # Uploads bigger than 1 MB spill from memory to a temp file: on the volume, not in RAM.
+    TMPDIR: /data/tmp
+  volumes:
+    - documents:/data
   read_only: true
   tmpfs:
     - /tmp
   security_opt:
     - no-new-privileges:true
+  mem_limit: 768m
+  cpus: 1.5
 
 services:
   db:
@@ -38,7 +76,10 @@ services:
       APP_DB_PASSWORD: ${APP_DB_PASSWORD:?set it in .env}
       MIGRATOR_DB_PASSWORD: ${MIGRATOR_DB_PASSWORD:?set it in .env}
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
+    logging: *logging
+    mem_limit: 1g
+    shm_size: 256m
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./infrastructure/scripts/db-init:/docker-entrypoint-initdb.d:ro,Z
@@ -61,12 +102,103 @@ services:
   api:
     <<: *backend
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
     depends_on:
       migrate:
         condition: service_completed_successfully
       mailpit:
         condition: service_started
+      valkey:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Processes uploaded documents (text, OCR, chunks), one at a time. Also runs the daily purge
+  # of deleted files (--beat). Limited so it never starves the rest of the server.
+  worker:
+    <<: *backend
+    build:
+      context: ./backend
+      dockerfile: ../infrastructure/containers/backend.Containerfile
+      target: worker
+    image: localhost/documind-worker:${IMAGE_TAG:-dev}
+    command:
+      - celery
+      - -A
+      - app.worker
+      - worker
+      - --beat
+      - --schedule=/data/tmp/celerybeat-schedule
+      - --concurrency=1
+      - --max-tasks-per-child=50
+      - --loglevel=INFO
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+    # Healthy while the process that runs the tasks answers on its metrics port.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9101/metrics', timeout=3)"]
+      interval: 60s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    mem_limit: 1g
+    cpus: 1.0
+    restart: unless-stopped
+
+  # Local AI (stage 6: embeddings; stage 7: the LLM). Only reachable inside the compose network.
+  # Models live in the `ollama` volume: podman compose exec ollama ollama pull bge-m3
+  ollama:
+    image: docker.io/ollama/ollama:0.40.12
+    # Only for the evaluation scripts run from the PC (OLLAMA_URL=http://127.0.0.1:11435).
+    # 11435 so it does not clash with a system Ollama on 11434. Not in production.
+    ports:
+      - "127.0.0.1:${OLLAMA_PORT:-11435}:11434"
+    logging: *logging
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 60s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+    volumes:
+      - ollama:/root/.ollama
+    environment:
+      # Unload a model after 10 idle minutes (shared RAM). The API asks to keep the LLM longer
+      # (LLM_KEEP_ALIVE) and loads it on startup, so the first question does not wait.
+      OLLAMA_KEEP_ALIVE: 10m
+      # One answer at a time per model (matches LLM_MAX_CONCURRENCY=1; more = more RAM).
+      OLLAMA_NUM_PARALLEL: "1"
+      # The embedding model and the LLM fit together; never a third one.
+      OLLAMA_MAX_LOADED_MODELS: "2"
+      # llama.cpp keeps old prompts in RAM to reuse them, up to 8 GB by default: it grew until
+      # Ollama was killed for lack of memory (stage 7). Every question brings different chunks,
+      # so that cache barely helps: off. (llama.cpp reads its options from LLAMA_ARG_* vars.)
+      LLAMA_ARG_CACHE_RAM: "0"
+    mem_limit: 4500m  # measured 3.95 GB with bge-m3 + llama3.2:3b (ADR 0009)
+    restart: unless-stopped
+
+  # Task queue (Redis-compatible, open source). Small and with an append-only file, so queued
+  # tasks survive a restart.
+  valkey:
+    image: docker.io/valkey/valkey:8.1.10-alpine
+    command: ["valkey-server", "--appendonly", "yes", "--maxmemory", "64mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - valkey:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    mem_limit: 128m
+    logging: *logging
     restart: unless-stopped
 
   # Web app. Open http://localhost:3000 (use "localhost": it is the APP_ORIGIN the API trusts).
@@ -76,9 +208,18 @@ services:
       dockerfile: ../infrastructure/containers/frontend.Containerfile
       args:
         API_INTERNAL_URL: http://api:8000
-    image: localhost/documind-web:dev
+    image: localhost/documind-web:${IMAGE_TAG:-dev}
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
+    logging: *logging
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/login').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    mem_limit: 384m
+    cpus: 1.0
     depends_on:
       api:
         condition: service_started
@@ -93,9 +234,126 @@ services:
   mailpit:
     image: docker.io/axllent/mailpit:v1.32.0
     ports:
-      - "127.0.0.1:8025:8025"  # web UI
-      - "127.0.0.1:1025:1025"  # SMTP, for trying things from the host
+      - "127.0.0.1:${MAILPIT_PORT:-8025}:8025"  # web UI
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025"  # SMTP, for trying things from the host
+    logging: *logging
+    mem_limit: 64m
+    restart: unless-stopped
+
+  # --- Monitoring (stage 10). Only with --profile monitoring. Nothing is published but Grafana,
+  # on 127.0.0.1 (in production: reached through an SSH tunnel, no Cloudflare Access).
+  prometheus:
+    image: docker.io/prom/prometheus:v3.5.0
+    profiles: [monitoring]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=10d
+      - --storage.tsdb.retention.size=1GB
+    volumes:
+      - ./infrastructure/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro,Z
+      - ./infrastructure/monitoring/prometheus/rules.yml:/etc/prometheus/rules.yml:ro,Z
+      - prometheus:/prometheus
+    logging: *logging
+    mem_limit: 256m
+    restart: unless-stopped
+
+  grafana:
+    image: docker.io/grafana/grafana-oss:12.1.0
+    profiles: [monitoring]
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3001}:3000"
+    logging: *logging
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set it in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+      # Alerts by email: to Mailpit in development (http://127.0.0.1:8025).
+      GF_SMTP_ENABLED: "true"
+      GF_SMTP_HOST: ${GRAFANA_SMTP_HOST:-mailpit:1025}
+      GF_SMTP_FROM_ADDRESS: ${GRAFANA_SMTP_FROM:-alertas@documind.local}
+      GRAFANA_ALERT_EMAIL: ${GRAFANA_ALERT_EMAIL:-alertas@documind.local}
+    volumes:
+      - ./infrastructure/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro,Z
+      - ./infrastructure/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro,Z
+      - grafana:/var/lib/grafana
+    depends_on: [prometheus]
+    mem_limit: 256m
+    restart: unless-stopped
+
+  node-exporter:
+    image: docker.io/prom/node-exporter:v1.9.1
+    profiles: [monitoring]
+    command: ["--path.rootfs=/host"]
+    volumes:
+      - /:/host:ro,rslave
+    mem_limit: 64m
+    restart: unless-stopped
+
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.17.1
+    profiles: [monitoring]
+    environment:
+      # Development: the postgres user. Production (stage 3/11): a role with only pg_monitor.
+      DATA_SOURCE_NAME: postgresql://postgres:${POSTGRES_PASSWORD:?set it in .env}@db:5432/documind?sslmode=disable
+    depends_on: [db]
+    mem_limit: 64m
+    restart: unless-stopped
+
+  # Length of the Celery queue (the "documents" list in Valkey).
+  valkey-exporter:
+    image: docker.io/oliver006/redis_exporter:v1.67.0
+    profiles: [monitoring]
+    environment:
+      REDIS_ADDR: redis://valkey:6379
+      REDIS_EXPORTER_CHECK_KEYS: db0=documents
+    depends_on: [valkey]
+    mem_limit: 64m
+    restart: unless-stopped
+
+  # --- Backups (stage 11). Run by scripts/backup.sh, never left running.
+  # Encrypted with RESTIC_PASSWORD; the repository lives in BACKUP_DIR and the PC pulls a copy
+  # (scripts/pull-backups.sh): off the server without any cloud.
+  backup:
+    image: docker.io/restic/restic:0.18.0
+    profiles: [backup]
+    environment:
+      RESTIC_REPOSITORY: /repo
+      RESTIC_PASSWORD: ${RESTIC_PASSWORD:?set it in .env}
+      RESTIC_CACHE_DIR: /tmp/restic-cache
+    volumes:
+      - ${BACKUP_DIR:-./backups/repo}:/repo:Z
+      - ${BACKUP_STAGING:-./backups/staging}:/source/postgres:Z
+      - documents:/source/documents
+    logging: *logging
+    mem_limit: 512m
+    restart: "no"
+
+  # --- Reverse proxy (stage 11; in production it is what the tunnel reaches, stage 3).
+  # Locally: podman compose --profile proxy up -d  ->  http://127.0.0.1:8080
+  caddy:
+    image: docker.io/library/caddy:2.10.0-alpine
+    profiles: [proxy]
+    ports:
+      - "127.0.0.1:${PROXY_PORT:-8080}:80"
+    volumes:
+      - ./infrastructure/proxy/Caddyfile:/etc/caddy/Caddyfile:ro,Z
+      - caddy:/data
+    depends_on: [web, api]
+    logging: *logging
+    mem_limit: 128m
     restart: unless-stopped
 
 volumes:
   pgdata:
+  documents:
+  valkey:
+  ollama:
+  prometheus:
+  grafana:
+  caddy:

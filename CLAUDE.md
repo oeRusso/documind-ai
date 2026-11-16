@@ -49,9 +49,15 @@ GitHub Actions. (Cloudflare Access y GHCR quedan sujetos a la regla de servicios
 Existen a partir de la etapa 1 (backend) y la etapa 2 (frontend).
 - Backend (en `backend/`): `uv run pytest`, `uv run ruff check --fix`, `uv run ruff format`, `uv run mypy app`
 - Frontend (en `frontend/`): `pnpm lint`, `pnpm typecheck`, `pnpm test`
-- Entorno: `podman compose up -d --build` (db, API, web en http://localhost:3000, Mailpit) y
+- Entorno: `podman compose up -d --build` (db, API, worker, Valkey, Ollama, web en http://localhost:3000, Mailpit) y
   `podman compose exec api python -m app.dev.seed` (usuarios de prueba, ver `docs/probar-la-api.md`).
 - Contrato API → frontend: `uv run python -m app.dev.openapi ../frontend/openapi.json` y `pnpm gen:api`.
+- Modelos de Ollama (en el contenedor): `podman compose exec ollama ollama pull bge-m3`.
+- Evaluación de búsqueda (en `backend/`, usa el Ollama de la PC en 127.0.0.1:11434):
+  `uv run python -m evaluation.eval_retrieval`.
+- Evaluación de respuestas y prueba de carga (en `backend/`, usan el Ollama del contenedor en 127.0.0.1:11435):
+  `OLLAMA_URL=http://127.0.0.1:11435 uv run python -m evaluation.eval_answers` y
+  `uv run python -m evaluation.load_chat`.
 
 ## Reglas que nunca se rompen
 - Toda tabla de negocio tiene `organization_id` (también las hijas) y toda consulta filtra por él.
@@ -104,17 +110,18 @@ Ojo con los nombres repetidos:
 
 ## Git
 - Repo: https://github.com/oeRusso/documind-ai (público).
-- Ramas: `main` = estable (desde la etapa 3, lo que llega a `main` se despliega a producción);
-  `development` = integración. **Todo el trabajo de las etapas se commitea y pushea a `development`.**
-  Al cerrar una etapa, PR `development` → `main`.
-  (Esto reemplaza las ramas `etapa-NN-descripcion` que propone la Parte 2.)
+- Ramas: `main` = estable (lo que llega a `main` se despliega a producción); `development` = integración.
+  **Todo el trabajo se commitea y pushea a `development`.**
+- **Decisión de Esteban (2026-11-08): no abrir PRs ni mergear a `main` al cerrar cada etapa.** Todas las
+  etapas restantes quedan en `development`; al final se hace un solo PR `development` → `main` y el despliegue.
+  El agente nunca mergea a `main`.
 - Conventional Commits: `feat(documents): add upload endpoint`, `fix(auth): ...`, `test(...)`, `docs(...)`, `chore(...)`.
 - Un commit por paso chico.
-- Tags al cerrar cada fase: `v0.1.0` (A), `v0.2.0` (B), `v0.3.0` (C), `v1.0.0` (D).
-- Durante una etapa se commitea y pushea a `development`. **Nunca** commitear ni pushear directo a `main`.
+- Tags al cerrar cada fase: `v0.1.0` (A), `v0.2.0` (B), `v0.3.0` (C), `v1.0.0` (D) — se ponen sobre `main` al final.
+- **Nunca** commitear ni pushear directo a `main`.
 
 ## Flujo de cada etapa
-1. Trabajar en `development` (actualizada con `main`).
+1. Trabajar en `development`.
 2. Leer este archivo y `docs/etapas/etapa-NN.md`. Proponer un plan en pasos de no más de 1 hora,
    con archivos a crear o modificar y tests de cada paso. **Sin código hasta que se apruebe.** Señalar dudas y riesgos.
 3. Implementar en pasos chicos; tests y linters en verde.
@@ -122,7 +129,7 @@ Ojo con los nombres repetidos:
    Esteban lo verifique, decirle qué probar, y commitear y pushear a `development`.
 4. Al cerrar: actualizar README y `docs/arquitectura-del-codigo.md` (mapa de archivos), escribir la ADR si hubo decisión (`docs/decisions/NNNN-titulo.md`,
    desde `0000-plantilla.md`), marcar la etapa como terminada en su archivo y en la sección siguiente.
-5. PR `development` → `main`.
+5. Sin PR por etapa (ver "Git"): queda en `development` y se sigue con la siguiente.
 
 ## Continuidad entre sesiones
 Cada sesión de Claude Code arranca sin memoria de la anterior: el contexto vive en este repo.
@@ -156,7 +163,34 @@ Leerla antes de cualquier tarea de deploy (etapas 0, 3 y 11). Resumen:
 ## Etapa actual
 - **Etapa 0** (en curso): falta lo del VPS y la prueba de humo de Ollama. Ver `docs/etapas/etapa-00.md`.
 - **Etapa 1**: terminada (mergeada a `main`, que quedó protegida).
-- **Etapa 2**: terminada (2026-11-08). PR `development` → `main` pendiente de que Esteban lo revise y mergee.
-  Ver "Resultado" en `docs/etapas/etapa-02.md`.
-- **Siguiente: etapa 3** (en cuanto se mergee la 2). Leer antes "Despliegue" acá y las notas de `etapa-03.md`.
-Regla general: la etapa actual es la de **número más bajo** que no está marcada como terminada en `docs/etapas/`.
+- **Etapa 2**: terminada y mergeada a `main` (PR #4).
+- **Etapa 3** (despliegue): **pospuesta al final** por decisión de Esteban (2026-11-08), junto con lo del VPS
+  de la etapa 0. Necesita el túnel, el acceso al VPS y la guía `VPS-COMPARTIDO.md` (disco externo).
+- **Etapa 4**: terminada (2026-11-08) en `development`. Ver "Resultado" en `docs/etapas/etapa-04.md`.
+- **Etapa 5**: terminada (2026-11-09) en `development`. Ver "Resultado" en `docs/etapas/etapa-05.md`.
+- **Etapa 6**: terminada (2026-11-11) en `development`. Ver "Resultado" en `docs/etapas/etapa-06.md`.
+- **Etapa 7**: terminada (2026-11-12) en `development`. LLM `llama3.2:3b` (ADR 0009). Ver "Resultado" en
+  `docs/etapas/etapa-07.md`. Modelos en el contenedor `ollama`: `bge-m3`, `llama3.2:3b` y `granite3.3:2b`
+  (este último solo para comparar).
+- **Etapa 8**: terminada (2026-11-15) en `development`. Conversaciones privadas, seguimientos (ADR 0010).
+  Ver "Resultado" en `docs/etapas/etapa-08.md`.
+- **Decisión de Esteban (2026-11-15):** terminar todas las etapas restantes **en local** sin frenar a
+  aprobar el plan de cada una (el plan queda escrito en el archivo de la etapa), con las opciones
+  recomendadas y sin servicios externos: deploy construyendo en el VPS (sin GHCR), Grafana en
+  `127.0.0.1` + túnel SSH (sin Cloudflare Access), sin UptimeRobot, sin R2 (backups que baja la PC por
+  `rsync`), rate limiting en la app y Caddy (sin reglas de Cloudflare), sin SMTP en producción por ahora.
+  El despliegue, el túnel y lo del VPS se hacen juntos al final.
+- **Etapa 9**: terminada (2026-11-15) en `development`. Defensas contra prompt injection (ADR 0011).
+  Reranking y Docling descartados: Esteban no autorizó Hugging Face (2026-11-15). Ver "Resultado" en `docs/etapas/etapa-09.md`.
+- **Etapa 10**: terminada (2026-11-15) en `development`. Métricas, Grafana local, analíticas (ADR 0012).
+  Monitoreo: `podman compose --profile monitoring up -d`. Canal de alertas al teléfono pendiente de Esteban.
+- **Etapa 11**: terminada en local (2026-11-15). Backups restic, deploy/rollback por etiquetas, Caddy,
+  runbook en `docs/operations/` (ADR 0013). Falta repetir simulacros en el VPS.
+- **Etapa 12**: terminada en local (2026-11-15). Demo pública (ADR 0014), README, CHANGELOG y borrador
+  del artículo. Faltan el GIF, el video y el release (sobre `main`).
+- **Producción preparada (2026-11-15):** `compose.prod.yaml` probado entero en la PC; pasos en
+  `docs/operations/runbook.md` §0. Esteban pidió subirlo lo antes posible.
+- **Siguiente: etapas 0 y 3** (VPS y despliegue), con Esteban: guía `VPS-COMPARTIDO.md`, túnel,
+  acceso al VPS, y repetir allá los simulacros (inyección, backup, rollback, carga).
+Regla general: la etapa actual es la de **número más bajo** que no está marcada como terminada en
+`docs/etapas/`, **salvo las etapas 0 y 3**, que quedan para el final.

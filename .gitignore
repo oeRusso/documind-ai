@@ -41,3 +41,8 @@ yarn-error.log*
 *.swp
 .DS_Store
 Thumbs.db
+backend/evaluation/.cache/
+
+# --- Backups (restic, stage 11): encrypted copies, never committed ---
+backups/
+.deploy/

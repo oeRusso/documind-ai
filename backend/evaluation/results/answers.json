@@ -1,0 +1,719 @@
+{
+  "thresholds": [
+    {
+      "threshold": 0.4,
+      "unanswerable_stopped": 0,
+      "answerable_stopped": 0
+    },
+    {
+      "threshold": 0.41,
+      "unanswerable_stopped": 0,
+      "answerable_stopped": 0
+    },
+    {
+      "threshold": 0.42,
+      "unanswerable_stopped": 0,
+      "answerable_stopped": 0
+    },
+    {
+      "threshold": 0.43,
+      "unanswerable_stopped": 0,
+      "answerable_stopped": 0
+    },
+    {
+      "threshold": 0.44,
+      "unanswerable_stopped": 0,
+      "answerable_stopped": 0
+    },
+    {
+      "threshold": 0.45,
+      "unanswerable_stopped": 0,
+      "answerable_stopped": 0
+    },
+    {
+      "threshold": 0.46,
+      "unanswerable_stopped": 2,
+      "answerable_stopped": 0
+    },
+    {
+      "threshold": 0.47,
+      "unanswerable_stopped": 4,
+      "answerable_stopped": 0
+    },
+    {
+      "threshold": 0.48,
+      "unanswerable_stopped": 5,
+      "answerable_stopped": 0
+    },
+    {
+      "threshold": 0.49,
+      "unanswerable_stopped": 6,
+      "answerable_stopped": 0
+    },
+    {
+      "threshold": 0.5,
+      "unanswerable_stopped": 6,
+      "answerable_stopped": 0
+    },
+    {
+      "threshold": 0.51,
+      "unanswerable_stopped": 6,
+      "answerable_stopped": 0
+    },
+    {
+      "threshold": 0.52,
+      "unanswerable_stopped": 8,
+      "answerable_stopped": 1
+    },
+    {
+      "threshold": 0.53,
+      "unanswerable_stopped": 9,
+      "answerable_stopped": 2
+    },
+    {
+      "threshold": 0.54,
+      "unanswerable_stopped": 9,
+      "answerable_stopped": 2
+    },
+    {
+      "threshold": 0.55,
+      "unanswerable_stopped": 9,
+      "answerable_stopped": 4
+    },
+    {
+      "threshold": 0.56,
+      "unanswerable_stopped": 9,
+      "answerable_stopped": 7
+    },
+    {
+      "threshold": 0.57,
+      "unanswerable_stopped": 9,
+      "answerable_stopped": 10
+    },
+    {
+      "threshold": 0.58,
+      "unanswerable_stopped": 9,
+      "answerable_stopped": 11
+    },
+    {
+      "threshold": 0.59,
+      "unanswerable_stopped": 9,
+      "answerable_stopped": 12
+    },
+    {
+      "threshold": 0.6,
+      "unanswerable_stopped": 9,
+      "answerable_stopped": 16
+    },
+    {
+      "threshold": 0.61,
+      "unanswerable_stopped": 9,
+      "answerable_stopped": 19
+    },
+    {
+      "threshold": 0.62,
+      "unanswerable_stopped": 10,
+      "answerable_stopped": 25
+    },
+    {
+      "threshold": 0.63,
+      "unanswerable_stopped": 10,
+      "answerable_stopped": 29
+    },
+    {
+      "threshold": 0.64,
+      "unanswerable_stopped": 10,
+      "answerable_stopped": 34
+    },
+    {
+      "threshold": 0.65,
+      "unanswerable_stopped": 10,
+      "answerable_stopped": 38
+    }
+  ],
+  "models": [
+    {
+      "model": "llama3.2:3b",
+      "answerable": 24,
+      "answered": 21,
+      "cited_expected": 14,
+      "without_citations": 2,
+      "unanswerable": 11,
+      "said_no_evidence": 11,
+      "invalid_markers": 0,
+      "errors": 0,
+      "first_token_s_p50": 16.8,
+      "total_s_p50": 20.4,
+      "total_s_p95": 28.8,
+      "chars_per_second": 9.6,
+      "peak_ram_gb": 3.96,
+      "records": [
+        {
+          "id": "q001",
+          "question": "¿Cuánto dura el período de prueba en un empleo por tiempo indeterminado?",
+          "answerable": true,
+          "best_similarity": 0.6991789166563911,
+          "stopped_by_threshold": false,
+          "answer": "El contrato de trabajo por tiempo indeterminado se entenderá celebrado a prueba durante los primeros seis (6) meses de vigencia. Las convenciones colectivas de trabajo podrán ampliar dicho período de prueba: hasta ocho (8) meses, en las empresas de seis (6) y hasta cien (100) trabajadores; y hasta un (1) año en las empresas de hasta cinco (5) trabajadores. [1]",
+          "no_evidence": false,
+          "cited_pages": [
+            "ley-20744-contrato-de-trabajo:18-20"
+          ],
+          "cited_expected": true,
+          "invalid_markers": 0,
+          "first_token_s": 14.14,
+          "total_s": 22.85,
+          "error": null
+        },
+        {
+          "id": "q003",
+          "question": "¿Cuántos días de vacaciones me tocan si tengo menos de cinco años de antigüedad?",
+          "answerable": true,
+          "best_similarity": 0.6532988596085998,
+          "stopped_by_threshold": false,
+          "answer": "El trabajador gozará de un período mínimo y continuado de descanso anual remunerado por los siguientes plazos: de catorce (14) días corridos cuando la antigüedad en el empleo no exceda de cinco (5) años [1].",
+          "no_evidence": false,
+          "cited_pages": [
+            "ley-20744-contrato-de-trabajo:37-38"
+          ],
+          "cited_expected": true,
+          "invalid_markers": 0,
+          "first_token_s": 18.32,
+          "total_s": 23.85,
+          "error": null
+        },
+        {
+          "id": "q005",
+          "question": "¿Cuánto tiempo antes y después del parto no se puede trabajar?",
+          "answerable": true,
+          "best_similarity": 0.6920326832641136,
+          "stopped_by_threshold": false,
+          "answer": "Se prohibe el trabajo del personal femenino o persona gestante durante los cuarenta y cinco (45) días anteriores al parto y hasta cuarenta y cinco (45) días después del mismo [1].",
+          "no_evidence": false,
+          "cited_pages": [
+            "ley-20744-contrato-de-trabajo:43-44"
+          ],
+          "cited_expected": true,
+          "invalid_markers": 0,
+          "first_token_s": 23.1,
+          "total_s": 27.48,
+          "error": null
+        },
+        {
+          "id": "q007",
+          "question": "¿El empleador tiene que avisar con anticipación antes de despedir?",
+          "answerable": true,
+          "best_similarity": 0.6370794446278942,
+          "stopped_by_threshold": false,
+          "answer": "El contrato de trabajo no podrá ser disuelto por voluntad de una de las partes, sin previo aviso, o en su defecto, indemnización además de la que corresponda al trabajador por su antigüedad en el empleo, cuando el contrato se disuelva por voluntad del empleador. El preaviso, cuando las partes no lo fijen en un término mayor, deberá darse con la anticipación siguiente: a) por el trabajador, de QUINCE (15) días; b) por el empleador, de un (1) mes cuando el trabajador tuviese una antigüedad en el empleo que no exceda de cinco (5) años y de dos (2) meses cuando fuere superior. [1]",
+          "no_evidence": false,
+          "cited_pages": [
+            "ley-20744-contrato-de-trabajo:58-59"
+          ],
+          "cited_expected": true,
+          "invalid_markers": 0,
+          "first_token_s": 18.78,
+          "total_s": 34.68,
+          "error": null
+        },
+        {
+          "id": "q009",
+          "question": "¿Qué es una relación de consumo?",
+          "answerable": true,
+          "best_similarity": 0.7306293088572818,
+          "stopped_by_threshold": false,
+          "answer": "La relación de consumo es el vínculo jurídico entre el proveedor y el consumidor o usuario [1].",
+          "no_evidence": false,
+          "cited_pages": [
+            "ley-24240-defensa-del-consumidor:1-2"
+          ],
+          "cited_expected": true,
+          "invalid_markers": 0,
+          "first_token_s": 16.14,
+          "total_s": 18.47,
+          "error": null
+        },
+        {
+          "id": "q011",
+          "question": "Contraté internet por teléfono, ¿puedo darlo de baja también por teléfono?",
+          "answerable": true,
+          "best_similarity": 0.6627416617736523,
+          "stopped_by_threshold": false,
+          "answer": "No encontré evidencia en los documentos para responder esa pregunta.",
+          "no_evidence": true,
+          "cited_pages": [],
+          "cited_expected": false,
+          "invalid_markers": 0,
+          "first_token_s": 18.07,
+          "total_s": 19.3,
+          "error": null
+        },
+        {
+          "id": "q013",
+          "question": "Compré algo por internet y me arrepentí, ¿cuántos días tengo para devolverlo?",
+          "answerable": true,
+          "best_similarity": 0.5620941780749543,
+          "stopped_by_threshold": false,
+          "answer": "No encontré evidencia en los documentos para responder esa pregunta.",
+          "no_evidence": true,
+          "cited_pages": [],
+          "cited_expected": false,
+          "invalid_markers": 0,
+          "first_token_s": 18.73,
+          "total_s": 19.95,
+          "error": null
+        },
+        {
+          "id": "q015",
+          "question": "¿Qué son los datos sensibles?",
+          "answerable": true,
+          "best_similarity": 0.5578040022382742,
+          "stopped_by_threshold": false,
+          "answer": "Los datos sensibles son datos personales que revelan origen racial y étnico, opiniones políticas, convicciones religiosas, filosóficas o morales, afiliación sindical e información referente a la salud o a la vida sexual [2].",
+          "no_evidence": false,
+          "cited_pages": [
+            "ley-25326-datos-personales:3-4"
+          ],
+          "cited_expected": false,
+          "invalid_markers": 0,
+          "first_token_s": 14.58,
+          "total_s": 19.7,
+          "error": null
+        },
+        {
+          "id": "q017",
+          "question": "¿Puedo saber qué información personal mía tiene guardada una empresa?",
+          "answerable": true,
+          "best_similarity": 0.616241148369965,
+          "stopped_by_threshold": false,
+          "answer": "Toda persona tiene derecho a solicitar y obtener información de sus datos personales incluidos en los bancos de datos públicos, o privados destinados a proveer informes [1]. El titular de los datos, previa acreditación de su identidad, tiene derecho a solicitar y obtener información de sus datos personales [2].",
+          "no_evidence": false,
+          "cited_pages": [
+            "ley-25326-datos-personales:6-7",
+            "ley-25326-datos-personales:9-10"
+          ],
+          "cited_expected": true,
+          "invalid_markers": 0,
+          "first_token_s": 14.46,
+          "total_s": 20.74,
+          "error": null
+        },
+        {
+          "id": "q019",
+          "question": "¿Qué funciones tiene el organismo que controla la protección de datos?",
+          "answerable": true,
+          "best_similarity": 0.678666137178636,
+          "stopped_by_threshold": false,
+          "answer": "El organismo que controla la protección de datos debe habilitar el Registro que al efecto habilite [2].",
+          "no_evidence": false,
+          "cited_pages": [
+            "ley-25326-datos-personales:8-9"
+          ],
+          "cited_expected": false,
+          "invalid_markers": 0,
+          "first_token_s": 15.25,
+          "total_s": 17.55,
+          "error": null
+        },
+        {
+          "id": "q021",
+          "question": "Si una ley pide firma de puño y letra, ¿sirve firmar digitalmente?",
+          "answerable": true,
+          "best_similarity": 0.6542964684192091,
+          "stopped_by_threshold": false,
+          "answer": "Según el artículo 3o de la Ley N° 27.506, cuando la ley requiere una firma manuscrita, esa exigencia también queda satisfecha por una firma digital [1].",
+          "no_evidence": false,
+          "cited_pages": [
+            "ley-25506-firma-digital:1-2"
+          ],
+          "cited_expected": true,
+          "invalid_markers": 0,
+          "first_token_s": 15.07,
+          "total_s": 18.84,
+          "error": null
+        },
+        {
+          "id": "q023",
+          "question": "¿A quién se le atribuye una firma digital?",
+          "answerable": true,
+          "best_similarity": 0.6199385440240579,
+          "stopped_by_threshold": false,
+          "answer": "Se le atribuye a quien la invoca acreditar su validez en caso de ser desconocida la firma electrónica.",
+          "no_evidence": false,
+          "cited_pages": [],
+          "cited_expected": false,
+          "invalid_markers": 0,
+          "first_token_s": 16.34,
+          "total_s": 18.92,
+          "error": null
+        },
+        {
+          "id": "q025",
+          "question": "¿Para qué sirve la ley de riesgos del trabajo?",
+          "answerable": true,
+          "best_similarity": 0.6830287386792255,
+          "stopped_by_threshold": false,
+          "answer": "La Ley sobre Riesgos del Trabajo (LRT) tiene como objetivo reducir la siniestralidad laboral a través de la prevención de los riesgos derivados del trabajo, reparar los daños derivados de accidentes de trabajo y de enfermedades profesionales, promover la recalificación y la recolocación de los trabajadores damnificados, y promover la negociación colectiva laboral para la mejora de las medidas de prevención y de las prestaciones reparadoras. [1]",
+          "no_evidence": false,
+          "cited_pages": [
+            "ley-24557-riesgos-del-trabajo:1-3"
+          ],
+          "cited_expected": true,
+          "invalid_markers": 0,
+          "first_token_s": 13.78,
+          "total_s": 23.68,
+          "error": null
+        },
+        {
+          "id": "q027",
+          "question": "¿Qué cobro mientras estoy de baja por un accidente de trabajo?",
+          "answerable": true,
+          "best_similarity": 0.669659791771315,
+          "stopped_by_threshold": false,
+          "answer": "La remuneración que en estos casos corresponda abonar al trabajador se liquidará conforme a la que perciba en el momento de la interrupción de los servicios, con más los aumentos que durante el período de interrupción fueren acordados a los de su misma categoría por aplicación de una norma legal, convención colectiva de trabajo o decisión del empleador. Si el salario estuviere integrado por remuneraciones variables, se liquidará en cuanto a esta parte según el promedio de lo percibido en el último semestre de prestación de servicios, no pudiendo, en ningún caso, la remuneración del trabajador enfermo o accidentado ser inferior a la que hubiese percibido de no haberse operado el impedimento. [1]",
+          "no_evidence": false,
+          "cited_pages": [
+            "ley-20744-contrato-de-trabajo:51-52"
+          ],
+          "cited_expected": false,
+          "invalid_markers": 0,
+          "first_token_s": 21.17,
+          "total_s": 38.57,
+          "error": null
+        },
+        {
+          "id": "q029",
+          "question": "¿Qué principios rigen los trámites ante la administración pública?",
+          "answerable": true,
+          "best_similarity": 0.6807728169045411,
+          "stopped_by_threshold": false,
+          "answer": "Los trámites administrativos, incluyendo los recursos, reclamos y demás impugnaciones, serán gratuitos, sin perjuicio de la obligación del interesado de sufragar los honorarios que pudieren corresponder a sus letrados y representantes y a los peritos que él proponga [1]. Tanto la Administración como los administrados deberán obrar con buena fe y lealtad en el trámite de los procedimientos [1].",
+          "no_evidence": false,
+          "cited_pages": [
+            "ley-19549-procedimientos-administrativos:3-3"
+          ],
+          "cited_expected": false,
+          "invalid_markers": 0,
+          "first_token_s": 16.75,
+          "total_s": 26.34,
+          "error": null
+        },
+        {
+          "id": "q031",
+          "question": "Si el Estado no responde mi reclamo, ¿qué significa ese silencio?",
+          "answerable": true,
+          "best_similarity": 0.5610077286667604,
+          "stopped_by_threshold": false,
+          "answer": "Si el Estado no responde tu reclamo, el silencio se interpretará como negativa, a menos que se haya dictado resolución expresa. Si las normas especiales no previenen un plazo determinado para el pronunciamiento, el silencio no podrá exceder de sesenta (60) días. Vencido el plazo, el interesado podrá dar por configurado el silencio de la Administración. [1]",
+          "no_evidence": false,
+          "cited_pages": [
+            "ley-19549-procedimientos-administrativos:9-9"
+          ],
+          "cited_expected": true,
+          "invalid_markers": 0,
+          "first_token_s": 18.85,
+          "total_s": 28.8,
+          "error": null
+        },
+        {
+          "id": "q033",
+          "question": "¿Cuánto tiempo tengo para demandar al Estado por un acto administrativo?",
+          "answerable": true,
+          "best_similarity": 0.6695403669072995,
+          "stopped_by_threshold": false,
+          "answer": "No encontré evidencia en los documentos para responder esa pregunta.",
+          "no_evidence": true,
+          "cited_pages": [],
+          "cited_expected": false,
+          "invalid_markers": 0,
+          "first_token_s": 17.1,
+          "total_s": 18.24,
+          "error": null
+        },
+        {
+          "id": "q035",
+          "question": "¿Tengo que justificar para qué quiero información del Estado?",
+          "answerable": true,
+          "best_similarity": 0.6190737074337517,
+          "stopped_by_threshold": false,
+          "answer": "No, según el artículo 1° de la ley 27275, el acceso a la información pública no requiere justificación para su solicitud [1].",
+          "no_evidence": false,
+          "cited_pages": [
+            "ley-27275-acceso-a-la-informacion:1-2"
+          ],
+          "cited_expected": false,
+          "invalid_markers": 0,
+          "first_token_s": 16.78,
+          "total_s": 20.42,
+          "error": null
+        },
+        {
+          "id": "q037",
+          "question": "¿En cuántos días tienen que responder un pedido de información pública?",
+          "answerable": true,
+          "best_similarity": 0.6835138941213982,
+          "stopped_by_threshold": false,
+          "answer": "Un pedido de información pública debe ser satisfecho en un plazo no mayor de quince (15) días hábiles [1].",
+          "no_evidence": false,
+          "cited_pages": [
+            "ley-27275-acceso-a-la-informacion:6-6"
+          ],
+          "cited_expected": true,
+          "invalid_markers": 0,
+          "first_token_s": 23.82,
+          "total_s": 26.65,
+          "error": null
+        },
+        {
+          "id": "q039",
+          "question": "¿Cómo se define el horario de trabajo en el teletrabajo?",
+          "answerable": true,
+          "best_similarity": 0.646010418117364,
+          "stopped_by_threshold": false,
+          "answer": "La jornada laboral debe ser pactada previamente por escrito en el contrato de trabajo de conformidad con los límites legales y convencionales vigentes, tanto en lo que respecta a lo convenido por hora como por objetivos [1]. Las plataformas y/o software utilizados por el empleador a los fines específicos del teletrabajo, y registrados según lo establecido en el artículo 18 de la presente, deberán desarrollarse de modo acorde a la jornada laboral establecida, impidiendo la conexión fuera de la misma [2].",
+          "no_evidence": false,
+          "cited_pages": [
+            "ley-27555-teletrabajo:1-2",
+            "ley-27555-teletrabajo:3-4"
+          ],
+          "cited_expected": true,
+          "invalid_markers": 0,
+          "first_token_s": 16.57,
+          "total_s": 28.75,
+          "error": null
+        },
+        {
+          "id": "q041",
+          "question": "Trabajo desde casa y cuido a mi hijo de 5 años, ¿tengo algún derecho especial?",
+          "answerable": true,
+          "best_similarity": 0.6106279278723696,
+          "stopped_by_threshold": false,
+          "answer": "Tienes derecho a horarios compatibles con las tareas de cuidado a tu cargo y/o a interrumpir la jornada [1].",
+          "no_evidence": false,
+          "cited_pages": [
+            "ley-27555-teletrabajo:2-2"
+          ],
+          "cited_expected": true,
+          "invalid_markers": 0,
+          "first_token_s": 17.27,
+          "total_s": 19.99,
+          "error": null
+        },
+        {
+          "id": "q043",
+          "question": "¿Quién paga la computadora y el software para teletrabajar?",
+          "answerable": true,
+          "best_similarity": 0.6702651152782718,
+          "stopped_by_threshold": false,
+          "answer": "El empleador paga la computadora y el software para teletrabajar [1].",
+          "no_evidence": false,
+          "cited_pages": [
+            "ley-27555-teletrabajo:1-2"
+          ],
+          "cited_expected": true,
+          "invalid_markers": 0,
+          "first_token_s": 17.37,
+          "total_s": 19.13,
+          "error": null
+        },
+        {
+          "id": "q045",
+          "question": "¿Qué dice el principio precautorio en materia ambiental?",
+          "answerable": true,
+          "best_similarity": 0.6702860606739786,
+          "stopped_by_threshold": false,
+          "answer": "Cuando haya peligro de daño grave o irreversible la ausencia de información o certeza científica no deberá utilizarse como razón para postergar la adopción de medidas eficaces, en función de los costos, para impedir la degradación del medio ambiente.",
+          "no_evidence": false,
+          "cited_pages": [],
+          "cited_expected": false,
+          "invalid_markers": 0,
+          "first_token_s": 14.55,
+          "total_s": 20.36,
+          "error": null
+        },
+        {
+          "id": "q047",
+          "question": "¿Quién está obligado a tener un seguro ambiental?",
+          "answerable": true,
+          "best_similarity": 0.6026454861991349,
+          "stopped_by_threshold": false,
+          "answer": "Toda persona física o jurídica, pública o privada, que realice actividades riesgosas para el ambiente, los ecosistemas y sus elementos constitutivos, deberá contratar un seguro de cobertura con entidad suficiente para garantizar el financiamiento de la recomposición del daño que en su tipo pudiere producir [1].",
+          "no_evidence": false,
+          "cited_pages": [
+            "ley-25675-ambiente:5-6"
+          ],
+          "cited_expected": true,
+          "invalid_markers": 0,
+          "first_token_s": 15.68,
+          "total_s": 22.7,
+          "error": null
+        },
+        {
+          "id": "q061",
+          "question": "¿Cuál es el monto del salario mínimo, vital y móvil este año?",
+          "answerable": false,
+          "best_similarity": 0.6616206563485072,
+          "stopped_by_threshold": false,
+          "answer": "No encontré evidencia en los documentos para responder esa pregunta.",
+          "no_evidence": true,
+          "cited_pages": [],
+          "cited_expected": false,
+          "invalid_markers": 0,
+          "first_token_s": 21.31,
+          "total_s": 22.58,
+          "error": null
+        },
+        {
+          "id": "q062",
+          "question": "¿Qué alícuota de IVA pagan los servicios digitales prestados desde el exterior?",
+          "answerable": false,
+          "best_similarity": 0.4569843581274584,
+          "stopped_by_threshold": true,
+          "answer": "No encontré evidencia en los documentos para responder esa pregunta.",
+          "no_evidence": true,
+          "cited_pages": [],
+          "cited_expected": false,
+          "invalid_markers": 0,
+          "first_token_s": 0.0,
+          "total_s": 0.0,
+          "error": null
+        },
+        {
+          "id": "q063",
+          "question": "¿Cómo se inscribe una sociedad anónima en la Inspección General de Justicia?",
+          "answerable": false,
+          "best_similarity": 0.5142183014286096,
+          "stopped_by_threshold": false,
+          "answer": "No encontré evidencia en los documentos para responder esa pregunta.",
+          "no_evidence": true,
+          "cited_pages": [],
+          "cited_expected": false,
+          "invalid_markers": 0,
+          "first_token_s": 15.43,
+          "total_s": 16.55,
+          "error": null
+        },
+        {
+          "id": "q064",
+          "question": "¿Cuál es la velocidad máxima permitida en las autopistas?",
+          "answerable": false,
+          "best_similarity": 0.45171854187736393,
+          "stopped_by_threshold": true,
+          "answer": "No encontré evidencia en los documentos para responder esa pregunta.",
+          "no_evidence": true,
+          "cited_pages": [],
+          "cited_expected": false,
+          "invalid_markers": 0,
+          "first_token_s": 0.0,
+          "total_s": 0.0,
+          "error": null
+        },
+        {
+          "id": "q065",
+          "question": "¿Qué documentos necesito para tramitar el pasaporte?",
+          "answerable": false,
+          "best_similarity": 0.47862279160295795,
+          "stopped_by_threshold": true,
+          "answer": "No encontré evidencia en los documentos para responder esa pregunta.",
+          "no_evidence": true,
+          "cited_pages": [],
+          "cited_expected": false,
+          "invalid_markers": 0,
+          "first_token_s": 0.0,
+          "total_s": 0.0,
+          "error": null
+        },
+        {
+          "id": "q066",
+          "question": "¿Cuánto cuesta registrar una marca comercial?",
+          "answerable": false,
+          "best_similarity": 0.46585688198466557,
+          "stopped_by_threshold": true,
+          "answer": "No encontré evidencia en los documentos para responder esa pregunta.",
+          "no_evidence": true,
+          "cited_pages": [],
+          "cited_expected": false,
+          "invalid_markers": 0,
+          "first_token_s": 0.0,
+          "total_s": 0.0,
+          "error": null
+        },
+        {
+          "id": "q067",
+          "question": "¿A partir de qué edad se puede votar en las elecciones nacionales?",
+          "answerable": false,
+          "best_similarity": 0.5192163122401146,
+          "stopped_by_threshold": false,
+          "answer": "No encontré evidencia en los documentos para responder esa pregunta.",
+          "no_evidence": true,
+          "cited_pages": [],
+          "cited_expected": false,
+          "invalid_markers": 0,
+          "first_token_s": 15.62,
+          "total_s": 16.77,
+          "error": null
+        },
+        {
+          "id": "q068",
+          "question": "¿En cuántos años prescriben las deudas de impuestos?",
+          "answerable": false,
+          "best_similarity": 0.6112112420159176,
+          "stopped_by_threshold": false,
+          "answer": "No encontré evidencia en los documentos para responder esa pregunta.",
+          "no_evidence": true,
+          "cited_pages": [],
+          "cited_expected": false,
+          "invalid_markers": 0,
+          "first_token_s": 19.7,
+          "total_s": 20.98,
+          "error": null
+        },
+        {
+          "id": "q069",
+          "question": "¿Cómo se calcula el impuesto a las ganancias de un monotributista?",
+          "answerable": false,
+          "best_similarity": 0.4683023766750525,
+          "stopped_by_threshold": true,
+          "answer": "No encontré evidencia en los documentos para responder esa pregunta.",
+          "no_evidence": true,
+          "cited_pages": [],
+          "cited_expected": false,
+          "invalid_markers": 0,
+          "first_token_s": 0.0,
+          "total_s": 0.0,
+          "error": null
+        },
+        {
+          "id": "q070",
+          "question": "¿Qué reglas hay para volar drones en zonas urbanas?",
+          "answerable": false,
+          "best_similarity": 0.48894226287420306,
+          "stopped_by_threshold": true,
+          "answer": "No encontré evidencia en los documentos para responder esa pregunta.",
+          "no_evidence": true,
+          "cited_pages": [],
+          "cited_expected": false,
+          "invalid_markers": 0,
+          "first_token_s": 0.0,
+          "total_s": 0.0,
+          "error": null
+        },
+        {
+          "id": "q071",
+          "question": "¿Cuántas cuotas sin interés puede ofrecer un comercio con tarjeta de crédito?",
+          "answerable": false,
+          "best_similarity": 0.5278121514432574,
+          "stopped_by_threshold": false,
+          "answer": "No encontré evidencia en los documentos para responder esa pregunta.",
+          "no_evidence": true,
+          "cited_pages": [],
+          "cited_expected": false,
+          "invalid_markers": 0,
+          "first_token_s": 18.45,
+          "total_s": 19.68,
+          "error": null
+        }
+      ]
+    }
+  ]
+}

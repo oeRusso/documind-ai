@@ -24,7 +24,20 @@ from tests.db import (
 
 pytestmark = pytest.mark.integration
 
-TENANT_TABLES = ("organizations", "memberships", "invitations", "audit_logs")
+TENANT_TABLES = (
+    "organizations",
+    "memberships",
+    "invitations",
+    "audit_logs",
+    "documents",
+    "document_versions",
+    "processing_jobs",
+    "document_chunks",
+    "chunk_embeddings",
+    "conversations",
+    "messages",
+    "citations",
+)
 
 
 @dataclass(frozen=True)
@@ -77,6 +90,75 @@ async def _seed_organization(
             new_id(),
             org_id,
         )
+        document_id = new_id()
+        await connection.execute(
+            "INSERT INTO documents (id, organization_id, title, status) "
+            "VALUES ($1, $2, 'Contrato', 'pending')",
+            document_id,
+            org_id,
+        )
+        version_id = new_id()
+        await connection.execute(
+            "INSERT INTO document_versions (id, organization_id, document_id, number, "
+            "storage_key, filename, sha256, kind, size_bytes) "
+            "VALUES ($1, $2, $3, 1, $4, 'contrato.pdf', $5, 'pdf', 10)",
+            version_id,
+            org_id,
+            document_id,
+            f"{org_id}/{new_id()}",
+            "a" * 64,  # the same bytes in both organizations: allowed, each has its own copy
+        )
+        await connection.execute(
+            "INSERT INTO processing_jobs (id, organization_id, document_id, version_id, status, "
+            "attempts, pages_done, ocr_pages, chunk_count) "
+            "VALUES ($1, $2, $3, $4, 'ready', 1, 1, 0, 1)",
+            new_id(),
+            org_id,
+            document_id,
+            version_id,
+        )
+        chunk_id = new_id()
+        await connection.execute(
+            "INSERT INTO document_chunks (id, organization_id, document_id, version_id, position, "
+            "content, token_count) VALUES ($1, $2, $3, $4, 0, 'El plazo es de 30 días.', 7)",
+            chunk_id,
+            org_id,
+            document_id,
+            version_id,
+        )
+        await connection.execute(
+            "INSERT INTO chunk_embeddings (id, organization_id, document_id, chunk_id, model, "
+            "embedding) VALUES ($1, $2, $3, $4, 'fake', '[1,0,0]')",
+            new_id(),
+            org_id,
+            document_id,
+            chunk_id,
+        )
+        owner = next(iter(members))
+        conversation_id, message_id = new_id(), new_id()
+        await connection.execute(
+            "INSERT INTO conversations (id, organization_id, user_id) VALUES ($1, $2, $3)",
+            conversation_id,
+            org_id,
+            owner,
+        )
+        await connection.execute(
+            "INSERT INTO messages (id, organization_id, conversation_id, role, content, status) "
+            "VALUES ($1, $2, $3, 'assistant', 'Treinta días [1].', 'complete')",
+            message_id,
+            org_id,
+            conversation_id,
+        )
+        await connection.execute(
+            "INSERT INTO citations (id, organization_id, message_id, marker, document_id, "
+            "document_title, excerpt, chunk_ids) "
+            "VALUES ($1, $2, $3, 1, $4, 'Contrato', 'El plazo', ARRAY[$5]::uuid[])",
+            new_id(),
+            org_id,
+            message_id,
+            document_id,
+            chunk_id,
+        )
     return org_id
 
 
@@ -101,7 +183,9 @@ async def seed(migrated: None) -> AsyncIterator[Seed]:
         yield Seed(org_a=org_a, org_b=org_b, ana=ana, bob=bob, carla=carla)
     finally:
         await connection.execute(
-            "TRUNCATE organizations, memberships, invitations, audit_logs, users CASCADE"
+            "TRUNCATE organizations, memberships, invitations, audit_logs, users, "
+            "documents, document_versions, processing_jobs, document_chunks, chunk_embeddings, "
+            "conversations, messages, citations CASCADE"
         )
         await connection.close()
 
@@ -223,6 +307,15 @@ async def test_cannot_insert_rows_into_another_organization(
                     "f" * 64,
                 )
 
+        with pytest.raises(asyncpg.InsufficientPrivilegeError, match="row-level security"):
+            async with app_db.transaction():
+                await app_db.execute(
+                    "INSERT INTO documents (id, organization_id, title, status) "
+                    "VALUES ($1, $2, 'x', 'pending')",
+                    new_id(),
+                    seed.org_b,
+                )
+
 
 async def test_cannot_update_or_delete_rows_of_another_organization(
     app_db: asyncpg.Connection, seed: Seed
@@ -241,6 +334,9 @@ async def test_cannot_update_or_delete_rows_of_another_organization(
             await app_db.execute("DELETE FROM memberships WHERE organization_id = $1", seed.org_b)
             == "DELETE 0"
         )
+        assert await app_db.execute("UPDATE documents SET title = 'hacked'") == "UPDATE 1"
+        assert await app_db.execute("DELETE FROM document_chunks") == "DELETE 1"  # only A's
+        assert await app_db.execute("DELETE FROM document_versions") == "DELETE 1"
 
 
 async def test_cannot_move_a_row_into_another_organization(
@@ -314,6 +410,14 @@ async def test_audit_log_cannot_be_changed_by_the_app(
 
 # --- Guard for future tables ---------------------------------------------------------------
 
+# Tables that have an organization_id but no RLS, each with its reason (ADR 0006).
+# Adding a table here needs a written reason; adding one without RLS and without this fails.
+WITHOUT_RLS_ON_PURPOSE = {
+    # Only storage keys of files to delete. The purge job reads it before entering each
+    # organization; the document rows themselves are deleted under RLS.
+    "document_purge_queue": "ADR 0006",
+}
+
 
 async def test_every_table_with_organization_id_has_forced_rls(app_db: asyncpg.Connection) -> None:
     """Stage 4+ adds business tables: forgetting RLS on one of them makes this test fail."""
@@ -333,4 +437,18 @@ async def test_every_table_with_organization_id_has_forced_rls(app_db: asyncpg.C
     tables = {row["relname"]: (row["relrowsecurity"], row["relforcerowsecurity"]) for row in rows}
     assert set(tables) >= set(TENANT_TABLES)
     unprotected = [name for name, flags in tables.items() if flags != (True, True)]
-    assert unprotected == []
+    assert sorted(unprotected) == sorted(WITHOUT_RLS_ON_PURPOSE)
+
+
+async def test_spanish_full_text_search_finds_word_forms(
+    app_db: asyncpg.Connection, seed: Seed
+) -> None:
+    """document_chunks.tsv is computed by PostgreSQL in Spanish: "plazos" finds "plazo"."""
+    async with app_db.transaction():
+        await act_as(app_db, user=seed.ana, org=seed.org_a)
+
+        found = await app_db.fetchval(
+            "SELECT count(*) FROM document_chunks WHERE tsv @@ plainto_tsquery('spanish', 'plazos')"
+        )
+
+    assert found == 1  # and only A's chunk, although B has the same text

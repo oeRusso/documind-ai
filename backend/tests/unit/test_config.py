@@ -83,3 +83,8 @@ def test_empty_smtp_values_mean_not_configured(offline_settings: Settings) -> No
 
     assert settings.smtp_host is None
     assert settings.smtp_password is None
+
+
+def test_an_empty_demo_password_turns_the_demo_off(offline_settings: Settings) -> None:
+    settings = Settings.model_validate({**offline_settings.model_dump(), "demo_password": " "})
+    assert settings.demo_password is None

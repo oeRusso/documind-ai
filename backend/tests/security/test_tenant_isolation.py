@@ -29,6 +29,11 @@ _UNFILTERED = {
     "memberships": "SELECT organization_id AS org FROM memberships",
     "invitations": "SELECT organization_id AS org FROM invitations",
     "audit_logs": "SELECT organization_id AS org FROM audit_logs",
+    "documents": "SELECT organization_id AS org FROM documents",
+    "document_versions": "SELECT organization_id AS org FROM document_versions",
+    "processing_jobs": "SELECT organization_id AS org FROM processing_jobs",
+    "document_chunks": "SELECT organization_id AS org FROM document_chunks",
+    "chunk_embeddings": "SELECT organization_id AS org FROM chunk_embeddings",
 }
 
 
@@ -132,6 +137,11 @@ async def test_without_choosing_an_organization_only_own_memberships_are_visible
         "memberships": [org_a],
         "invitations": [],
         "audit_logs": [],
+        "documents": [],
+        "document_versions": [],
+        "processing_jobs": [],
+        "document_chunks": [],
+        "chunk_embeddings": [],
     }
 
 

@@ -277,7 +277,7 @@ Estados de `processing_jobs`: `pending` → `extracting` → `ocr` → `chunking
 
 ### Contrato de respuesta
 
-El endpoint de chat emite eventos SSE: `token` (texto parcial), `citations` (al final) y `done`. Ejemplo del evento de citas:
+El endpoint de chat emite eventos SSE: `token` (texto parcial), `citations` (al final) y `done`. Desde la etapa 7 hay dos más: `queued` (`{"position": n}`, mientras la pregunta espera turno para generar) y `error` (con el formato de errores de la API, si el modelo falla a mitad de camino). Ejemplo del evento de citas:
 
 ```json
 {

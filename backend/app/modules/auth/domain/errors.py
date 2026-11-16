@@ -1,4 +1,11 @@
-from app.shared.errors import UnauthorizedError
+from app.shared.errors import ForbiddenError, UnauthorizedError
+
+
+class RegistrationClosedError(ForbiddenError):
+    """REGISTRATION_OPEN=false: only people invited by an organization can create an account."""
+
+    code = "registration_closed"
+    message = "El registro está cerrado: entrá con una invitación o probá la demo"
 
 
 class InvalidTokenError(UnauthorizedError):

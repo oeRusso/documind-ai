@@ -1,0 +1,81 @@
+# Grafana alerts (stage 10), free. Where they go:
+# - "email": SMTP of the compose (Mailpit in development: http://127.0.0.1:8025).
+# - "telegram": only if GRAFANA_TELEGRAM_BOT_TOKEN and GRAFANA_TELEGRAM_CHAT_ID are set
+#   (a bot of yours; Telegram is a third-party service, so it is off until you decide).
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: documind
+    receivers:
+      - uid: documind-email
+        type: email
+        settings:
+          addresses: ${GRAFANA_ALERT_EMAIL}
+          singleEmail: true
+
+policies:
+  - orgId: 1
+    receiver: documind
+    group_by: ["alertname"]
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h
+
+groups:
+  - orgId: 1
+    name: documind
+    folder: DocuMind
+    interval: 1m
+    rules:
+      - uid: api-down
+        title: La API no responde
+        condition: C
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: Prometheus no puede leer las métricas de la API hace 2 minutos.
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 300, to: 0}
+            model: {expr: 'up{job="api"}', instant: true, refId: A}
+          - refId: C
+            datasourceUid: __expr__
+            model: {type: threshold, expression: A, refId: C, conditions: [{evaluator: {type: lt, params: [1]}}]}
+        noDataState: Alerting
+        execErrState: Alerting
+      - uid: queue-growing
+        title: La cola de documentos crece
+        condition: C
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: Hay más de 20 documentos esperando en la cola hace 10 minutos.
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model: {expr: 'documind:queue_length', instant: true, refId: A}
+          - refId: C
+            datasourceUid: __expr__
+            model: {type: threshold, expression: A, refId: C, conditions: [{evaluator: {type: gt, params: [20]}}]}
+        noDataState: OK
+        execErrState: Alerting
+      - uid: memory-high
+        title: RAM por encima del 90 %
+        condition: C
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: El servidor usa más del 90 % de la RAM hace 5 minutos (riesgo para el modelo).
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 300, to: 0}
+            model: {expr: 'documind:memory_used_ratio', instant: true, refId: A}
+          - refId: C
+            datasourceUid: __expr__
+            model: {type: threshold, expression: A, refId: C, conditions: [{evaluator: {type: gt, params: [0.9]}}]}
+        noDataState: OK
+        execErrState: Alerting

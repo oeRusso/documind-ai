@@ -85,3 +85,25 @@ async def test_unexpected_error_is_a_generic_500(
     assert error["code"] == "internal_error"
     assert "secret" not in error["message"]
     assert error["request_id"] == response.headers[REQUEST_ID_HEADER]
+
+
+async def test_behind_cloudflare_the_client_ip_comes_from_its_header(
+    offline_app: object,
+) -> None:
+    from fastapi import FastAPI, Request
+
+    from app.core.dependencies import get_client_ip
+
+    app: FastAPI = offline_app  # type: ignore[assignment]
+
+    def request(headers: dict[str, str]) -> Request:
+        raw = [(k.lower().encode(), v.encode()) for k, v in headers.items()]
+        return Request({"type": "http", "headers": raw, "client": ("10.0.0.5", 1), "app": app})
+
+    assert get_client_ip(request({"CF-Connecting-IP": "203.0.113.9"})) == "10.0.0.5"  # untrusted
+    app.state.settings = app.state.settings.model_copy(
+        update={"client_ip_header": "CF-Connecting-IP"}
+    )
+    assert get_client_ip(request({"CF-Connecting-IP": "203.0.113.9"})) == "203.0.113.9"
+    assert get_client_ip(request({"CF-Connecting-IP": "not-an-ip"})) == "10.0.0.5"
+    assert get_client_ip(request({})) == "10.0.0.5"

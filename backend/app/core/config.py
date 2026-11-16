@@ -21,6 +21,8 @@ class Settings(BaseSettings):
         env_file=_REPO_ENV_FILE,
         env_file_encoding="utf-8",
         extra="ignore",
+        # `RAG_MIN_SCORE=` (empty, as in an old .env) means "use the default", not "".
+        env_ignore_empty=True,
     )
 
     app_name: str = "DocuMind AI"
@@ -56,7 +58,70 @@ class Settings(BaseSettings):
     smtp_starttls: bool = False
     mail_from: str = "DocuMind AI <no-reply@documind.local>"
 
-    @field_validator("smtp_host", "smtp_username", "smtp_password", mode="before")
+    # --- Documents (stage 4) ---
+    # Where uploaded files live: /{organization_id}/{random uuid}. A volume in compose.
+    storage_path: Path = Path("/data/documents")
+    max_upload_mb: int = Field(default=25, ge=1, le=95)  # Cloudflare (free) cuts at 100 MB
+    max_upload_pages: int = Field(default=500, ge=1)
+    # A deleted document keeps its files this long, so restoring a recent backup still works.
+    document_purge_days: int = Field(default=30, ge=0)
+
+    # --- Processing queue (stage 5): Valkey speaks the Redis protocol, hence redis:// ---
+    # Without it the API still works, but documents stay "pending" (nothing processes them).
+    celery_broker_url: str | None = None
+    # Port where the worker serves its Prometheus metrics (stage 10). None: not served.
+    worker_metrics_port: int | None = Field(default=None, ge=1024, le=65535)
+
+    # --- Local AI with Ollama (stage 6) ---
+    # Without it, documents are processed without embeddings and search uses words only.
+    ollama_url: str | None = None
+    embedding_model: str = "bge-m3"  # one of app/ai/providers/embeddings.py KNOWN_MODELS
+
+    # --- Answers with citations (stage 7, ADR 0009) ---
+    # The language model that writes answers. Small (1-3B, quantized): the VPS is shared.
+    llm_model: str = "llama3.2:3b"
+    # How long Ollama keeps the model in RAM after the last answer (loading it takes seconds).
+    llm_keep_alive: str = "30m"
+    # Answers generated at the same time; the rest wait in line (CPU only, shared RAM).
+    llm_max_concurrency: int = Field(default=1, ge=1, le=4)
+    # Below this meaning similarity (cosine, 0..1) of the best chunk: "no encontré evidencia",
+    # without calling the LLM. Chosen with the unanswerable questions of the dataset.
+    rag_min_score: float = Field(default=0.5, ge=0.0, le=1.0)
+    # Size of the context given to the model (small models answer better with short contexts).
+    rag_context_tokens: int = Field(default=1500, ge=200, le=6000)
+    rag_max_answer_tokens: int = Field(default=512, ge=64, le=2048)
+    # Days of the analytics page start at midnight of this zone (stage 10).
+    analytics_timezone: str = "America/Argentina/Buenos_Aires"
+    chat_limit_per_user_per_minute: int = Field(default=10, ge=1)
+    # false in production: only invited people (and the demo) get in; true for development.
+    registration_open: bool = True
+    # Header with the visitor's real IP, set by the proxy in front (production: Cloudflare's
+    # "CF-Connecting-IP"). Unset = use the TCP peer. Only safe when the API is unreachable except
+    # through that proxy (compose.prod.yaml publishes no API port).
+    client_ip_header: str | None = None
+    # Public demo (stage 12): enabled when DEMO_PASSWORD is set. The password is shown on the
+    # login page on purpose; the account is read-only and reset every night.
+    demo_password: SecretStr | None = None
+    # Stricter limits for the demo, per IP (every visitor shares the same account) and in total.
+    demo_chat_limit_per_ip_per_minute: int = Field(default=3, ge=1)
+    demo_chat_limit_per_ip_per_day: int = Field(default=20, ge=1)
+    demo_chat_limit_per_day: int = Field(default=200, ge=1)
+
+    @property
+    def max_upload_bytes(self) -> int:
+        return self.max_upload_mb * 1024 * 1024
+
+    @field_validator(
+        "smtp_host",
+        "smtp_username",
+        "smtp_password",
+        "celery_broker_url",
+        "ollama_url",
+        "demo_password",
+        "client_ip_header",
+        "worker_metrics_port",
+        mode="before",
+    )
     @classmethod
     def _empty_is_unset(cls, value: object) -> object:
         # `SMTP_HOST=` (as in .env.example) means "not configured", not a host named "".

@@ -1,6 +1,6 @@
 # Arquitectura del código
 
-Mapa del código **tal como está hoy** (fin de la etapa 2): qué hace cada carpeta y cada archivo, y cómo
+Mapa del código **tal como está hoy** (fin de la etapa 12): qué hace cada carpeta y cada archivo, y cómo
 se comunican las piezas. El *diseño* completo del producto está en `plan-parte-1-arquitectura.md`;
 este documento describe lo que ya existe. Se actualiza al cerrar cada etapa.
 
@@ -17,6 +17,11 @@ flowchart LR
     W -->|"reenvía /api/* (rewrite)"| A["api<br/>FastAPI"]
     A -->|"SQL como rol app<br/>+ RLS"| D[("db<br/>PostgreSQL 16")]
     A -->|"SMTP"| M["mailpit<br/>(emails de desarrollo)"]
+    A -->|"encola tareas"| V[("valkey<br/>cola")]
+    V --> K["worker<br/>Celery: texto, OCR, fragmentos, embeddings"]
+    K -->|"embeddings"| O["ollama<br/>IA local"]
+    A -->|"embedding de la pregunta"| O
+    K -->|"SQL como rol app + RLS"| D
 ```
 
 - El navegador **solo habla con la web** (`localhost:3000`). Las llamadas a `/api/...` las reenvía Next.js
@@ -31,6 +36,9 @@ flowchart LR
 | `db` | `pgvector/pgvector:pg16` (PostgreSQL 16 con la extensión de vectores para la etapa 6) | `127.0.0.1:5432` | Datos. Roles `migrator` (dueño de las tablas) y `app` (la API, sujeto a RLS). |
 | `api` | `infrastructure/containers/backend.Containerfile` | `127.0.0.1:8000` | La API. Arranca cuando `migrate` terminó. |
 | `web` | `infrastructure/containers/frontend.Containerfile` | `127.0.0.1:3000` | La interfaz. |
+| `worker` | `backend.Containerfile` (etapa `worker`, con datos de Tesseract) | — | Procesa documentos de a uno (`mem_limit 1g`) y corre la purga diaria. |
+| `ollama` | `ollama/ollama:0.40.12` | — | IA local: embeddings (`bge-m3`), y el LLM desde la etapa 7. `mem_limit 3g`. |
+| `valkey` | `valkey/valkey:8.1.10-alpine` | — | Cola de tareas (compatible con Redis), 128 MB. |
 | `mailpit` | `axllent/mailpit` | `127.0.0.1:8025` (web), `1025` (SMTP) | Atrapa los emails para verlos sin mandarlos de verdad. |
 
 ---
@@ -151,6 +159,7 @@ Puntos clave:
 | `health.py` | `GET /health` (el proceso vive) y `GET /ready` (además, la base responde). |
 | `pagination.py` | Paginación por cursor: `?limit=&cursor=` → `{items, next_cursor}`. |
 | `mail.py` | `BackgroundMail`: encola emails para mandarlos **después** de responder (el pedido no espera al SMTP). `OutgoingMailDep`. |
+| `metrics.py` | **Métricas de Prometheus** (etapa 10): un procesador de structlog convierte eventos de log conocidos (`page_extracted`, `answer_generated`...) en métricas; `/metrics` en la API y un puerto propio en el worker. |
 | `rate_limits.py` | Los límites de intentos (login por IP y por email, registro por IP, aceptar invitación por usuario) como dependencias de FastAPI. |
 
 #### `shared/`: piezas chicas que usan todos
@@ -162,6 +171,7 @@ Puntos clave:
 | `secure_tokens.py` | `generate_token()` (256 bits al azar) y `hash_token()` (SHA-256). Se guardan hashes, nunca tokens. |
 | `tenancy.py` | Interfaz `TenantContext`: "fijá el usuario / la organización activa". La implementa `infrastructure/database/tenant.py`. |
 | `mail.py` | Interfaces `Mailer` y `OutgoingMail`, y el tipo `EmailMessage`. |
+| `demo.py` | Ids fijos de la demo pública (organización, cuenta viewer, dueño oculto) y su slug reservado (etapa 12, ADR 0014). |
 | `rate_limit.py` | Interfaz `RateLimiter` y el tipo `RateLimit(limit, window)`. |
 
 #### `infrastructure/`: implementaciones compartidas
@@ -174,7 +184,8 @@ Puntos clave:
 | `database/models.py` | Importa todos los modelos para que Alembic los vea. |
 | `mail/smtp.py` | `SmtpMailer` (manda por SMTP, a Mailpit en desarrollo) y `LoggingMailer` (si no hay SMTP configurado: solo anota destinatario y asunto en el log). |
 | `rate_limit.py` | `InMemoryRateLimiter`: cuenta intentos en una ventana deslizante, en memoria. Alcanza con una sola instancia de la API. |
-| `storage/`, `queue/`, `workers/` | Vacías: archivos (etapa 4), Celery + Valkey (etapa 5). |
+| `storage/filesystem.py` | Archivos subidos en disco (ver el módulo `documents`). |
+| `queue/celery_app.py` | La app de Celery: tareas confirmadas al terminar, de a una, tiempo límite, purga diaria. |
 
 #### `modules/users/`: cuentas
 
@@ -234,6 +245,7 @@ Puntos clave:
 | `infrastructure/sql_repository.py` | Consultas SQL. `count_owners_for_update` bloquea las filas de los owners para que dos pedidos simultáneos no dejen la empresa sin owner. |
 | `presentation/router.py` | `GET/POST /organizations` y `GET /organizations/{id}`. |
 | `presentation/members_router.py` | `GET /members`, `PATCH /members/{id}`, `DELETE /members/{id}`. |
+| `presentation/demo_router.py` | `GET /demo`: la cuenta pública de la demo, si `DEMO_PASSWORD` está configurada (etapa 12). |
 | `presentation/invitations_router.py` | `POST/GET /invitations`, `DELETE /invitations/{id}`, `POST /invitations/accept`. |
 | `presentation/schemas.py` | JSON de entrada y salida (`MemberRead`, `InvitationCreate`, `CreatedInvitationRead`...). |
 | `presentation/dependencies.py` | Arma los casos de uso de este módulo. |
@@ -247,16 +259,192 @@ Puntos clave:
 | `application/record_audit_event.py` | `RecordAuditEvent`: lo llaman los otros módulos para dejar constancia. |
 | `infrastructure/models.py`, `sql_repository.py` | Tabla `audit_logs`. El rol `app` solo puede insertar: ni la API puede borrar o editar el historial. |
 
+#### `modules/documents/`: archivos de cada organización (etapa 4, ADR 0006)
+
+| Archivo | Qué hace |
+|---|---|
+| `domain/entities.py` | `Document` (lo que se ve en la lista: título, estado) y `DocumentVersion` (cada archivo subido: nombre, tipo, tamaño, páginas, SHA-256, clave de almacenamiento). `FileKind` (pdf, docx, txt, md), `StagedUpload` (archivo recibido y todavía no validado), `clean_filename` y `title_from_filename`. |
+| `domain/errors.py` | `DocumentNotFoundError` (404), `UnsupportedFileTypeError` y `FileTypeMismatchError` (415), `FileTooLargeError` (413), `EncryptedFileError`, `CorruptFileError`, `TooManyPagesError` (422), `DuplicateDocumentError` (409, con el id del existente en `details`). |
+| `domain/repository.py` | Interfaces `DocumentRepository`, `PurgeQueue` y `FileInspector`. |
+| `application/upload_document.py` | `UploadDocument` y `UploadDocumentVersion`: permiso → (existe) → tipo real → duplicado → guardar filas → mover el archivo → auditar. |
+| `application/read_documents.py` | `ListDocuments` (paginado por cursor), `GetDocument` (con versiones y quién subió cada una) y `DownloadDocument` (audita cada descarga). |
+| `application/delete_document.py` | `DeleteDocument` (borrado lógico + archivos a la cola de purga) y `PurgeDeletedDocuments` (borra archivos y filas vencidos). |
+| `infrastructure/file_inspector.py` | `LibmagicFileInspector`: decide el tipo por los bytes; PyMuPDF para páginas y contraseña de PDF, `zipfile` para DOCX (y ZIP bombs). |
+| `infrastructure/uploads.py` | `staged_upload`: copia el archivo subido a disco en pedazos, contando bytes (corta al pasar el límite) y calculando el SHA-256; si nadie lo mueve, lo borra al salir. |
+| `infrastructure/models.py` | Tablas `documents`, `document_versions` (índice único parcial de SHA-256 por organización) y `document_purge_queue`. |
+| `infrastructure/sql_repository.py` | Consultas SQL; convierte la violación del índice de SHA-256 en `DuplicateDocumentError`. |
+| `presentation/router.py` | `POST/GET /documents`, `GET /documents/{id}`, `POST /documents/{id}/versions`, `GET /documents/{id}/download`, `DELETE /documents/{id}`. |
+| `presentation/schemas.py`, `dependencies.py` | JSON de entrada y salida; arma los casos de uso (`StorageDep` sale de `app.state.storage`). |
+
+Piezas compartidas que sumó esta etapa:
+
+| Archivo | Qué hace |
+|---|---|
+| `shared/storage.py` | Interfaz `StorageBackend` y las claves `{organization_id}/{uuid}` (validadas: sin *path traversal*). |
+| `infrastructure/storage/filesystem.py` | `FilesystemStorage`: guarda en el volumen `documents`, permisos `0600`, lectura en pedazos. |
+| `core/body_limit.py` | Middleware que rechaza cuerpos más grandes que el máximo (413) antes de leerlos. |
+| `jobs/purge_documents.py` | Comando `python -m app.jobs.purge_documents` para correr una vez por día. |
+
+#### `modules/extraction/`: leer y limpiar el texto (etapa 5, ADR 0007)
+
+| Archivo | Qué hace |
+|---|---|
+| `domain/text.py` | `TextBlock` (párrafo o título, con su página) y `PageText` (una página, si necesita OCR). |
+| `domain/normalization.py` | Limpieza: Unicode (ligaduras), palabras cortadas al final de línea, saltos de línea, espacios, y **encabezados y pies repetidos** en la mayoría de las páginas. |
+| `domain/headings.py` | Reconoce títulos en texto plano: Markdown (`#`), "CLÁUSULA…", "Artículo 5", "3.2 Alcance", líneas cortas en mayúsculas. |
+| `infrastructure/readers.py` | `FileTextExtractor` (desde la etapa 9 descarta el texto invisible de los PDF: blanco, transparente o < 1 pt, `is_hidden_span`): abre PDF (PyMuPDF; títulos por tamaño de letra; OCR con Tesseract para páginas escaneadas), DOCX (python-docx; estilos "Título N" y tablas), TXT y Markdown. Lee de a una página. |
+
+#### `modules/ingestion/`: trabajos, fragmentos y el pipeline (etapa 5, ADR 0007)
+
+| Archivo | Qué hace |
+|---|---|
+| `domain/chunking.py` | **Corta en fragmentos**: primero por títulos, después por tamaño (~450 tokens), con un solapamiento chico; cada fragmento guarda sección y páginas. Funciones puras. |
+| `domain/jobs.py` | `ProcessingJob` y sus estados (`pending` → `extracting` → `ocr` → `chunking` → `ready` / `failed`), el turno (`LEASE`) y cuándo un trabajo está trabado. |
+| `domain/ports.py` | Interfaces: `JobRepository`, `ChunkRepository`, `DocumentGateway` (lo que pide a documents), `ProcessingUnitOfWork`, `TextExtractor`, `LocalFiles`, `JobQueue`. |
+| `application/process_version.py` | `ProcessDocumentVersion` (lo corre el worker): toma el trabajo → verifica la versión → lee página por página con latido → OCR → limpia → fragmenta → guarda todo en una transacción. Loguea el tiempo por página. |
+| `application/jobs.py` | `ScheduleProcessing` (crea o reinicia el trabajo y lo encola), `GetProcessingStatus` (y re-encola si está trabado), `ReprocessDocument`, `ListChunks`. |
+| `infrastructure/models.py`, `sql_repository.py` | Tablas `processing_jobs` y `document_chunks`; la toma del trabajo es un solo UPDATE; `SqlUnitOfWorkFactory` abre transacciones cortas dentro de una organización. |
+| `infrastructure/job_queue.py` | `CeleryJobQueue` (manda la tarea a Valkey) y `LoggingJobQueue` (sin broker: no hace nada). |
+| `presentation/router.py` | `GET /documents/{id}/processing`, `POST /documents/{id}/reprocess`, `GET /documents/{id}/chunks`. |
+| `presentation/tasks.py` | Las tareas de Celery: `ingestion.process_version` (con reintentos a 1, 2 y 4 minutos) y `documents.purge_deleted`. |
+
+Piezas compartidas que sumó esta etapa: `infrastructure/queue/celery_app.py` (configuración de Celery),
+`core/jobs.py` (encola después de la respuesta, o sea, después del commit), `worker.py` (punto de
+arranque del worker) y `documents/application/ingestion_gateway.py` (lo que documents le ofrece a ingestion).
+
+```mermaid
+sequenceDiagram
+    participant Web
+    participant API
+    participant DB as PostgreSQL
+    participant Q as Valkey
+    participant W as Worker
+
+    Web->>API: POST /documents (archivo)
+    API->>DB: documento + versión + trabajo "pending" (una transacción)
+    API-->>Web: 201
+    API->>Q: encola (después del commit)
+    Q->>W: tarea (organización, trabajo)
+    W->>DB: toma el trabajo (turno de 3 min)
+    loop cada página
+        W->>W: lee el texto (u OCR)
+        W->>DB: latido: páginas hechas, turno renovado
+    end
+    W->>DB: fragmentos + trabajo "ready" + documento "ready" (una transacción)
+    Web->>API: GET /documents/{id}/processing (cada 2 s)
+    API-->>Web: estado y progreso
+```
+
+#### `modules/knowledge/`: búsqueda (etapa 6, ADR 0008) y respuestas con citas (etapa 7, ADR 0009)
+
+| Archivo | Qué hace |
+|---|---|
+| `domain/search.py` | `SearchMode` (híbrida, significado, palabras), `ChunkMatch` (con su `position` en el documento), `SearchHit` y el puerto `ChunkSearch`. |
+| `domain/context.py` | `build_context`: elige los mejores fragmentos dentro del presupuesto de tokens (`RAG_CONTEXT_TOKENS`), une los contiguos sin repetir el solapamiento y los numera `[1]`, `[2]`… Pieza clave. |
+| `domain/citations.py` | `MarkerFilter`: revisa cada `[n]` de la respuesta **mientras llega**; deja los que apuntan a un fragmento entregado y borra los inventados (y los informa). Pieza clave. |
+| `domain/followup.py` | **Preguntas de seguimiento** (etapa 8): `followup_search_text` suma la pregunta anterior al texto de búsqueda si la nueva tiene hasta 6 palabras (medido con `eval_followups`, ADR 0010). Pieza clave. |
+| `domain/output_guard.py` | **Filtro de salida** (etapa 9): saca HTML e imágenes Markdown del texto mientras llega, antes del filtro de citas. Pieza clave. |
+| `domain/answer.py` | Lo que sale de una respuesta, en orden: `Queued`, `Token`, `CitationsReady` (con `Citation`: documento, páginas y extracto) y `Done`. |
+| `application/search_documents.py` | `SearchDocuments`: corre la búsqueda por significado y/o por palabras (30 candidatos cada una) y las fusiona con RRF. Sin modelo de embeddings, cae a palabras y lo avisa. Devuelve también la similitud del fragmento más cercano (para el umbral). |
+| `application/prompt.py` | El prompt: reglas fijas en el mensaje de sistema (con un ejemplo de cita) y los fragmentos como **datos** entre etiquetas `<fragmento>`, con las etiquetas falsas desactivadas. |
+| `application/answer_question.py` | `AnswerQuestion`: `prepare` (permiso, búsqueda, umbral `RAG_MIN_SCORE`, contexto) y `stream` (turno en la cola, generación, filtro de citas, registro en logs). Bajo el umbral responde «no encontré evidencia» **sin llamar al modelo**. |
+| `infrastructure/sql_search.py` | `SqlChunkSearch`: por significado con pgvector (índice HNSW del modelo, búsqueda iterativa) y por palabras con `documind_es` (español, sin tildes, palabras unidas con OR). El filtro por organización y documentos va **dentro** de la consulta. Única lectura entre módulos (solo lectura, ADR 0008). |
+| `presentation/router.py` | `GET /api/v1/search?q=&mode=&limit=&document_id=`. |
+| `presentation/chat_router.py` | `POST /api/v1/chat` por Server-Sent Events (sin guardar nada; el chat con historial es `conversations`): `queued`, `token`, `citations`, `done` (o `error`). Los errores normales (401, 403, 422, 429, 503) salen antes de abrir el stream. Límite por usuario (`CHAT_LIMIT_PER_USER_PER_MINUTE`). |
+
+Una pregunta, de punta a punta:
+
+```mermaid
+sequenceDiagram
+    participant Web
+    participant API as API (chat_router)
+    participant UC as AnswerQuestion
+    participant DB as PostgreSQL
+    participant Q as GenerationQueue
+    participant LLM as Ollama
+    Web->>API: POST /api/v1/chat {question}
+    API->>UC: prepare
+    UC->>DB: búsqueda híbrida (filtrada por organización)
+    alt similitud < RAG_MIN_SCORE
+        UC-->>Web: token "No encontré evidencia…", citations [], done
+    else hay evidencia
+        UC->>Q: pide turno
+        Q-->>Web: queued {position} (si hay que esperar)
+        UC->>LLM: reglas + fragmentos numerados + pregunta
+        loop cada pedazo
+            LLM-->>UC: texto
+            UC-->>Web: token (sin citas inventadas)
+        end
+        UC-->>Web: citations (documento, páginas, extracto), done
+    end
+```
+
+#### `modules/conversations/`: historial del chat (etapa 8, ADR 0010)
+
+| Archivo | Qué hace |
+|---|---|
+| `domain/entities.py` | `Conversation` (de una persona en una organización, con su alcance: todos los documentos o algunos), `Message` (pregunta o respuesta, con estado `streaming` → `complete` / `stopped` / `failed` y la valoración), `SavedCitation`, `Turn` y el título a partir de la primera pregunta. |
+| `domain/repository.py` | Interfaces `ConversationRepository` (siempre filtra por organización **y** persona) y `AnswerRecorder` (completa una respuesta en su propia transacción). |
+| `domain/errors.py` | `ConversationNotFoundError` (404, también para la de otro miembro), `FeedbackOnlyForAnswersError` (422)... |
+| `application/manage_conversations.py` | `StartConversation`, `ListConversations`, `GetConversation`, `UpdateConversation` (título y alcance), `DeleteConversation`, `RateAnswer` y `ListNotHelpfulAnswers`. |
+| `application/send_message.py` | `SendMessage`: `prepare` (conversación tuya → turno anterior → `AnswerQuestion.prepare` con alcance y pregunta anterior → guarda la pregunta y la respuesta vacía) y `stream` (los eventos de `knowledge` más un primer `MessageStarted`; al terminar, aunque se corte, guarda lo escrito). |
+| `infrastructure/models.py`, `sql_repository.py` | Tablas `conversations`, `messages`, `citations`. `SqlAnswerRecorder` abre una transacción corta con RLS y se protege de la cancelación (como `ignore_user_abort` de PHP, solo para ese bloque). |
+| `presentation/router.py` | `POST/GET /conversations`, `GET/PATCH/DELETE /conversations/{id}`, `POST /conversations/{id}/messages` (SSE) y `PUT .../messages/{mid}/feedback`. Commitea dentro de `prepare_message`, antes de que arranque el stream. |
+
+Piezas que sumó esta etapa: `jobs/export_feedback.py` (respuestas «no útil» de una organización en JSON,
+para revisarlas y sumarlas al dataset).
+
+#### `modules/analytics/`: números de uso para admins (etapa 10, ADR 0012)
+
+| Archivo | Qué hace |
+|---|---|
+| `domain/overview.py` | `Overview`: preguntas por día (con ceros), respondidas, sin evidencia, valoraciones, personas, documentos procesados y preguntas sin respuesta sin autor. |
+| `application/get_overview.py` | `GetOverview`: permiso `VIEW_ANALYTICS` (owner, admin) y junta lo que dan `conversations.application.usage.GetQuestionUsage` e `ingestion.application.usage.GetProcessingUsage`. |
+| `presentation/router.py` | `GET /api/v1/analytics/overview?days=7\|30\|90`. |
+
+Cada módulo da sus números con su propia consulta: `conversations/infrastructure/sql_stats.py` y
+`ingestion/infrastructure/sql_stats.py` (interfaces en `domain/stats.py` de cada uno).
+
+#### `app/ai/`: IA local, detrás de interfaces
+
+| Archivo | Qué hace |
+|---|---|
+| `providers/embeddings.py` | `EmbeddingProvider` (interfaz) y los modelos conocidos (`bge-m3` 1024, `paraphrase-multilingual` 768). |
+| `providers/llm.py` | `LLMProvider` (interfaz): mensajes de entrada, texto de salida en pedazos (`stream`) y `warm_up` para cargar el modelo. |
+| `providers/ollama.py` | `OllamaEmbeddingProvider` (`/api/embed`, en tandas, valida la forma de los vectores) y `OllamaLLMProvider` (`/api/chat` en streaming, con `keep_alive` y tamaño de contexto fijo). |
+| `providers/factory.py` | Arma los proveedores según `OLLAMA_URL`, `EMBEDDING_MODEL` y `LLM_MODEL` (sin `OLLAMA_URL`: ninguno). |
+| `concurrency.py` | `GenerationQueue`: como mucho `LLM_MAX_CONCURRENCY` respuestas a la vez; el resto espera en orden y ve su posición. Con la fila llena, 429. En memoria (la API corre en un solo proceso). |
+| `retrieval/fusion.py` | **Reciprocal Rank Fusion**: combina rankings por posición (`1 / (60 + posición)`). Pieza clave. |
+| `evaluation/metrics.py` | recall@k y MRR. |
+
+#### `backend/evaluation/`: dataset y scripts de evaluación
+
+| Archivo | Qué hace |
+|---|---|
+| `build_corpus.py` | Baja las leyes de Infoleg (con pausa e identificándose) y las pasa a PDF con páginas fijas. `corpus/manifest.json` guarda origen, fecha y SHA-256. |
+| `corpus/*.pdf` | Las 12 leyes. |
+| `questions.json` | 79 preguntas: documento, artículo, frase exacta (`anchor`) y página esperada; 11 sin respuesta. |
+| `dataset.py` | Carga las preguntas y calcula o verifica la página buscando la frase con el lector de la app. |
+| `eval_retrieval.py` | Carga el corpus en una organización temporal de la base de tests, calcula embeddings y mide recall@5, recall@10, MRR y latencia por modo y modelo. Escribe `results/retrieval.json` y el informe en `docs/evaluation/`. |
+| `eval_answers.py` | Calibra el umbral `RAG_MIN_SCORE` con las 79 preguntas y compara modelos de lenguaje respondiendo una muestra con `AnswerQuestion`: si responde, si cita la página correcta, si dice «no encontré», velocidad y RAM. Escribe `results/answers.json` (con cada respuesta) y el informe. Usa el Ollama del contenedor (`127.0.0.1:11435`). |
+| `followups.json`, `eval_followups.py` | 22 preguntas de seguimiento («¿y cuándo es válida?») y 30 cambios de tema: mide qué texto de búsqueda conviene (etapa 8). |
+| `injection.py`, `eval_injection.py` | 8 documentos con prompt injection y la evaluación con el modelo real por HTTP (local o desplegado) (etapa 9). |
+| `load_chat.py` | Manda varias preguntas a la vez al entorno levantado y muestra la cola, los tiempos y la RAM. |
+
 #### Módulos vacíos (se llenan más adelante)
 
 | Carpeta | Etapa | Para qué |
 |---|---|---|
-| `modules/documents/` | 4 | Subir, listar, descargar y borrar documentos. |
-| `modules/ingestion/`, `modules/extraction/` | 5 | Pipeline: extraer texto (PyMuPDF, OCR) y partir en fragmentos. |
-| `modules/knowledge/` | 6 | Fragmentos con embeddings y búsqueda híbrida. |
-| `modules/conversations/` | 7–8 | Chat con citas e historial. |
-| `modules/analytics/` | 10 | Métricas de uso. |
-| `ai/` | 6–9 | Todo lo de IA, detrás de interfaces (`LLMProvider`, `EmbeddingProvider`): los módulos nunca hablan con Ollama directo. |
+| `ai/` (resto) | 9 | Reranking, solo si mejora la evaluación. |
+
+#### `jobs/` y `demo_documents/`
+
+| Archivo | Qué hace |
+|---|---|
+| `jobs/purge_documents.py` | Purga diaria de archivos borrados. |
+| `jobs/export_feedback.py` | Respuestas «no útil» en JSON para el dataset (etapa 8). |
+| `jobs/reset_demo.py` | Crea o resetea la demo pública; también corre cada noche en el worker (etapa 12). |
+| `demo_documents/` | Las 4 leyes públicas de la demo. |
 
 #### `dev/`: solo para desarrollo
 
@@ -273,6 +461,10 @@ Puntos clave:
 | `migrations/versions/0001_initial_organizations.py` | Tabla `organizations`. |
 | `migrations/versions/0002_identity_tables.py` | `users`, `memberships`, `refresh_tokens`, `audit_logs`, `invitations`. |
 | `migrations/versions/0003_row_level_security.py` | Activa RLS (`ENABLE` + `FORCE`) y crea las políticas y las funciones `current_org_id()` / `current_user_id()`. Da permisos al rol `app`. |
+| `migrations/versions/0006_search.py` | `unaccent` + configuración `documind_es`, `chunk_embeddings` (RLS, un índice HNSW por modelo) y el estado `embedding`. |
+| `migrations/versions/0005_processing.py` | `processing_jobs` y `document_chunks` (con `tsv` en español e índice GIN), con RLS. |
+| `migrations/versions/0007_conversations.py` | `conversations`, `messages` y `citations`, con RLS. |
+| `migrations/versions/0004_documents.py` | `documents`, `document_versions` (con RLS) y `document_purge_queue` (sin RLS a propósito, ADR 0006). |
 
 ```mermaid
 erDiagram
@@ -281,7 +473,16 @@ erDiagram
     organizations ||--o{ invitations : emite
     users ||--o{ refresh_tokens : "sesiones de"
     organizations ||--o{ audit_logs : registra
+    organizations ||--o{ documents : guarda
+    documents ||--|{ document_versions : "versiones"
+    document_versions ||--o| processing_jobs : "se procesa en"
+    document_versions ||--o{ document_chunks : "se divide en"
+    document_chunks ||--o{ chunk_embeddings : "un vector por modelo"
     users ||--o{ audit_logs : "actor de"
+    users ||--o{ conversations : "pregunta en"
+    conversations ||--o{ messages : "pregunta y respuesta"
+    messages ||--o{ citations : "cita"
+    documents |o--o{ citations : "citado en"
 ```
 
 **Quién ve qué (RLS):** con `app.current_org = X`, `memberships`, `invitations` y `audit_logs` solo
@@ -345,6 +546,11 @@ flowchart TB
 | `register/page.tsx` | `/register` | Crea cuenta + empresa. |
 | `invitations/accept/page.tsx` | `/invitations/accept#...` | Lee el token del `#` una sola vez, lo borra de la barra de direcciones y deja aceptar (con cuenta existente o nueva). |
 | `(app)/layout.tsx` | zona privada | Sin sesión → `/login?next=...`. Con sesión → `AppShell`. Los paréntesis agrupan sin agregar nada a la URL. |
+| `(app)/documents/page.tsx` | `/documents` | **Página de inicio**: zona para arrastrar archivos (con barra de progreso) y lista paginada. |
+| `(app)/documents/[id]/page.tsx` | `/documents/<id>` | Detalle: versiones, descargar, subir versión nueva, borrar. |
+| `(app)/search/page.tsx` | `/search` | Búsqueda: modo (híbrida, por significado, por palabras), resultados con documento, sección, páginas y términos resaltados. |
+| `(app)/ask/page.tsx` | `/ask?c=<id>` | Preguntar: historial de conversaciones a la izquierda y el chat (`features/chat/`). |
+| `(app)/analytics/page.tsx` | `/analytics` | Analíticas (owner y admin): totales, preguntas por día, sin respuesta y documentos. |
 | `(app)/members/page.tsx` | `/members` | Lista de miembros, cambio de rol y quitar. |
 | `(app)/invitations/page.tsx` | `/invitations` | Invitar, ver y revocar invitaciones. |
 | `(app)/organizations/new/page.tsx` | `/organizations/new` | Crear otra organización. |
@@ -359,7 +565,10 @@ flowchart TB
 | `app-shell.tsx` | Barra lateral: selector de organización, menú, usuario y "Salir". |
 | `people.tsx` | `Avatar` (iniciales), `RoleBadge` (rol con color) y `PageHeader`. |
 | `members-table.tsx` | Tabla de miembros; muestra controles solo donde la API los permitiría. |
+| `processing.tsx` | `ProcessingPanel` (pasos del procesamiento, consulta cada 2 s hasta terminar, Reprocesar) y `ChunkList` (fragmentos con sección y páginas). |
+| `documents.tsx` | `DocumentUploader` (arrastrar, cola de subidas, progreso, link al duplicado), íconos y etiquetas de tipo y estado. |
 | `login-form.tsx` | Formulario de login (se reusa en aceptar invitación). |
+| `demo.tsx` | Botón «Probar la demo» del login y aviso de demo dentro de la app (etapa 12). |
 | `honeypot.tsx` | Campo invisible contra bots (ADR 0005). |
 
 #### `src/lib/`
@@ -374,17 +583,32 @@ flowchart TB
 | `auth.tsx` | `AuthProvider` y `useAuth()`: al abrir la web intenta renovar la sesión con la cookie; `startSession`, `logout`. |
 | `organizations.tsx` | `useOrganizations()` y `useActiveOrganization()` (lee la organización elegida con `useSyncExternalStore`). |
 | `roles.ts` | Qué botones mostrar según el rol. **La regla real la aplica la API** (`permissions.py`). |
+| `documents.ts` | `uploadDocument` (XMLHttpRequest para tener progreso, renueva la sesión ante un 401), `downloadDocument` (pide el archivo con la sesión y se lo da al navegador), formatos y permisos de documentos. |
+| `search.ts` | Resalta en el resultado las palabras de la búsqueda (sin tildes ni mayúsculas). |
+| `markdown.ts` | Parser de Markdown seguro (etapa 9): devuelve bloques y piezas, nunca HTML. |
+| `highlight.ts` | Qué partes de la página resaltar: las que están en el extracto citado (sin tildes ni mayúsculas, salteando pedazos muy cortos). |
+| `chat.ts` | `askQuestion` (con `conversationId`, pregunta dentro de la conversación): manda la pregunta y lee el stream de Server-Sent Events a mano (`EventSource` no permite POST ni el token), con `SseParser` (eventos cortados en cualquier lugar, comentarios de keep-alive). `splitCitations` separa las marcas `[n]` del texto. |
 | `slug.ts`, `invitation-link.ts` | Generar el slug desde el nombre; leer el `#organization=..&token=..` del link. |
 
 #### `src/features/`
 
-Vacía: `documents/` (etapa 4), `chat/` (etapa 7), `analytics/` (etapa 10).
+| Archivo | Qué hace |
+|---|---|
+| `chat/chat.tsx` | El chat: mensajes guardados, la respuesta en vivo (eventos SSE), Detener, alcance de la conversación nueva, borrar, fuentes y botones útil / no útil. |
+| `chat/conversation-list.tsx` | Historial de conversaciones (paginado). |
+| `chat/scope-picker.tsx` | Todos los documentos o una selección; `scopeLabel` para el encabezado. |
+| `chat/source-panel.tsx` | Panel de la cita: documento, páginas, fragmento resaltado y, si es PDF, la página. |
+| `chat/pdf-page.tsx` | Una página del PDF con pdf.js (se carga solo al abrir una cita; el worker lo sirve la propia app) y el texto citado resaltado en la capa de texto. |
+
+| `chat/answer-markdown.tsx` | Dibuja el Markdown seguro de una respuesta (etapa 9): nunca HTML, links como texto, imágenes omitidas. |
+| `analytics/questions-chart.tsx` | Gráfico de barras de preguntas por día (SVG propio, tooltip y tabla accesible). | Los documentos viven en `app/(app)/documents/`,
+`components/documents.tsx` y `lib/documents.ts`.
 
 #### Configuración
 
 | Archivo | Qué hace |
 |---|---|
-| `next.config.ts` | Salida `standalone` (imagen chica), **reenvío de `/api/*` a la API**, cabeceras de seguridad. |
+| `next.config.ts` | Salida `standalone` (imagen chica), **reenvío de `/api/*` a la API** (hasta 30 MB por pedido: Next.js corta en 10 MB si no se configura), cabeceras de seguridad. |
 | `package.json`, `pnpm-lock.yaml`, `.npmrc` | Dependencias con versión exacta. |
 | `tsconfig.json`, `eslint.config.mjs` | TypeScript estricto y lint. |
 | `vitest.config.ts`, `vitest.setup.ts` | Tests del frontend (`*.test.ts(x)` junto a cada archivo). |
@@ -440,10 +664,12 @@ toda la familia (las dos copias dejan de servir).
 |---|---|
 | `containers/backend.Containerfile` | Imagen de la API en dos etapas: instala dependencias con uv y copia a la final solo el entorno y el código (Python 3.12 slim, usuario `app` sin root). |
 | `containers/frontend.Containerfile` | Imagen de la web: build de Next.js en una etapa, y en la final solo la salida `standalone` con Node, usuario sin root. |
-| `scripts/db-init/roles.sh` | Se ejecuta al crear la base por primera vez: crea los roles `migrator` y `app` con sus permisos. |
-| `proxy/` | Vacía: Caddy (etapa 3). |
+| `scripts/deploy.sh`, `rollback.sh` | Deploy construyendo en el servidor con imágenes etiquetadas por commit (`.deploy/image.env`), y vuelta atrás sin construir (etapa 11, ADR 0013). |
+| `scripts/backup.sh`, `restore.sh`, `pull-backups.sh`, `lib.sh` | Backups cifrados con restic (base + documentos, 7 diarios y 4 semanales), restauración, y copia a la PC por `rsync`. |
+| `scripts/db-init/10-roles.sh` | Se ejecuta al crear la base por primera vez: crea los roles `migrator` y `app`, la base de tests y la extensión `vector`. |
+| `proxy/Caddyfile` | Caddy (etapa 11): cabeceras de seguridad, rutas privadas cerradas, `/api` a la API sin retener el streaming y el resto a la web. |
 | `tunnel/` | Vacía: Cloudflare Tunnel (etapa 3). |
-| `monitoring/` | Vacía: Prometheus y Grafana (etapa 10). |
+| `monitoring/` | Prometheus (`prometheus.yml`, `rules.yml`) y Grafana (datasource, dashboard «DocuMind» y alertas aprovisionadas) (etapa 10). |
 
 ---
 
@@ -457,7 +683,8 @@ toda la familia (las dos copias dejan de servir).
 | `decisions/NNNN-*.md` | ADR: decisiones técnicas con sus alternativas (UUID v7, RLS, tokens, sin Turnstile). |
 | `probar-la-api.md` | Usuarios de prueba y qué probar a mano. |
 | `arquitectura-del-codigo.md` | Este documento. |
-| `evaluation/`, `operations/` | Vacías: informes de evaluación de la IA (etapa 6+) y runbooks (etapa 11). |
+| `evaluation/` | Informes de evaluación (generados por los scripts de `backend/evaluation/`). |
+| `operations/runbook.md` | Deploy, rollback, backups, restauración, rotación de secretos y problemas comunes (etapa 11). |
 
 ---
 
@@ -472,5 +699,5 @@ flowchart LR
     J --> E["Extraer texto / OCR<br/>extraction (5)"]
     E --> C["Fragmentos<br/>ingestion (5)"]
     C --> V["Embeddings + búsqueda<br/>knowledge + ai (6)"]
-    V --> R["Respuesta con citas<br/>conversations + ai (7)"]
+    V --> R["Respuesta con citas<br/>knowledge + ai (7)"]
 ```

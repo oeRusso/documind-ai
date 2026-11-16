@@ -49,7 +49,23 @@ Que cada merge a `main` llegue solo a producción, desde ahora y para siempre.
   mismo contador** de intentos de login y registro (rate limit) y el audit log registra la IP equivocada.
 - **Email en producción (de la etapa 2):** no hay servidor SMTP. Sumar uno es un servicio externo: preguntar.
 
+- **Lo que deja la etapa 11** (ADR 0013, hecha en local antes que esta): `Caddyfile` listo,
+  `deploy.sh` / `rollback.sh` (construir en el VPS, imágenes por commit), backups con restic y el
+  runbook. Falta el `compose` de producción (Docker, sin `:Z`, sin puertos publicados, `cloudflared`).
+
+- **Preparado en local (2026-11-15)**, antes del despliegue: `compose.prod.yaml` (Docker, sin
+  puertos, `cloudflared`, límites de memoria, `REGISTRATION_OPEN=false`, IP real desde
+  `CF-Connecting-IP`), `generate-env.sh`, `app.jobs.create_account` y la sección «Primer
+  despliegue» del runbook. Probado entero en la PC como proyecto aparte. Falta: la guía
+  `VPS-COMPARTIDO.md`, el túnel y el acceso al VPS.
+
 ## Referencias
 
 - Parte 1: §2 (arquitectura), §7 (red, secretos, continuidad), §8 (CI, paso 5).
 - Parte 2: "Servicios gratuitos de terceros".
+
+- **Streaming del chat (descubierto en la etapa 7):** cualquier compresión entre la API y el navegador
+  puede retener una respuesta SSE (`text/event-stream`) hasta el final, y el chat mostraría todo el texto
+  de golpe. Next.js ya tiene `compress: false`. En Caddy, no comprimir `text/event-stream` (o usar
+  `flush_interval -1` en el `reverse_proxy`) y verificar con
+  `curl -N --compressed` que los eventos `token` llegan de a uno.

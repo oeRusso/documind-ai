@@ -3,12 +3,38 @@
 They satisfy the Protocols in each module's `domain` without inheriting from them.
 """
 
-from collections.abc import Collection
+import hashlib
+import math
+import re
+from collections.abc import AsyncIterator, Collection, Sequence
+from dataclasses import replace as dataclass_replace
 from datetime import datetime
+from pathlib import Path
 from uuid import UUID
 
+from app.ai.providers.embeddings import EmbeddingModel
+from app.ai.providers.llm import ChatMessage, LLMServiceError
 from app.modules.audit.domain.entities import AuditEvent
 from app.modules.auth.domain.refresh_tokens import RefreshToken
+from app.modules.conversations.domain.entities import (
+    Conversation,
+    Feedback,
+    Message,
+    MessageRole,
+    MessageStatus,
+    SavedCitation,
+    Turn,
+)
+from app.modules.documents.domain.entities import (
+    Document,
+    DocumentStatus,
+    DocumentVersion,
+    DocumentWithVersion,
+    FileKind,
+    InspectedFile,
+    PurgeItem,
+)
+from app.modules.documents.domain.errors import DuplicateDocumentError
 from app.modules.organizations.domain.entities import Organization
 from app.modules.organizations.domain.errors import (
     InvitationAlreadyPendingError,
@@ -244,3 +270,357 @@ class FakeOutgoingMail:
 
     async def send(self, message: EmailMessage) -> None:  # also usable as a Mailer
         self.sent.append(message)
+
+
+class InMemoryDocumentRepository:
+    def __init__(self) -> None:
+        self.documents: dict[UUID, Document] = {}
+        self.versions: list[DocumentVersion] = []
+        self.deleted_versions: set[UUID] = set()
+
+    def _live(self, organization_id: UUID, document_id: UUID) -> Document | None:
+        doc = self.documents.get(document_id)
+        if doc is None or doc.organization_id != organization_id or doc.is_deleted:
+            return None
+        return doc
+
+    def _check_duplicate(self, version: DocumentVersion) -> None:
+        for v in self.versions:
+            if (
+                v.organization_id == version.organization_id
+                and v.sha256 == version.sha256
+                and v.id not in self.deleted_versions
+            ):
+                existing = self.documents[v.document_id]
+                raise DuplicateDocumentError(existing.id, existing.title)
+
+    async def add(self, document: Document, version: DocumentVersion) -> None:
+        self._check_duplicate(version)
+        self.documents[document.id] = document
+        self.versions.append(version)
+
+    async def add_version(self, document: Document, version: DocumentVersion) -> None:
+        self._check_duplicate(version)
+        self.documents[document.id] = document
+        self.versions.append(version)
+
+    async def get(self, organization_id: UUID, document_id: UUID) -> Document | None:
+        return self._live(organization_id, document_id)
+
+    async def get_for_update(self, organization_id: UUID, document_id: UUID) -> Document | None:
+        return self._live(organization_id, document_id)
+
+    async def list_page(
+        self, organization_id: UUID, *, limit: int, before_id: UUID | None
+    ) -> list[DocumentWithVersion]:
+        docs = sorted(
+            (
+                d
+                for d in self.documents.values()
+                if d.organization_id == organization_id and not d.is_deleted
+            ),
+            key=lambda d: d.id,
+            reverse=True,
+        )
+        if before_id is not None:
+            docs = [d for d in docs if d.id < before_id]
+        result = []
+        for doc in docs[:limit]:
+            latest = max(
+                (v for v in self.versions if v.document_id == doc.id), key=lambda v: v.number
+            )
+            result.append(DocumentWithVersion(doc, latest))
+        return result
+
+    async def list_versions(
+        self, organization_id: UUID, document_id: UUID
+    ) -> list[DocumentVersion]:
+        return sorted(
+            (
+                v
+                for v in self.versions
+                if v.organization_id == organization_id and v.document_id == document_id
+            ),
+            key=lambda v: v.number,
+            reverse=True,
+        )
+
+    async def get_version(self, organization_id: UUID, version_id: UUID) -> DocumentVersion | None:
+        for v in self.versions:
+            if (
+                v.id == version_id
+                and v.organization_id == organization_id
+                and v.id not in self.deleted_versions
+            ):
+                return v
+        return None
+
+    async def set_status(
+        self, organization_id: UUID, document_id: UUID, status: DocumentStatus, now: datetime
+    ) -> None:
+        doc = self.documents.get(document_id)
+        if doc is not None and doc.organization_id == organization_id:
+            self.documents[document_id] = dataclass_replace(doc, status=status, updated_at=now)
+
+    async def find_live_by_sha256(self, organization_id: UUID, sha256: str) -> Document | None:
+        for v in self.versions:
+            if (
+                v.organization_id == organization_id
+                and v.sha256 == sha256
+                and v.id not in self.deleted_versions
+            ):
+                return self.documents[v.document_id]
+        return None
+
+    async def mark_deleted(self, document: Document) -> None:
+        self.documents[document.id] = document
+        self.deleted_versions |= {v.id for v in self.versions if v.document_id == document.id}
+
+    async def remove(self, organization_id: UUID, document_id: UUID) -> None:
+        doc = self.documents.get(document_id)
+        if doc is not None and doc.organization_id == organization_id:
+            del self.documents[document_id]
+            self.versions = [v for v in self.versions if v.document_id != document_id]
+
+
+class InMemoryPurgeQueue:
+    def __init__(self) -> None:
+        self.items: list[PurgeItem] = []
+
+    async def add(self, items: Sequence[PurgeItem]) -> None:
+        self.items.extend(items)
+
+    async def due(self, now: datetime, limit: int) -> list[PurgeItem]:
+        return [i for i in self.items if i.purge_after <= now][:limit]
+
+    async def done(self, item_ids: Sequence[UUID]) -> None:
+        self.items = [i for i in self.items if i.id not in item_ids]
+
+
+class InMemoryStorage:
+    """StorageBackend in a dict. `save` reads the staged file, like the real one moves it."""
+
+    def __init__(self, staging: Path) -> None:
+        self._staging = staging
+        self.files: dict[str, bytes] = {}
+
+    def staging_dir(self) -> Path:
+        self._staging.mkdir(parents=True, exist_ok=True)
+        return self._staging
+
+    async def save(self, key: str, staged_file: Path) -> None:
+        self.files[key] = staged_file.read_bytes()
+        staged_file.unlink()
+
+    async def read(self, key: str) -> AsyncIterator[bytes]:
+        yield self.files[key]
+
+    async def delete(self, key: str) -> None:
+        self.files.pop(key, None)
+
+    async def exists(self, key: str) -> bool:
+        return key in self.files
+
+
+class FakeFileInspector:
+    """Trusts the extension; `refuse` makes it raise like the real inspector would."""
+
+    def __init__(self) -> None:
+        self.refuse: Exception | None = None
+
+    def inspect(self, path: Path, filename: str) -> InspectedFile:
+        if self.refuse is not None:
+            raise self.refuse
+        kind = FileKind(Path(filename).suffix.lstrip(".") or "txt")
+        return InspectedFile(kind, 3 if kind is FileKind.PDF else None)
+
+
+class FakeScheduler:
+    """ProcessingScheduler that only remembers what was scheduled."""
+
+    def __init__(self) -> None:
+        self.scheduled: list[tuple[UUID, UUID, UUID]] = []
+
+    async def schedule(self, organization_id: UUID, document_id: UUID, version_id: UUID) -> None:
+        self.scheduled.append((organization_id, document_id, version_id))
+
+
+class FakeJobQueue:
+    def __init__(self) -> None:
+        self.sent: list[tuple[UUID, UUID]] = []
+
+    def enqueue(self, organization_id: UUID, job_id: UUID) -> None:
+        self.sent.append((organization_id, job_id))
+
+
+class FakeEmbeddingProvider:
+    """Deterministic vectors from the words of the text: texts sharing words are close.
+
+    Good enough to test the plumbing (and that similar texts rank first) without Ollama.
+    """
+
+    DIMENSION = 64
+
+    def __init__(self, *, fail: bool = False) -> None:
+        self.fail = fail
+        self.embedded: list[str] = []
+        self._model = EmbeddingModel("fake", self.DIMENSION)
+
+    @property
+    def model(self) -> EmbeddingModel:
+        return self._model
+
+    def _vector(self, text: str) -> list[float]:
+        vector = [0.0] * self.DIMENSION
+        for word in re.findall(r"\w+", text.lower()):
+            digest = hashlib.sha256(word.encode()).digest()
+            vector[digest[0] % self.DIMENSION] += 1.0
+        norm = math.sqrt(sum(v * v for v in vector)) or 1.0
+        return [v / norm for v in vector]
+
+    async def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
+        if self.fail:
+            raise ConnectionError("embedding service down")
+        self.embedded.extend(texts)
+        return [self._vector(text) for text in texts]
+
+    async def embed_query(self, text: str) -> list[float]:
+        if self.fail:
+            raise ConnectionError("embedding service down")
+        return self._vector(text)
+
+
+class FakeLLMProvider:
+    """Answers with fixed pieces of text, and remembers what it was asked."""
+
+    def __init__(self, pieces: Sequence[str] = ("Respuesta [1].",), *, fail_after: int = -1):
+        self.pieces = list(pieces)
+        self.fail_after = fail_after  # raise LLMServiceError after this many pieces (-1: never)
+        self.calls: list[list[ChatMessage]] = []
+        self.warmed_up = False
+
+    @property
+    def model(self) -> str:
+        return "fake-llm"
+
+    async def stream(
+        self, messages: Sequence[ChatMessage], *, max_tokens: int, temperature: float = 0.0
+    ) -> AsyncIterator[str]:
+        self.calls.append(list(messages))
+        for n, piece in enumerate(self.pieces):
+            if n == self.fail_after:
+                raise LLMServiceError("model crashed")
+            yield piece
+
+    async def warm_up(self) -> None:
+        self.warmed_up = True
+
+
+class InMemoryConversationRepository:
+    def __init__(self) -> None:
+        self.conversations: dict[UUID, Conversation] = {}
+        self.messages: dict[UUID, Message] = {}
+
+    async def add(self, conversation: Conversation) -> None:
+        self.conversations[conversation.id] = conversation
+
+    async def get(
+        self, organization_id: UUID, user_id: UUID, conversation_id: UUID
+    ) -> Conversation | None:
+        c = self.conversations.get(conversation_id)
+        if c and c.organization_id == organization_id and c.user_id == user_id:
+            return c
+        return None
+
+    async def list_page(
+        self, organization_id: UUID, user_id: UUID, *, limit: int, before_id: UUID | None
+    ) -> list[Conversation]:
+        items = sorted(
+            (
+                c
+                for c in self.conversations.values()
+                if c.organization_id == organization_id
+                and c.user_id == user_id
+                and (before_id is None or c.id < before_id)
+            ),
+            key=lambda c: c.id,
+            reverse=True,
+        )
+        return items[:limit]
+
+    async def update(self, conversation: Conversation) -> None:
+        self.conversations[conversation.id] = conversation
+
+    async def delete(self, organization_id: UUID, conversation_id: UUID) -> None:
+        self.conversations.pop(conversation_id, None)
+        for m in [m for m in self.messages.values() if m.conversation_id == conversation_id]:
+            del self.messages[m.id]
+
+    async def add_messages(self, messages: Sequence[Message]) -> None:
+        for m in messages:
+            self.messages[m.id] = m
+
+    async def list_messages(self, organization_id: UUID, conversation_id: UUID) -> list[Message]:
+        return sorted(
+            (
+                m
+                for m in self.messages.values()
+                if m.conversation_id == conversation_id and m.organization_id == organization_id
+            ),
+            key=lambda m: (m.created_at, m.id),
+        )
+
+    async def last_turn(self, organization_id: UUID, conversation_id: UUID) -> Turn | None:
+        messages = await self.list_messages(organization_id, conversation_id)
+        questions = [m for m in messages if m.role is MessageRole.USER]
+        if not questions:
+            return None
+        last = questions[-1]
+        answers = [m for m in messages if m.role is MessageRole.ASSISTANT and m.id > last.id]
+        return Turn(last.content, answers[0].content if answers else "")
+
+    async def get_message(
+        self, organization_id: UUID, conversation_id: UUID, message_id: UUID
+    ) -> Message | None:
+        m = self.messages.get(message_id)
+        if m and m.organization_id == organization_id and m.conversation_id == conversation_id:
+            return m
+        return None
+
+    async def set_feedback(
+        self, organization_id: UUID, message_id: UUID, feedback: Feedback | None, now: datetime
+    ) -> None:
+        self.messages[message_id] = dataclass_replace(self.messages[message_id], feedback=feedback)
+
+    async def list_rated_not_helpful(
+        self, organization_id: UUID, *, limit: int
+    ) -> list[tuple[Message, Message]]:
+        return []
+
+
+class FakeAnswerRecorder:
+    """Applies the end of an answer to the in-memory repository, and remembers each call."""
+
+    def __init__(self, conversations: InMemoryConversationRepository) -> None:
+        self.conversations = conversations
+        self.finished: list[tuple[UUID, MessageStatus]] = []
+
+    async def finish(
+        self,
+        organization_id: UUID,
+        message_id: UUID,
+        *,
+        content: str,
+        status: MessageStatus,
+        no_evidence: bool | None,
+        citations: Sequence[SavedCitation],
+    ) -> None:
+        self.finished.append((message_id, status))
+        message = self.conversations.messages[message_id]
+        self.conversations.messages[message_id] = dataclass_replace(
+            message,
+            content=content,
+            status=status,
+            no_evidence=no_evidence,
+            citations=tuple(citations),
+        )

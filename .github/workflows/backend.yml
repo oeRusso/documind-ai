@@ -45,6 +45,9 @@ jobs:
       DATABASE_MIGRATION_URL: postgresql+asyncpg://migrator:migrator@localhost:5432/documind  # pragma: allowlist secret
       JWT_SECRET: ci-only-jwt-secret-not-used-anywhere-else-0123456789  # pragma: allowlist secret
       REQUIRE_DB: "1"
+      # The OCR test must run here (stage 5 criterion: a scanned PDF ends with readable text).
+      REQUIRE_OCR: "1"
+      TESSDATA_PREFIX: /usr/share/tesseract-ocr/5/tessdata
 
     steps:
       - uses: actions/checkout@v5
@@ -57,6 +60,12 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --locked
+
+      - name: Tesseract language data (OCR tests)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends tesseract-ocr-spa tesseract-ocr-eng
+          ls "$TESSDATA_PREFIX/spa.traineddata"
 
       - name: Ruff (lint)
         run: uv run ruff check --output-format=github .
@@ -86,3 +95,9 @@ jobs:
 
       - name: Pytest
         run: uv run pytest -q
+
+      # Stage 6: search quality on the evaluation dataset. CI has no Ollama, so only the words
+      # mode runs here (with a floor); the full comparison with the embedding models is run
+      # locally and committed in docs/evaluation/ (ADR 0008).
+      - name: Retrieval evaluation (text mode)
+        run: uv run python -m evaluation.eval_retrieval --text-only --min-text-recall 0.55

@@ -75,9 +75,137 @@ Lo más simple es abrirlo en el navegador. Para hacerlo por Swagger, copiá los 
 
 Probá también: usar el mismo link dos veces (404), o registrarte con otro email (403 `invitation_email_mismatch`).
 
+### Documentos (etapa 4)
+
+En la web es lo más cómodo: **Documentos** (es la página de inicio) → arrastrá archivos a la zona punteada.
+
+| Para ver… | Cómo | Resultado esperado |
+|---|---|---|
+| Subir | Un PDF, DOCX, TXT o Markdown | Aparece en la lista como "Pendiente de procesar" (el procesamiento llega en la etapa 5) |
+| **Un `.exe` renombrado a `.pdf`** | Renombrá cualquier programa a `algo.pdf` y subilo | **"Tipo de archivo no permitido"** (415) |
+| PDF con contraseña | Un PDF que pida clave para abrirse | "El archivo está protegido con contraseña" |
+| **Duplicado** | El mismo archivo otra vez (aunque tenga otro nombre) | **"Este archivo ya está cargado en…"** con link al existente (409) |
+| Versión nueva | Entrá al documento → "Subir versión nueva" | Aparece como v2; la v1 se sigue pudiendo descargar |
+| **Otra organización** | Entrá como `eve@globex.test`, o por Swagger `GET /documents/{id}` con el id de un documento de Acme y la organización de Globex | No aparece en la lista; por API, **404** `document_not_found` |
+| Lector | Entrá como `bob@acme.test` | Ve y descarga, pero no tiene zona de subida ni botón Borrar |
+| Borrar | Como `mario` (miembro) intentá borrar un documento de `ana` por Swagger | 403 `cannot_delete_document`; el suyo sí lo puede borrar |
+
+En Swagger, `POST /documents` tiene un botón para elegir el archivo. La descarga (`GET /documents/{id}/download`)
+devuelve el archivo; un borrado lo oculta al instante y el archivo se elimina del disco a los 30 días
+(`podman compose exec api python -m app.jobs.purge_documents`).
+
+### Procesamiento (etapa 5)
+
+Después de subir un documento, entrá a su detalle: el panel **Procesamiento** muestra los pasos en vivo
+(En cola → Leyendo el texto → Reconociendo páginas escaneadas → Armando fragmentos → Listo). Abajo aparecen
+los **Fragmentos**, cada uno con su sección y su página.
+
+| Para ver… | Cómo | Resultado esperado |
+|---|---|---|
+| OCR | Subí `backend/tests/fixtures/escaneado.pdf` (una imagen, sin texto) | Fragmento con "El personal deberá usar casco…" y "1 con OCR" |
+| Cortes por cláusula | Subí `backend/tests/fixtures/contrato.pdf` | 3 fragmentos, uno por cláusula, cada uno con su página; sin el encabezado ni "Página N de 3" |
+| Word con tabla | `backend/tests/fixtures/politica.docx` | La tabla aparece como "CABA \| $30.000" dentro de "Montos diarios" |
+| Worker caído | `podman compose stop worker`, subí algo, `podman compose start worker` | Queda "En cola" y se procesa solo al volver el worker |
+| Reprocesar | Botón **Reprocesar** en el detalle | Vuelve a correr y los fragmentos se reemplazan (no se duplican) |
+| Tiempos | `podman compose logs worker` | Líneas `page_extracted` / `page_ocr` con `ms` por página |
+
+### Búsqueda (etapa 6)
+
+Menú **Búsqueda**. Para tener contenido real, subí alguna ley de `backend/evaluation/corpus/` (por ejemplo
+`ley-20744-contrato-de-trabajo.pdf`) y esperá a que quede «Listo» (el paso "Preparando la búsqueda" calcula
+los embeddings).
+
+| Probá | Resultado esperado |
+|---|---|
+| «¿cuántos días de vacaciones me corresponden si tengo 3 años de antigüedad?» | Primero el art. 150 (pág. 37), "catorce (14) días corridos" |
+| «art. 245 LCT indemnización» | El art. 245 entre los primeros (los términos exactos los encuentra la parte "por palabras") |
+| La misma pregunta en modo **Por palabras** y **Por significado** | Cada resultado muestra su posición en cada ranking |
+| «informacion publica» (sin tildes) | Encuentra "información pública" |
+| Entrá como `eve@globex.test` y buscá lo mismo | Nada: los documentos de Acme no existen para Globex |
+
+Por API: `GET /api/v1/search?q=...&mode=hybrid|vector|text&limit=10` (con `X-Organization-Id`).
+
+Para medir la calidad (en `backend/`): `uv run python -m evaluation.eval_retrieval`.
+
+### Preguntar (etapa 7)
+
+Menú **Preguntar**. Usa los mismos documentos que la búsqueda y el modelo `llama3.2:3b`
+(`podman compose exec ollama ollama pull llama3.2:3b` si todavía no está). En CPU, la respuesta empieza a
+aparecer a los 10–20 segundos.
+
+| Probá | Resultado esperado |
+|---|---|
+| «¿Cuánto dura el período de prueba?» (con la ley 20.744 cargada) | Respuesta que se va escribiendo, con una marca [1] que lleva a la fuente (ley 20.744, art. 92 bis) |
+| «¿Quién ganó el mundial de 1986?» | «No encontré evidencia en los documentos…» al instante (no llama al modelo) |
+| Botón **Detener** mientras escribe | Se corta y dice «Detuviste la respuesta» |
+| Dos pestañas preguntando a la vez | La segunda muestra «En espera: sos la próxima pregunta» y después responde |
+| Entrá como `eve@globex.test` y preguntá lo mismo | «No encontré evidencia»: los documentos de Acme no existen para Globex |
+| `podman compose logs api \| grep answer_generated` | Cada respuesta con sus citas (documento, páginas y fragmentos) |
+
+Por API: `POST /api/v1/chat` con `{"question": "..."}` y `X-Organization-Id`. La respuesta es un stream
+de eventos `queued`, `token`, `citations` y `done` (en Swagger se ve todo junto al final; con
+`curl -N` se ve llegar).
+
+Para medir (en `backend/`): `OLLAMA_URL=http://127.0.0.1:11435 uv run python -m evaluation.eval_answers`
+(unos 40 minutos) y `uv run python -m evaluation.load_chat` (5 preguntas a la vez).
+
+### Conversaciones (etapa 8)
+
+Menú **Preguntar**: ahora es un chat con historial.
+
+| Probá | Resultado esperado |
+|---|---|
+| Como `bob@acme.test` (viewer): **Nueva conversación** → «¿Cuánto dura el período de prueba?» | Respuesta con [1]; la conversación aparece a la izquierda con la pregunta como título |
+| Después: «¿Y si es por temporada?» | Responde siguiendo el tema (la pregunta anterior da contexto) |
+| Clic en una cita [1] (en el texto o en la lista de fuentes) | Panel a la derecha con el fragmento en amarillo y la página del PDF, con el texto citado resaltado |
+| Flechas del panel | Página anterior / siguiente; Esc cierra |
+| Pulgar abajo en una respuesta | Queda marcado; `podman compose exec api python -m app.jobs.export_feedback <id de Acme>` la lista |
+| Nueva conversación → **Solo algunos** → elegí un documento | Solo busca en ese documento (otra pregunta da «No encontré evidencia») |
+| Detener a mitad de una respuesta y recargar | La respuesta parcial queda guardada con «Detuviste la respuesta» |
+| Entrá como `ana@acme.test` | No ve las conversaciones de bob (son de cada persona) |
+| Como bob, en **Documentos** | No aparece la zona para subir ni el botón de borrar |
+
+Por API: `POST /api/v1/conversations` → `POST /api/v1/conversations/{id}/messages` con
+`{"question": "..."}` (SSE, igual que `/chat` más un primer evento `message`) →
+`GET /api/v1/conversations/{id}` (mensajes con sus citas).
+
+Para medir los seguimientos (en `backend/`): `uv run python -m evaluation.eval_followups`.
+
+### Monitoreo y analíticas (etapa 10)
+
+```bash
+podman compose --profile monitoring up -d   # Prometheus, Grafana y exportadores (~400 MB)
+```
+
+| Probá | Resultado esperado |
+|---|---|
+| http://127.0.0.1:3001, usuario `admin` (contraseña: `GRAFANA_ADMIN_PASSWORD` en tu `.env`) | Dashboard **DocuMind** con respuestas, procesamiento, API y servidor | <!-- pragma: allowlist secret -->
+| Hacé una pregunta y mirá «¿Dónde se va el tiempo de una respuesta?» | Búsqueda, cola, primer token y generación por separado |
+| Grafana → Alerting → Contact points → `documind` → Test | El email llega a Mailpit (http://127.0.0.1:8025) |
+| `podman compose stop api` y esperá 2 minutos | Alerta «La API no responde» en Mailpit (después `podman compose start api`) |
+| Como `ana@acme.test`: menú **Analíticas** | Preguntas por día, sin respuesta (sin autor), valoraciones y documentos procesados |
+| Como `bob@acme.test` (viewer) | No ve el menú; la API responde 403 |
+| `curl 127.0.0.1:8000/metrics` | Métricas `documind_*` y de los pedidos HTTP |
+
+### Demo pública (etapa 12)
+
+Con `DEMO_PASSWORD` en el `.env` (y `podman compose up -d` para que la API la lea):
+
+```bash
+podman compose exec api python -m app.jobs.reset_demo   # crea la demo y sube 4 leyes
+```
+
+| Probá | Resultado esperado |
+|---|---|
+| http://localhost:3000/login → **Probar la demo sin registrarte** | Entra a «Demo · Leyes argentinas» como lector, con el aviso amarillo arriba |
+| Preguntá «¿Cuántos días de vacaciones me tocan si tengo menos de cinco años?» | Respuesta citada (ley 20.744, art. 150) |
+| Cuatro preguntas en menos de un minuto | La cuarta da «Demasiados intentos» |
+| **Nueva organización** con la cuenta demo | «La cuenta de demostración es de solo lectura» |
+| Volvé a correr `reset_demo` | «0 documentos subidos, N conversaciones borradas» |
+
 ## 6. Empezar de cero
 
 ```bash
-podman compose down -v   # borra también la base de datos
+podman compose down -v   # borra también la base de datos y los archivos subidos
 podman compose up -d --build && podman compose exec api python -m app.dev.seed
 ```
