@@ -18,27 +18,27 @@ Los tiempos son de la PC de desarrollo (2026-11-15); en el VPS serán algo mayor
 
 ## 0. Primer despliegue (una sola vez)
 
-> Pendiente de verificar contra la guía del VPS compartido (`VPS-COMPARTIDO.md`, disco externo):
-> ruta del repo, usuario de deploy y memoria libre. La configuración de producción ya se probó
-> completa en la PC (`compose.prod.yaml`): registro cerrado, IP real desde Cloudflare, demo,
-> procesamiento y respuestas.
+> Hecho el 2026-11-16 en el VPS compartido (guía `~/portfolio/docs/VPS-COMPARTIDO.md` en el
+> servidor): repo en `~esteban/documind`, backups en `~esteban/documind-backups` (sin `sudo`),
+> túnel `documindia` en Cloudflare con la ruta `documind.esteban-russo.com` → `http://caddy:80`.
+> Pendientes marcados abajo con ⏳.
 
 | # | Quién | Qué |
 |---|---|---|
-| 1 | Esteban | En Cloudflare Zero Trust → Networks → Tunnels: crear el túnel `documind`, con el hostname público `documind.esteban-russo.com` apuntando a `http://caddy:80`. Copiar el token. |
+| 1 | Claude (con la sesión de Esteban) | Cloudflare → Redes → Túneles → *Crear túnel* (`documindia`) → pestaña **Rutas** → *Aplicación publicada*: `documind` + `esteban-russo.com` → `http://caddy:80`. Cloudflare crea el CNAME solo. |
 | 2 | Esteban | Mergear `development` → `main` (PR) cuando esté todo revisado. |
-| 3 | Esteban | `sudo mkdir -p /srv/documind-backups && sudo chown <usuario-deploy>: /srv/documind-backups` |
-| 4 | Claude / Esteban | `git clone https://github.com/oeRusso/documind-ai.git <ruta>` y `cd <ruta>` (rama `main`). |
+| 3 | — | No hace falta: los backups van en `~/documind-backups` del usuario del deploy (sin `sudo`). |
+| 4 | Claude | `git clone -q -b main https://github.com/oeRusso/documind-ai.git ~/documind`. |
 | 5 | Claude | `infrastructure/scripts/generate-env.sh`: crea el `.env` (600) con contraseñas aleatorias que no se muestran, y apunta los scripts a `compose.prod.yaml`. |
-| 6 | Esteban | Pegar el token del paso 1 en `CLOUDFLARE_TUNNEL_TOKEN` del `.env`, y guardar `RESTIC_PASSWORD` en el gestor de contraseñas. |
+| 6 | Esteban | Copiar el comando del túnel (botón de copiar) y pegarlo, sin que se vea, con `ssh -t <vps> 'umask 077; read -rsp "Pegá y Enter: " T; echo; T="eyJ${T#*eyJ}"; T="${T//[[:space:]]/}"; printf "%s" "$T" > ~/.documind-tunnel-token; unset T; grep -c "^eyJ" ~/.documind-tunnel-token'` (responde `1`). Claude lo pasa a `CLOUDFLARE_TUNNEL_TOKEN` y borra el archivo con `shred`. ⏳ Guardar `RESTIC_PASSWORD` en el gestor de contraseñas. |
 | 7 | Claude | `free -h` y `docker stats --no-stream`: tienen que quedar unos 5 GB libres para DocuMind. |
 | 8 | Claude | `infrastructure/scripts/deploy.sh` (construye, migra y levanta; 3–5 min la primera vez). |
 | 9 | Claude | Modelos: `docker compose -f compose.prod.yaml exec ollama ollama pull bge-m3` y `... ollama pull llama3.2:3b`. |
 | 10 | Claude | Demo: `docker compose -f compose.prod.yaml exec api python -m app.jobs.reset_demo`. |
-| 11 | Esteban | Su cuenta: `docker compose -f compose.prod.yaml exec api python -m app.jobs.create_account <email> "<Organización>" <slug>` (pide la contraseña sin mostrarla). |
-| 12 | Esteban | Backup diario en el cron (sección 3). |
-| 13 | Claude | Verificar: https://documind.esteban-russo.com, «Probar la demo», `uv run python -m evaluation.eval_injection --base https://documind.esteban-russo.com --email <cuenta>` y `evaluation.load_chat --base ...` (desde la PC). |
-| 14 | Esteban | Tags sobre `main`: `v0.1.0`, `v0.2.0`, `v0.3.0` y `v1.0.0` (ver `CHANGELOG.md`). |
+| 11 | Esteban ⏳ | Su cuenta: `docker compose -f compose.prod.yaml exec api python -m app.jobs.create_account <email> "<Organización>" <slug>` (pide la contraseña sin mostrarla). |
+| 12 | Esteban ⏳ | Backup diario: `crontab -e` como `esteban` (sin `sudo`, sección 3). |
+| 13 | Claude | Verificar: https://documind.esteban-russo.com, «Probar la demo» y una pregunta con cita (hecho). ⏳ `evaluation.eval_injection --base https://documind.esteban-russo.com --email <cuenta>` cuando exista la cuenta del paso 11. |
+| 14 | Esteban ⏳ | Tags sobre `main`: `v0.1.0`, `v0.2.0`, `v0.3.0` y `v1.0.0` (ver `CHANGELOG.md`). |
 
 Para los comandos a mano en el servidor, `docker compose` necesita los mismos archivos que los
 scripts: `docker compose -f compose.prod.yaml --env-file .env --env-file .deploy/image.env <comando>`.
@@ -84,24 +84,25 @@ quita lo viejo.
 **Qué se guarda:** la base completa (`pg_dump`, formato custom) y los archivos subidos (volumen
 `documents`). Los modelos de Ollama no: se vuelven a bajar.
 
-**Cómo:** restic, con cifrado. Retención: 7 diarios y 4 semanales. El repositorio queda en
+**Cómo:** restic, con cifrado. Con Docker, restic escribe como `root`: `BACKUP_OWNER` (uid:gid
+del usuario del deploy, en el `.env`) le devuelve el repositorio al terminar, para poder bajarlo por `rsync`. Retención: 7 diarios y 4 semanales. El repositorio queda en
 `BACKUP_DIR` (por defecto `backups/repo`, ignorado por git).
 
 **Contraseña:** `RESTIC_PASSWORD` en el `.env`. **Sin ella los backups no se pueden leer.** Guardá
 una copia fuera del servidor (en tu gestor de contraseñas).
 
-**Programarlo en el VPS** (lo corre Esteban, una sola vez):
+**Programarlo en el VPS** (una sola vez):
 
 ```bash
-sudo crontab -u <usuario-del-deploy> -e
-# todos los días a las 4:15
-15 4 * * * cd /ruta/a/documind-ai && BACKUP_DIR=/srv/documind-backups/repo BACKUP_STAGING=/srv/documind-backups/staging infrastructure/scripts/backup.sh >> /srv/documind-backups/backup.log 2>&1
+crontab -e   # como el usuario del deploy (esteban), sin sudo
+# todos los días a las 4:15 (las rutas y BACKUP_OWNER salen del .env)
+15 4 * * * cd $HOME/documind && infrastructure/scripts/backup.sh >> $HOME/documind-backups/backup.log 2>&1
 ```
 
 **Copia fuera del servidor**, desde la PC (sin nube; ADR 0013):
 
 ```bash
-infrastructure/scripts/pull-backups.sh usuario@servidor /srv/documind-backups/repo
+infrastructure/scripts/pull-backups.sh esteban@<vps> /home/esteban/documind-backups/repo
 ```
 
 La copia sigue cifrada. Para revisarla en la PC:

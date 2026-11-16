@@ -190,7 +190,8 @@ Leerla antes de cualquier tarea de deploy (etapas 0, 3 y 11). Resumen:
   del artículo. Faltan el GIF, el video y el release (sobre `main`).
 - **Producción preparada (2026-11-15):** `compose.prod.yaml` probado entero en la PC; pasos en
   `docs/operations/runbook.md` §0. Esteban pidió subirlo lo antes posible.
-- **Siguiente: etapas 0 y 3** (VPS y despliegue), con Esteban: guía `VPS-COMPARTIDO.md`, túnel,
-  acceso al VPS, y repetir allá los simulacros (inyección, backup, rollback, carga).
+- **En producción (2026-11-16):** https://documind.esteban-russo.com, en `~/documind` del VPS compartido
+  (túnel `documindia`). Ver «Resultado parcial» en `docs/etapas/etapa-03.md` y el runbook §0.
+  Pendientes: cuenta de Esteban, cron del backup, tags, simulacros en el VPS y la espera sin indicador del chat.
 Regla general: la etapa actual es la de **número más bajo** que no está marcada como terminada en
 `docs/etapas/`, **salvo las etapas 0 y 3**, que quedan para el final.

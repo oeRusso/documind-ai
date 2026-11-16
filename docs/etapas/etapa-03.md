@@ -3,7 +3,7 @@
 - **Fase:** A — Fundamentos (cierra con el tag `v0.1.0`)
 - **Duración estimada:** 3 a 4 días
 - **Rama:** `development` (PR a `main` al cerrar la etapa)
-- **Estado:** pendiente
+- **Estado:** en producción desde el 2026-11-16; faltan pendientes de Esteban (ver «Resultado parcial»)
 
 ## Objetivo
 
@@ -58,6 +58,33 @@ Que cada merge a `main` llegue solo a producción, desde ahora y para siempre.
   `CF-Connecting-IP`), `generate-env.sh`, `app.jobs.create_account` y la sección «Primer
   despliegue» del runbook. Probado entero en la PC como proyecto aparte. Falta: la guía
   `VPS-COMPARTIDO.md`, el túnel y el acceso al VPS.
+
+## Resultado parcial (2026-11-16)
+
+**En producción:** https://documind.esteban-russo.com (commit `f229804`, PR #15).
+
+- VPS compartido, como pide la guía (`~/portfolio/docs/VPS-COMPARTIDO.md` en el servidor): repo en
+  `~/documind`, `.env` 600 generado allá, imágenes construidas en el VPS (1 min 49 s), sin GHCR.
+- Túnel `documindia` (así quedó el nombre; no afecta), ruta `documind.esteban-russo.com` →
+  `http://caddy:80`, CNAME creado por Cloudflare. El token se pegó sin pasar por el chat.
+- Modelos `bge-m3` y `llama3.2:3b`; demo cargada (4 leyes, ~8 min de procesamiento en CPU).
+- Verificado: login, «Probar la demo», respuesta con cita (Ley 20.744, págs. 19–20); la cuenta demo
+  recibe 403 al crear organización, subir, borrar, reprocesar, invitar o cambiar roles, y 404 con otra
+  organización; desde internet no responde ningún puerto (80, 443, 3000, 5432, 6379, 8000, 11434).
+  El portfolio siguió `healthy` durante todo el deploy.
+- Backup real con restic (2,6 MiB, 18 s). Arreglo: con Docker restic escribe como `root`;
+  `BACKUP_OWNER` le devuelve el repositorio al usuario del deploy (si no, `pull-backups.sh` no lo lee).
+- **Latencia en CPU:** el VPS lee el prompt a ~26 tokens/s y genera a ~6,5 tokens/s. Una pregunta
+  nueva (~1500 tokens de contexto) tarda ~1 min hasta la primera palabra; repetida, 15 s.
+
+**Pendientes:**
+- Esteban: guardar `RESTIC_PASSWORD` fuera del servidor, crear su cuenta (`app.jobs.create_account`),
+  cron del backup (`crontab -e`, sin `sudo`), tags sobre `main`.
+- Simulacros en el VPS: inyección (con la cuenta de Esteban), restore, rollback y carga.
+- Mientras espera la primera palabra, el chat no muestra la pregunta ni un indicador: revisar en el frontend.
+- Medir si menos fragmentos en el contexto bajan la latencia sin empeorar `eval_answers`.
+- El login muestra «Creá una para tu empresa» con el registro cerrado (la API lo rechaza igual).
+- Criterio «un merge a `main` está en producción sin tocar el VPS»: hoy el deploy es `deploy.sh` a mano (ADR 0013).
 
 ## Referencias
 
