@@ -15,7 +15,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, MessageSquare, Square, ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { ErrorMessage } from "@/components/form";
 import { Button } from "@/components/ui/button";
@@ -154,7 +154,14 @@ export function Chat({ organizationId, conversationId }: { organizationId: strin
     setDraft("");
     setLive({ question, ...EMPTY_LIVE });
     try {
-      await askQuestion(organizationId, question, (event) => update((current) => applyEvent(current, event)), abort.signal, id);
+      const onEvent = (event: ChatEvent) => {
+        // "message": the question is saved and has become the title: refresh the history now.
+        if (event.event === "message") {
+          void queryClient.invalidateQueries({ queryKey: conversationsKey(organizationId) });
+        }
+        update((current) => applyEvent(current, event));
+      };
+      await askQuestion(organizationId, question, onEvent, abort.signal, id);
       update((current) =>
         current.status === "waiting" || current.status === "writing"
           ? { ...current, status: "failed", error: "Se cortó la conexión antes de terminar" }
@@ -338,7 +345,18 @@ function Question({ text }: { text: string }) {
   );
 }
 
+/** After this long without a word, say why: on a CPU the model reads the excerpts slowly. */
+const SLOW_WAIT_MS = 8000;
+
 function LiveAnswer({ live, onOpenSource }: { live: Live; onOpenSource: (citation: Citation) => void }) {
+  const [slow, setSlow] = useState(false);
+  const waiting = live.status === "waiting" && !live.queuePosition;
+  useEffect(() => {
+    if (!waiting) return;
+    const timer = setTimeout(() => setSlow(true), SLOW_WAIT_MS);
+    return () => clearTimeout(timer);
+  }, [waiting]);
+
   return (
     <section className="grid gap-3" aria-label="Respuesta en curso">
       <Question text={live.question} />
@@ -348,7 +366,9 @@ function LiveAnswer({ live, onOpenSource }: { live: Live; onOpenSource: (citatio
             <Loader2 className="size-4 animate-spin" />
             {live.queuePosition
               ? `En espera: ${live.queuePosition === 1 ? "sos la próxima pregunta" : `hay ${live.queuePosition - 1} preguntas antes que la tuya`}.`
-              : "Buscando en los documentos…"}
+              : slow
+                ? "Leyendo los fragmentos encontrados… Sin GPU, la primera palabra puede tardar hasta un minuto."
+                : "Buscando en los documentos…"}
           </p>
         )}
         {live.text && (
