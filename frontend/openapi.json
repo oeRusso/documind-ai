@@ -1415,6 +1415,20 @@
         "title": "RegisterRequest",
         "type": "object"
       },
+      "RegistrationStatus": {
+        "properties": {
+          "open": {
+            "description": "Si se pueden crear empresas nuevas desde /register",
+            "title": "Open",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "open"
+        ],
+        "title": "RegistrationStatus",
+        "type": "object"
+      },
       "Role": {
         "enum": [
           "owner",
@@ -2161,6 +2175,28 @@
           }
         },
         "summary": "Register",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/registration": {
+      "get": {
+        "description": "Si el registro de empresas nuevas está abierto (las invitaciones funcionan siempre).",
+        "operationId": "registration_status_api_v1_auth_registration_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Registration Status",
         "tags": [
           "auth"
         ]

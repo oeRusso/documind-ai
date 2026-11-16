@@ -46,6 +46,10 @@ class LoginRequest(BaseModel):
     password: str = Field(max_length=128)
 
 
+class RegistrationStatus(BaseModel):
+    open: bool = Field(description="Si se pueden crear empresas nuevas desde /register")
+
+
 class TokenResponse(BaseModel):
     """The refresh token is NOT here: it travels in an HttpOnly cookie."""
 

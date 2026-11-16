@@ -9,6 +9,7 @@ import { Honeypot } from "@/components/honeypot";
 import { Button } from "@/components/ui/button";
 import { api, errorMessage, unwrap } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth";
+import { useRegistrationOpen } from "@/lib/registration";
 import { slugify } from "@/lib/slug";
 
 export default function RegisterPage() {
@@ -19,6 +20,7 @@ export default function RegisterPage() {
   const [slugEdited, setSlugEdited] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const registrationOpen = useRegistrationOpen();
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -44,6 +46,22 @@ export default function RegisterPage() {
     } finally {
       setPending(false);
     }
+  }
+
+  if (registrationOpen === false) {
+    return (
+      <PublicPage
+        title="Registro cerrado"
+        description="Por ahora no se pueden crear empresas nuevas. Si te invitaron, usá el link de tu invitación."
+        footer={
+          <Link href="/login" className="font-medium text-primary hover:underline">
+            Volver a iniciar sesión o probar la demo
+          </Link>
+        }
+      >
+        {null}
+      </PublicPage>
+    );
   }
 
   return (

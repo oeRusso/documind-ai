@@ -27,7 +27,6 @@ import { cn } from "@/lib/utils";
 
 type NavItem = { href: string; label: string; icon: LucideIcon; show: boolean };
 
-
 function OrganizationSwitcher({ id }: { id: string }) {
   const { organization, organizations, select } = useActiveOrganization();
   return (
@@ -81,12 +80,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { organization } = useActiveOrganization();
+  // The shared demo account can only read and ask: hide what the server would refuse anyway.
+  const isDemo = organization?.slug === DEMO_SLUG;
 
   const items: NavItem[] = [
     { href: "/documents", label: "Documentos", icon: FileText, show: true },
     { href: "/ask", label: "Preguntar", icon: MessageSquare, show: true },
     { href: "/search", label: "Búsqueda", icon: Search, show: true },
-    { href: "/members", label: "Miembros", icon: Users, show: true },
+    { href: "/members", label: "Miembros", icon: Users, show: !isDemo },
     {
       href: "/invitations",
       label: "Invitaciones",
@@ -99,7 +100,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       icon: BarChart3,
       show: organization ? canViewAnalytics(organization.role) : false,
     },
-    { href: "/organizations/new", label: "Nueva organización", icon: Plus, show: true },
+    { href: "/organizations/new", label: "Nueva organización", icon: Plus, show: !isDemo },
   ];
 
   async function signOut() {
@@ -148,7 +149,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="mb-6 lg:hidden">
             <OrganizationSwitcher id="organization-mobile" />
           </div>
-          {organization?.slug === DEMO_SLUG && <DemoNotice />}
+          {isDemo && <DemoNotice />}
           {children}
         </main>
       </div>

@@ -5,7 +5,7 @@ from typing import Annotated, Any
 import structlog
 from fastapi import APIRouter, Cookie, Depends, Response, status
 
-from app.core.dependencies import ClientIpDep
+from app.core.dependencies import ClientIpDep, SettingsDep
 from app.core.exceptions import ErrorResponse
 from app.core.rate_limits import limit_login_by_ip, limit_register_by_ip
 from app.modules.auth.application.issue_session import IssuedSession
@@ -30,6 +30,7 @@ from app.modules.auth.presentation.dependencies import (
 from app.modules.auth.presentation.schemas import (
     LoginRequest,
     RegisterRequest,
+    RegistrationStatus,
     TokenResponse,
     UserRead,
 )
@@ -148,6 +149,12 @@ async def logout(
     if refresh_token:
         await use_case.execute(LogoutCommand(refresh_token=refresh_token, ip=ip))
     clear_session_cookies(response)
+
+
+@router.get("/registration")
+async def registration_status(settings: SettingsDep) -> RegistrationStatus:
+    """Si el registro de empresas nuevas está abierto (las invitaciones funcionan siempre)."""
+    return RegistrationStatus(open=settings.registration_open)
 
 
 @router.get("/me", responses={status.HTTP_401_UNAUTHORIZED: {"model": ErrorResponse}})

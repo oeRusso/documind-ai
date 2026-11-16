@@ -119,6 +119,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/registration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Registration Status
+         * @description Si el registro de empresas nuevas está abierto (las invitaciones funcionan siempre).
+         */
+        get: operations["registration_status_api_v1_auth_registration_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chat": {
         parameters: {
             query?: never;
@@ -1202,6 +1222,14 @@ export interface components {
              */
             website?: string | null;
         };
+        /** RegistrationStatus */
+        RegistrationStatus: {
+            /**
+             * Open
+             * @description Si se pueden crear empresas nuevas desde /register
+             */
+            open: boolean;
+        };
         /**
          * Role
          * @enum {string}
@@ -1645,6 +1673,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    registration_status_api_v1_auth_registration_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistrationStatus"];
                 };
             };
         };

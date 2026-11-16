@@ -8,6 +8,7 @@ import { DemoLoginButton } from "@/components/demo";
 import { PublicPage } from "@/components/form";
 import { LoginForm } from "@/components/login-form";
 import { safeNextPath } from "@/lib/auth";
+import { useRegistrationOpen } from "@/lib/registration";
 
 function Login() {
   const router = useRouter();
@@ -21,17 +22,20 @@ function Login() {
 }
 
 export default function LoginPage() {
+  const registrationOpen = useRegistrationOpen();
   return (
     <PublicPage
       title="Bienvenido de nuevo"
       description="Entrá con tu email y tu contraseña."
       footer={
-        <>
-          ¿No tenés cuenta?{" "}
-          <Link href="/register" className="font-medium text-primary hover:underline">
-            Creá una para tu empresa
-          </Link>
-        </>
+        registrationOpen ? (
+          <>
+            ¿No tenés cuenta?{" "}
+            <Link href="/register" className="font-medium text-primary hover:underline">
+              Creá una para tu empresa
+            </Link>
+          </>
+        ) : undefined
       }
     >
       <Suspense>
