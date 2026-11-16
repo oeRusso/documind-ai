@@ -110,3 +110,41 @@ async def test_questions_are_limited_per_ip_and_deleted_every_night(
     again = await reset_demo(demo_settings, send_jobs=False)
     assert again is not None and again.conversations_deleted == 1
     assert (await client.get("/api/v1/conversations", headers=headers)).json()["items"] == []
+
+
+async def test_each_demo_visitor_sees_only_their_own_conversations(
+    client: httpx.AsyncClient, demo_settings: Settings, db_app: FastAPI
+) -> None:
+    """The demo account is shared, but the history is per browser (demo_visitor cookie)."""
+    await reset_demo(demo_settings, send_jobs=False)
+    transport = httpx.ASGITransport(app=db_app)
+    async with httpx.AsyncClient(transport=transport, base_url="https://test") as other_browser:
+        mine_headers = await login_demo(client)
+        other_headers = await login_demo(other_browser)
+
+        mine = await client.post("/api/v1/conversations", json={}, headers=mine_headers)
+        assert mine.status_code == 201
+        assert "demo_visitor" in client.cookies
+        conversation_id = mine.json()["id"]
+
+        listed = await other_browser.get("/api/v1/conversations", headers=other_headers)
+        assert listed.json()["items"] == []
+        for method in ("GET", "DELETE"):
+            response = await other_browser.request(
+                method, f"/api/v1/conversations/{conversation_id}", headers=other_headers
+            )
+            assert response.status_code == 404
+        ask = await other_browser.post(
+            f"/api/v1/conversations/{conversation_id}/messages",
+            json={"question": "¿Cuál es el preaviso?"},
+            headers=other_headers,
+        )
+        assert ask.status_code == 404
+
+        # A forged cookie does not reveal anything either.
+        other_browser.cookies.set("demo_visitor", "not-a-uuid", domain="test")
+        listed = await other_browser.get("/api/v1/conversations", headers=other_headers)
+        assert listed.json()["items"] == []
+
+        mine_listed = await client.get("/api/v1/conversations", headers=mine_headers)
+        assert [c["id"] for c in mine_listed.json()["items"]] == [conversation_id]

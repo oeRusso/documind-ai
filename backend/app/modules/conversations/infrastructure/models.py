@@ -40,6 +40,8 @@ class ConversationModel(TimestampMixin, Base):
     title: Mapped[str | None] = mapped_column(String(200))
     # NULL = every document of the organization.
     document_ids: Mapped[list[UUID] | None] = mapped_column(ARRAY(Uuid))
+    # Only in the public demo: the browser that owns it (migration 0008). NULL for everyone else.
+    demo_visitor_id: Mapped[UUID | None] = mapped_column(Uuid)
 
 
 class MessageModel(TimestampMixin, Base):

@@ -1,7 +1,9 @@
 """SQL implementations of the conversations ports.
 
 Every query filters by `organization_id` (and conversations by `user_id` too); RLS is the
-second layer. `SqlAnswerRecorder` opens its own short transaction to complete an answer.
+second layer. In the public demo the account is shared, so conversations are also filtered by
+`demo_visitor_id` (the browser's cookie); for every other account it is NULL.
+`SqlAnswerRecorder` opens its own short transaction to complete an answer.
 """
 
 from collections.abc import Sequence
@@ -9,7 +11,7 @@ from datetime import datetime
 from uuid import UUID
 
 import anyio
-from sqlalchemy import delete, select, update
+from sqlalchemy import ColumnElement, delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.infrastructure.database.tenant import SqlTenantContext
@@ -70,8 +72,18 @@ def _message(model: MessageModel, citations: Sequence[SavedCitation] = ()) -> Me
 
 
 class SqlConversationRepository:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, *, demo_visitor_id: UUID | None = None) -> None:
         self._session = session
+        self._demo_visitor_id = demo_visitor_id
+
+    def _owned_by(self, organization_id: UUID, user_id: UUID) -> list[ColumnElement[bool]]:
+        """Organization + person + (only in the demo) browser. IS NOT DISTINCT FROM: NULL matches
+        NULL, so ordinary accounts keep seeing all their conversations."""
+        return [
+            ConversationModel.organization_id == organization_id,
+            ConversationModel.user_id == user_id,
+            ConversationModel.demo_visitor_id.is_not_distinct_from(self._demo_visitor_id),
+        ]
 
     async def add(self, conversation: Conversation) -> None:
         self._session.add(
@@ -79,6 +91,7 @@ class SqlConversationRepository:
                 id=conversation.id,
                 organization_id=conversation.organization_id,
                 user_id=conversation.user_id,
+                demo_visitor_id=self._demo_visitor_id,
                 title=conversation.title,
                 document_ids=list(conversation.document_ids) if conversation.document_ids else None,
                 created_at=conversation.created_at,
@@ -92,8 +105,7 @@ class SqlConversationRepository:
     ) -> Conversation | None:
         model = await self._session.scalar(
             select(ConversationModel).where(
-                ConversationModel.organization_id == organization_id,
-                ConversationModel.user_id == user_id,
+                *self._owned_by(organization_id, user_id),
                 ConversationModel.id == conversation_id,
             )
         )
@@ -104,10 +116,7 @@ class SqlConversationRepository:
     ) -> list[Conversation]:
         query = (
             select(ConversationModel)
-            .where(
-                ConversationModel.organization_id == organization_id,
-                ConversationModel.user_id == user_id,
-            )
+            .where(*self._owned_by(organization_id, user_id))
             .order_by(ConversationModel.id.desc())  # UUID v7: newest first
             .limit(limit)
         )
