@@ -22,8 +22,9 @@ GRAFANA_ADMIN_PASSWORD=$(secret 24)
 # Public on purpose (shown on the login page). Empty = no demo.
 DEMO_PASSWORD=demo-documind
 REGISTRATION_OPEN=false
-BACKUP_DIR=/srv/documind-backups/repo
-BACKUP_STAGING=/srv/documind-backups/staging
+BACKUP_DIR=$HOME/documind-backups/repo
+BACKUP_STAGING=$HOME/documind-backups/staging
+BACKUP_OWNER=$(id -u):$(id -g)
 # Pasted by Esteban from Cloudflare (Zero Trust > Networks > Tunnels > documind):
 CLOUDFLARE_TUNNEL_TOKEN=
 ENV
