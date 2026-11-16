@@ -34,8 +34,9 @@ Opción 2:
 
 ## Consecuencias
 
-- Los visitantes del mismo día ven las conversaciones de los demás. Está avisado, y el reset diario
-  limita la exposición.
+- ~~Los visitantes del mismo día ven las conversaciones de los demás.~~ Ya no: desde la
+  [ADR 0015](0015-historial-de-demo-por-visitante.md) cada navegador ve solo las suyas, y el reset
+  diario las borra igual.
 - El límite total protege al VPS, pero un día con muchas visitas deja la demo sin respuestas hasta
   el día siguiente (responde 429 con su mensaje).
 - Los límites viven en memoria de la API: un reinicio los pone en cero. Con una sola instancia

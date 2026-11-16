@@ -48,8 +48,8 @@ export function DemoLoginButton({ onLoggedIn }: { onLoggedIn: () => void | Promi
         Probar la demo sin registrarte
       </Button>
       <p className="text-xs text-muted-foreground">
-        Cuenta compartida de solo lectura, con leyes argentinas de ejemplo. Las preguntas se borran cada noche: no
-        escribas datos personales.
+        Solo lectura, con leyes argentinas de ejemplo. Tus preguntas se borran cada noche: no escribas datos
+        personales.
       </p>
       <ErrorMessage message={error} />
     </div>
@@ -61,8 +61,8 @@ export function DemoNotice() {
     <div className="mb-6 flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
       <Info className="mt-0.5 size-4 shrink-0" />
       <p>
-        Estás en la <strong>demo pública</strong>: solo lectura, compartida con otras personas y con un límite de
-        preguntas. Todo lo que preguntes se borra cada noche; no escribas datos personales.
+        Estás en la <strong>demo pública</strong>: solo lectura y con un límite de preguntas. Tu historial lo ves
+        solo vos y se borra cada noche; igual, no escribas datos personales.
       </p>
     </div>
   );
