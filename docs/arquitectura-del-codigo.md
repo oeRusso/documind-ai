@@ -219,7 +219,7 @@ Puntos clave:
 | `infrastructure/jwt_codec.py` | Firma y verifica los JWT (HS256, con emisor, audiencia y vencimiento). |
 | `infrastructure/models.py` | Tabla `refresh_tokens`. |
 | `infrastructure/sql_repository.py` | Consultas de `refresh_tokens` (con bloqueo de fila al rotar). |
-| `presentation/router.py` | `POST /auth/register`, `/login`, `/refresh`, `/logout` y `GET /auth/me`. Revisa el campo trampa (honeypot). |
+| `presentation/router.py` | `POST /auth/register`, `/login`, `/refresh`, `/logout`, `GET /auth/me` y `GET /auth/registration` (si el registro está abierto, para ocultar el link). Revisa el campo trampa (honeypot). |
 | `presentation/schemas.py` | Forma del JSON de entrada y salida (`RegisterRequest`, `LoginRequest`, `TokenResponse`...). |
 | `presentation/cookies.py` | Pone y borra la cookie `refresh_token` (HttpOnly, Secure, SameSite=Lax, solo para `/api/v1/auth`) y la cookie `csrf_token`. |
 | `presentation/csrf.py` | Protección CSRF: rechaza pedidos de otro origen y exige que el header `X-CSRF-Token` coincida con la cookie. |
@@ -390,6 +390,7 @@ sequenceDiagram
 | `application/send_message.py` | `SendMessage`: `prepare` (conversación tuya → turno anterior → `AnswerQuestion.prepare` con alcance y pregunta anterior → guarda la pregunta y la respuesta vacía) y `stream` (los eventos de `knowledge` más un primer `MessageStarted`; al terminar, aunque se corte, guarda lo escrito). |
 | `infrastructure/models.py`, `sql_repository.py` | Tablas `conversations`, `messages`, `citations`. `SqlAnswerRecorder` abre una transacción corta con RLS y se protege de la cancelación (como `ignore_user_abort` de PHP, solo para ese bloque). |
 | `presentation/router.py` | `POST/GET /conversations`, `GET/PATCH/DELETE /conversations/{id}`, `POST /conversations/{id}/messages` (SSE) y `PUT .../messages/{mid}/feedback`. Commitea dentro de `prepare_message`, antes de que arranque el stream. |
+| `presentation/dependencies.py` | Arma los casos de uso y, solo para la cuenta demo, `demo_visitor`: la cookie `HttpOnly` que hace privado el historial de cada navegador (el repositorio filtra también por `demo_visitor_id`, ADR 0015). |
 
 Piezas que sumó esta etapa: `jobs/export_feedback.py` (respuestas «no útil» de una organización en JSON,
 para revisarlas y sumarlas al dataset).
@@ -464,6 +465,7 @@ Cada módulo da sus números con su propia consulta: `conversations/infrastructu
 | `migrations/versions/0006_search.py` | `unaccent` + configuración `documind_es`, `chunk_embeddings` (RLS, un índice HNSW por modelo) y el estado `embedding`. |
 | `migrations/versions/0005_processing.py` | `processing_jobs` y `document_chunks` (con `tsv` en español e índice GIN), con RLS. |
 | `migrations/versions/0007_conversations.py` | `conversations`, `messages` y `citations`, con RLS. |
+| `migrations/versions/0008_demo_visitor.py` | `conversations.demo_visitor_id`: historial de la demo por navegador (ADR 0015). |
 | `migrations/versions/0004_documents.py` | `documents`, `document_versions` (con RLS) y `document_purge_queue` (sin RLS a propósito, ADR 0006). |
 
 ```mermaid
@@ -583,6 +585,7 @@ flowchart TB
 | `auth.tsx` | `AuthProvider` y `useAuth()`: al abrir la web intenta renovar la sesión con la cookie; `startSession`, `logout`. |
 | `organizations.tsx` | `useOrganizations()` y `useActiveOrganization()` (lee la organización elegida con `useSyncExternalStore`). |
 | `roles.ts` | Qué botones mostrar según el rol. **La regla real la aplica la API** (`permissions.py`). |
+| `registration.ts` | `useRegistrationOpen()`: el login y `/register` ocultan el alta de empresas si el servidor la tiene cerrada. |
 | `documents.ts` | `uploadDocument` (XMLHttpRequest para tener progreso, renueva la sesión ante un 401), `downloadDocument` (pide el archivo con la sesión y se lo da al navegador), formatos y permisos de documentos. |
 | `search.ts` | Resalta en el resultado las palabras de la búsqueda (sin tildes ni mayúsculas). |
 | `markdown.ts` | Parser de Markdown seguro (etapa 9): devuelve bloques y piezas, nunca HTML. |
@@ -595,7 +598,7 @@ flowchart TB
 | Archivo | Qué hace |
 |---|---|
 | `chat/chat.tsx` | El chat: mensajes guardados, la respuesta en vivo (eventos SSE), Detener, alcance de la conversación nueva, borrar, fuentes y botones útil / no útil. |
-| `chat/conversation-list.tsx` | Historial de conversaciones (paginado). |
+| `chat/conversation-list.tsx` | Historial de conversaciones (paginado), con fecha corta (`shortWhen`). |
 | `chat/scope-picker.tsx` | Todos los documentos o una selección; `scopeLabel` para el encabezado. |
 | `chat/source-panel.tsx` | Panel de la cita: documento, páginas, fragmento resaltado y, si es PDF, la página. |
 | `chat/pdf-page.tsx` | Una página del PDF con pdf.js (se carga solo al abrir una cita; el worker lo sirve la propia app) y el texto citado resaltado en la capa de texto. |

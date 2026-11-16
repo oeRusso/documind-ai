@@ -77,13 +77,24 @@ Que cada merge a `main` llegue solo a producción, desde ahora y para siempre.
 - **Latencia en CPU:** el VPS lee el prompt a ~26 tokens/s y genera a ~6,5 tokens/s. Una pregunta
   nueva (~1500 tokens de contexto) tarda ~1 min hasta la primera palabra; repetida, 15 s.
 
+**Mejoras después del deploy (2026-11-16, en `development`, sin desplegar):**
+- Historial de la demo privado por navegador (cookie `demo_visitor`, migración 0008, ADR 0015).
+- El chat ya no se queda en blanco con la primera pregunta: no se desmonta al poner el id en la URL,
+  muestra la pregunta y «Buscando…» al instante, y avisa si la primera palabra tarda (CPU sin GPU).
+- `GET /api/v1/auth/registration`: con el registro cerrado, el login oculta «Creá una para tu
+  empresa» y `/register` lo explica. La demo ya no muestra «Miembros» ni «Nueva organización».
+- Historial: los títulos largos no empujan el chat, y cada conversación muestra su fecha.
+- Con una sola organización se muestra su nombre en vez de un desplegable de una opción.
+
 **Pendientes:**
-- Esteban: guardar `RESTIC_PASSWORD` fuera del servidor, crear su cuenta (`app.jobs.create_account`),
-  cron del backup (`crontab -e`, sin `sudo`), tags sobre `main`.
+- Desplegar estas mejoras (`deploy.sh`; aplica la migración 0008) cuando Esteban lo apruebe.
+- Esteban: crear su cuenta (`app.jobs.create_account`), cron del backup (`crontab -e`, sin `sudo`),
+  tags sobre `main`. `RESTIC_PASSWORD` ya está guardada fuera del servidor (2026-11-16).
 - Simulacros en el VPS: inyección (con la cuenta de Esteban), restore, rollback y carga.
-- Mientras espera la primera palabra, el chat no muestra la pregunta ni un indicador: revisar en el frontend.
 - Medir si menos fragmentos en el contexto bajan la latencia sin empeorar `eval_answers`.
-- El login muestra «Creá una para tu empresa» con el registro cerrado (la API lo rechaza igual).
+- CSP sin `script-src` (Next.js necesita scripts inline): el paso siguiente serían nonces.
+- Opcional: títulos legibles para los documentos de la demo (hoy el nombre del archivo); tocar
+  también `backend/evaluation/` y renombrar en producción, porque el reset no re-sube por hash.
 - Criterio «un merge a `main` está en producción sin tocar el VPS»: hoy el deploy es `deploy.sh` a mano (ADR 0013).
 
 ## Referencias
