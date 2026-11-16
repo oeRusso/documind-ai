@@ -21,9 +21,10 @@ function AskPage() {
       />
       <div className="grid gap-8 md:grid-cols-[14rem_minmax(0,1fr)]">
         <ConversationList organizationId={organization.id} activeId={conversationId} />
-        {/* key: switching conversations starts from a clean state (no answer of the other one). */}
+        {/* key: another organization starts from scratch. Switching conversations is handled inside
+            Chat, so the first question of a new conversation is not cut when its id enters the URL. */}
         <Chat
-          key={`${organization.id}:${conversationId ?? "new"}`}
+          key={organization.id}
           organizationId={organization.id}
           conversationId={conversationId}
         />

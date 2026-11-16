@@ -6,6 +6,10 @@
  * Saved messages come from GET /conversations/{id}. While a question is being answered, the
  * live answer is drawn from the SSE events; when it ends, the conversation is fetched again
  * (now with the saved answer) and the live copy is dropped.
+ *
+ * The first question of a new conversation creates it and puts its id in the URL. The component
+ * is NOT remounted for that (it would lose the answer being written): it only starts clean when
+ * the person opens another conversation or a new one.
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -76,6 +80,22 @@ export function Chat({ organizationId, conversationId }: { organizationId: strin
   const [source, setSource] = useState<Citation | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const controller = useRef<AbortController | null>(null);
+  // Each question gets a number: events of an older one (still running on the server after the
+  // person switched conversations) are ignored.
+  const askNumber = useRef(0);
+  const [created, setCreated] = useState<string | null>(null);
+  const [shown, setShown] = useState(conversationId);
+  if (shown !== conversationId) {
+    // Adjusting state while rendering (React's pattern for "reset when a prop changes").
+    setShown(conversationId);
+    if (conversationId === null || conversationId !== created) {
+      setLive(null);
+      setDraft("");
+      setScope(null);
+      setSource(null);
+      setFailure(null);
+    }
+  }
   const busy = live?.status === "waiting" || live?.status === "writing";
 
   const detail = useQuery({
@@ -116,7 +136,9 @@ export function Chat({ organizationId, conversationId }: { organizationId: strin
           }),
         );
         id = created.id;
+        setCreated(id);
         router.replace(`/ask?c=${id}`);
+        void queryClient.invalidateQueries({ queryKey: conversationsKey(organizationId) });
       } catch (error) {
         setFailure(errorMessage(error));
         return;
@@ -125,28 +147,24 @@ export function Chat({ organizationId, conversationId }: { organizationId: strin
     controller.current?.abort();
     const abort = new AbortController();
     controller.current = abort;
+    const number = ++askNumber.current;
+    const update = (change: (current: Live) => Live | null) => {
+      if (askNumber.current === number) setLive((current) => (current ? change(current) : current));
+    };
     setDraft("");
     setLive({ question, ...EMPTY_LIVE });
     try {
-      await askQuestion(
-        organizationId,
-        question,
-        (event) => setLive((current) => (current ? applyEvent(current, event) : current)),
-        abort.signal,
-        id,
-      );
-      setLive((current) =>
-        current && (current.status === "waiting" || current.status === "writing")
+      await askQuestion(organizationId, question, (event) => update((current) => applyEvent(current, event)), abort.signal, id);
+      update((current) =>
+        current.status === "waiting" || current.status === "writing"
           ? { ...current, status: "failed", error: "Se cortó la conexión antes de terminar" }
           : current,
       );
     } catch (error) {
-      setLive((current) =>
-        current
-          ? abort.signal.aborted
-            ? { ...current, status: "stopped" }
-            : { ...current, status: "failed", error: errorMessage(error) }
-          : current,
+      update((current) =>
+        abort.signal.aborted
+          ? { ...current, status: "stopped" }
+          : { ...current, status: "failed", error: errorMessage(error) },
       );
     }
     // The answer is saved (also when stopped or failed): show the saved copy.
@@ -154,11 +172,14 @@ export function Chat({ organizationId, conversationId }: { organizationId: strin
       queryClient.invalidateQueries({ queryKey: conversationKey(organizationId, id) }),
       queryClient.invalidateQueries({ queryKey: conversationsKey(organizationId) }),
     ]);
-    setLive((current) => (current && current.status !== "failed" ? null : current));
+    update((current) => (current.status !== "failed" ? null : current));
   }
 
   const messages = conversationId ? (detail.data?.messages ?? []) : [];
   const turns = pairUp(messages);
+  // While the answer is drawn live, its saved copy (question + empty "streaming" answer) is hidden.
+  const last = turns.at(-1);
+  if (live && last && (last.answer === null || last.answer.status === "streaming")) turns.pop();
 
   return (
     <div className="grid min-w-0 gap-6">
